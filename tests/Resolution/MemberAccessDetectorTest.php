@@ -46,6 +46,8 @@ class MemberAccessDetectorTest extends TestCase
 
     private const string PROCEDURAL = 'src/Mixed/ProceduralWithClass.php';
 
+    private const string STATIC_ACCESS = 'src/Completion/StaticAccess.php';
+
     private MemberAccessDetector $detector;
     private SyntaxSourceInterface $parser;
 
@@ -239,7 +241,97 @@ class MemberAccessDetectorTest extends TestCase
         yield 'unknown variable' => [self::PROCEDURAL, 'unknown_var', null];
     }
 
+    /**
+     * @return iterable<string, array{string, string, ?MemberAccessContext}>
+     */
+    public static function staticCases(): iterable
+    {
+        $staticAccess = self::type('Fixtures\Completion\StaticAccess');
+        $parentClass = self::type('Fixtures\Inheritance\ParentClass');
+        $childClass = self::type('Fixtures\Inheritance\ChildClass');
+        $inheritance = 'src/Completion/InheritanceCompletion.php';
+        $imports = 'Namespacing/MultiNamespaceImports.php';
+
+        yield 'self::' => [self::STATIC_ACCESS, 'self_empty', self::static($staticAccess, Visibility::Private)];
+        yield 'self:: with a prefix' => [
+            self::STATIC_ACCESS,
+            'self_const_prefix',
+            self::static($staticAccess, Visibility::Private, 'NA'),
+        ];
+        yield 'static::' => [self::STATIC_ACCESS, 'static_keyword', self::static($staticAccess, Visibility::Private)];
+        yield 'self:: in a subclass' => [
+            $inheritance,
+            'self_inherited',
+            self::static(self::type('Fixtures\Completion\InheritanceCompletion'), Visibility::Private),
+        ];
+        yield 'parent::' => [
+            $inheritance,
+            'parent_access',
+            MemberAccessContext::forParent($childClass, Visibility::Protected, ''),
+        ];
+        yield 'parent:: with a prefix' => [
+            $inheritance,
+            'parent_prefix',
+            MemberAccessContext::forParent($childClass, Visibility::Protected, 'p'),
+        ];
+        yield 'parent:: without a parent' => ['src/Completion/NoParent.php', 'parent_no_parent', null];
+        yield 'an ancestor by name' => [
+            $inheritance,
+            'parent_class_static',
+            self::static($parentClass, Visibility::Protected),
+        ];
+        yield 'the direct parent by name' => [
+            'src/Inheritance/ChildClass.php',
+            'direct_parent_static',
+            self::static($parentClass, Visibility::Protected),
+        ];
+        yield 'a grandparent by name' => [
+            'src/Inheritance/ChildClass.php',
+            'grandparent_access',
+            self::static(self::type('Fixtures\Inheritance\Grandparent'), Visibility::Protected),
+        ];
+        yield 'static access from a function' => [
+            self::PROCEDURAL,
+            'standalone_static_access',
+            self::static($staticAccess, Visibility::Public),
+        ];
+        yield 'from an anonymous class' => [
+            'AnonymousClass.php',
+            'static_from_anonymous',
+            self::static($staticAccess, Visibility::Public),
+        ];
+        yield 'self:: in an anonymous class' => ['AnonymousClass.php', 'self_in_anonymous', null];
+        yield 'self:: outside a class' => [self::PROCEDURAL, 'self_outside_class', null];
+        yield 'a class held in a variable' => [self::PROCEDURAL, 'dynamic_static', null];
+        yield 'self:: in the second class of a file' => [
+            self::MULTI_CLASS,
+            'self_in_second_class',
+            self::static(self::type('Fixtures\Completion\SecondUnrelated'), Visibility::Private),
+        ];
+        yield 'self:: without a namespace' => [
+            'NoNamespace.php',
+            'self_no_namespace',
+            self::static(self::type('NoNamespaceClass'), Visibility::Private),
+        ];
+        yield 'an imported class' => [
+            $imports,
+            'imported_static',
+            self::static(self::type('Fixtures\Namespacing\Models\User'), Visibility::Public),
+        ];
+        yield 'an aliased import' => [
+            $imports,
+            'aliased_static',
+            self::static(self::type('Fixtures\Namespacing\Models\UserModel'), Visibility::Public),
+        ];
+        yield 'an enum' => [
+            'src/Completion/EnumUsage.php',
+            'unit_enum_prefix',
+            self::static(self::type('Fixtures\Enum\Status'), Visibility::Public, 'A'),
+        ];
+    }
+
     #[DataProvider('receiverCases')]
+    #[DataProvider('staticCases')]
     public function testResolvesTheReceiverAndWhatTheAccessSiteMaySee(
         string $fixture,
         string $marker,
@@ -254,7 +346,7 @@ class MemberAccessDetectorTest extends TestCase
         self::assertEquals(
             $expected,
             $detector->detect($document, $parser->parse($document), $line, $character),
-            'the receiver type comes from the expression before the arrow; visibility from where the access is',
+            'the receiver type comes from the expression before the operator; visibility from where the access is',
         );
     }
 
@@ -276,7 +368,25 @@ class MemberAccessDetectorTest extends TestCase
             'Fixtures\Completion\ChainCompletion::nullableUser' => new UnionType([$user, new PrimitiveType('null')]),
         ];
 
+        $ancestors = [
+            'Fixtures\Completion\InheritanceCompletion' => [
+                'Fixtures\Inheritance\ChildClass',
+                'Fixtures\Inheritance\ParentClass',
+            ],
+            'Fixtures\Inheritance\ChildClass' => [
+                'Fixtures\Inheritance\ParentClass',
+                'Fixtures\Inheritance\Grandparent',
+            ],
+        ];
+
         $memberResolver = self::createStub(MemberResolverInterface::class);
+        $memberResolver->method('isSubclassOf')->willReturnCallback(
+            static fn (ClasslikeName $class, ClasslikeName $parent): bool => in_array(
+                $parent->qualifiedName->fullyQualifiedName(),
+                $ancestors[$class->qualifiedName->fullyQualifiedName()] ?? [],
+                true,
+            ),
+        );
         $memberResolver->method('findMethod')->willReturnCallback(
             static function (ClasslikeName $class, string $name) use ($methods): ?MethodInfo {
                 $type = $methods[self::memberKey($class, $name)] ?? null;
@@ -340,6 +450,14 @@ class MemberAccessDetectorTest extends TestCase
     private static function instance(TypeInterface $type, Visibility $visibility): MemberAccessContext
     {
         return MemberAccessContext::forInstance($type, $visibility, '');
+    }
+
+    private static function static(
+        TypeInterface $type,
+        Visibility $visibility,
+        string $prefix = '',
+    ): MemberAccessContext {
+        return MemberAccessContext::forStatic($type, $visibility, $prefix);
     }
 
     private static function memberKey(ClasslikeName $class, string $name): string
