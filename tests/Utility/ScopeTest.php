@@ -87,10 +87,7 @@ class ScopeTest extends TestCase
     public function testForNodeArrowFunctionHasNoStatements(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
-        $arrow = (new NodeFinder())->findFirstInstanceOf($ast, ArrowFunction::class);
-        self::assertInstanceOf(ArrowFunction::class, $arrow);
-
-        $scope = Scope::forNode($arrow);
+        $scope = Scope::forNode(self::findArrowFunction($ast));
 
         self::assertSame([], $scope->getStatements(), 'Arrow function body is an expression, not statements');
     }
@@ -98,10 +95,11 @@ class ScopeTest extends TestCase
     public function testOnlyAnArrowFunctionCapturesImplicitly(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
-        $arrow = (new NodeFinder())->findFirstInstanceOf($ast, ArrowFunction::class);
-        self::assertInstanceOf(ArrowFunction::class, $arrow);
 
-        self::assertTrue(Scope::forNode($arrow)->allowsImplicitCapture(), 'fn () => $x reads $x without a use clause');
+        self::assertTrue(
+            Scope::forNode(self::findArrowFunction($ast))->allowsImplicitCapture(),
+            'fn () => $x reads $x without a use clause',
+        );
         self::assertFalse(
             Scope::forNode(self::findClosureWithUses($ast))->allowsImplicitCapture(),
             'a closure sees only what its use clause names',
@@ -347,6 +345,16 @@ class ScopeTest extends TestCase
             fn(Node $n) => $n instanceof Closure && $n->uses !== [],
         );
         self::assertInstanceOf(Closure::class, $node, 'Closure with use() not found');
+        return $node;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function findArrowFunction(array $ast): ArrowFunction
+    {
+        $node = (new NodeFinder())->findFirstInstanceOf($ast, ArrowFunction::class);
+        self::assertInstanceOf(ArrowFunction::class, $node, 'Arrow function not found');
         return $node;
     }
 }
