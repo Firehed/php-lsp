@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
-use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Function_;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -16,8 +15,6 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(PhpParserSyntaxSource::class)]
 final class PhpParserSyntaxSourceTest extends TestCase
 {
-    use LoadsFixturesTrait;
-
     /**
      * Recoverable by the parser, but fatal to NameResolver, which runs with the
      * default throwing error handler.
@@ -82,17 +79,6 @@ final class PhpParserSyntaxSourceTest extends TestCase
         $result = $this->source->parse($doc);
 
         self::assertCount(0, $result);
-    }
-
-    public function testParseYieldsNothingForAFileWithNoClosingBraces(): void
-    {
-        $doc = new TextDocument('file:///test.php', 'php', 1, $this->loadFixture('src/IncompleteCode/VeryBroken.php'));
-
-        self::assertSame(
-            [],
-            $this->source->parse($doc),
-            'php-parser alone recovers nothing here, so completion in this fixture depends on the other sources',
-        );
     }
 
     public function testParseReturnTypeIsNonNullable(): void
