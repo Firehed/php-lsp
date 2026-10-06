@@ -63,16 +63,23 @@ final class CompositeCompletionSourceTest extends TestCase
             'string', 'int', 'float', 'bool', 'array', 'object',
             'mixed', 'null', 'callable', 'iterable', 'true', 'false',
         ];
-        yield 'return type' => ['function foo(): ', [...$common, 'void', 'never', 'self', 'static', 'parent']];
-        yield 'parameter type' => ['function foo(', [...$common, 'self', 'parent']];
-        yield 'property type' => ['class Foo { private ?', $common];
+        yield 'return type' => [
+            'function foo(): ',
+            [...$common, 'void', 'never', 'self', 'static', 'parent', 'Widget'],
+        ];
+        yield 'parameter type' => ['function foo(', [...$common, 'self', 'parent', 'Widget']];
+        yield 'property type' => ['class Foo { private ?', [...$common, 'Widget']];
+        yield 'after a visibility keyword' => [
+            'class Foo { private ',
+            ['function', 'static', 'readonly', 'const', ...$common, 'Widget'],
+        ];
     }
 
     /**
-     * @param list<string> $builtinTypes
+     * @param list<string> $expected
      */
     #[DataProvider('typePositions')]
-    public function testATypePositionOffersTypesOnly(string $line, array $builtinTypes): void
+    public function testATypePositionOffersTypesOnly(string $line, array $expected): void
     {
         $codeResolver = self::createStub(CodeResolverInterface::class);
         $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
@@ -88,9 +95,9 @@ final class CompositeCompletionSourceTest extends TestCase
         );
 
         self::assertSame(
-            [...$builtinTypes, 'Widget'],
+            $expected,
             self::labelsAfter($line, $symbols, $codeResolver),
-            'the built-in types valid there and class-likes; never functions, constants, or keywords',
+            'built-in types valid there and class-likes, plus modifiers after visibility; no functions or constants',
         );
     }
 
