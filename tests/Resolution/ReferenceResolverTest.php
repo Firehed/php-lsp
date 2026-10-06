@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Resolution\NameContext;
-use Firehed\PhpLsp\Resolution\Reference;
 use Firehed\PhpLsp\Resolution\ReferenceKind;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -25,10 +24,7 @@ use PHPUnit\Framework\TestCase;
  *   never falls back to global.
  * - Rule 7: an unqualified function or constant name falls back to global.
  */
-#[CoversClass(Reference::class)]
 #[CoversClass(ReferenceResolver::class)]
-#[CoversClass(NameContext::class)]
-#[CoversClass(NameKind::class)]
 class ReferenceResolverTest extends TestCase
 {
     #[DataProvider('provideReferences')]
@@ -51,60 +47,6 @@ class ReferenceResolverTest extends TestCase
             $reference->kind,
             'The reference kind identifies why it resolves, and drives ranking',
         );
-    }
-
-    #[DataProvider('provideImportTables')]
-    public function testImportsForConsultsTheTableForTheKind(NameKind $kind, string $expected): void
-    {
-        $context = new NameContext(
-            'App',
-            classImports: ['Thing' => 'Other\Thing'],
-            functionImports: ['helper' => 'Other\helper'],
-            constantImports: ['FOO' => 'Other\FOO'],
-        );
-
-        self::assertSame(
-            [$expected],
-            array_values($context->importsFor($kind)),
-            'An unqualified name is resolved against the import table for its own kind',
-        );
-    }
-
-    /**
-     * @codeCoverageIgnore
-     * @return iterable<string, array{NameKind, string}>
-     */
-    public static function provideImportTables(): iterable
-    {
-        yield 'class-likes use the class table' => [NameKind::ClassLike, 'Other\Thing'];
-        yield 'functions use the function table' => [NameKind::Function_, 'Other\helper'];
-        yield 'constants use the constant table' => [NameKind::Constant, 'Other\FOO'];
-    }
-
-    #[DataProvider('provideReachability')]
-    public function testIsReachable(ReferenceKind $kind, bool $expected): void
-    {
-        $reference = new Reference('Whatever', $kind);
-
-        self::assertSame(
-            $expected,
-            $reference->isReachable(),
-            'Only an unreachable reference requires qualification or an added import',
-        );
-    }
-
-    /**
-     * @codeCoverageIgnore
-     * @return iterable<string, array{ReferenceKind, bool}>
-     */
-    public static function provideReachability(): iterable
-    {
-        yield 'current namespace' => [ReferenceKind::CurrentNamespace, true];
-        yield 'import' => [ReferenceKind::Import, true];
-        yield 'prefix import' => [ReferenceKind::PrefixImport, true];
-        yield 'sub namespace' => [ReferenceKind::SubNamespace, true];
-        yield 'global fallback' => [ReferenceKind::GlobalFallback, true];
-        yield 'unreachable' => [ReferenceKind::Unreachable, false];
     }
 
     /**

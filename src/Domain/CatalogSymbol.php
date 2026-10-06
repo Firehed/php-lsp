@@ -34,9 +34,7 @@ final readonly class CatalogSymbol
      */
     public function key(): string
     {
-        $normalized = $this->kind->normalize(QualifiedName::fromFullyQualified($this->fullyQualifiedName));
-
-        return $this->kind->name . '|' . $normalized;
+        return $this->kind->keyFor(QualifiedName::fromFullyQualified($this->fullyQualifiedName));
     }
 
     public function shortName(): string

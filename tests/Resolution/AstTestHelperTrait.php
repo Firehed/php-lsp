@@ -2,12 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Utility;
+namespace Firehed\PhpLsp\Tests\Resolution;
 
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor;
 use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\ParserFactory;
@@ -46,7 +47,7 @@ trait AstTestHelperTrait
             {
                 if ($node instanceof Variable && $node->name === $this->name) {
                     $this->found = $node;
-                    return NodeTraverser::STOP_TRAVERSAL;
+                    return NodeVisitor::STOP_TRAVERSAL;
                 }
                 return null;
             }

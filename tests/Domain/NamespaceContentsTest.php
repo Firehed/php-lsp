@@ -18,7 +18,6 @@ use PHPUnit\Framework\TestCase;
  * spelling.
  */
 #[CoversClass(NamespaceContents::class)]
-#[CoversClass(CatalogSymbol::class)]
 final class NamespaceContentsTest extends TestCase
 {
     public function testMergeKeepsConstantsDifferingOnlyInShortNameCase(): void

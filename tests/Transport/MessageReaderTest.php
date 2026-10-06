@@ -17,8 +17,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(MessageReader::class)]
-#[CoversClass(EndOfStream::class)]
-#[CoversClass(MalformedFrame::class)]
 class MessageReaderTest extends TestCase
 {
     /**

@@ -2,12 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Index;
+namespace Firehed\PhpLsp\Tests\Parser;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
-use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;

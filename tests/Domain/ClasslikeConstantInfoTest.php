@@ -9,7 +9,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ClasslikeConstantInfo::class)]
-#[CoversClass(PrimitiveType::class)]
 class ClasslikeConstantInfoTest extends TestCase
 {
     use HasSymbolLocationTestTrait;
@@ -124,6 +123,22 @@ class ClasslikeConstantInfoTest extends TestCase
         self::assertSame('int', $constant->getType()?->format());
         self::assertSame(Visibility::Public, $constant->getVisibility());
         self::assertTrue($constant->isStatic(), 'a class constant is reached on the class');
+    }
+
+    public function testReportsTheVisibilityItWasDeclaredWith(): void
+    {
+        $constant = new ClasslikeConstantInfo(
+            name: new ClasslikeConstantName(ClasslikeName::fromFullyQualified(self::class), 'MAX'),
+            visibility: Visibility::Protected,
+            isFinal: false,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertSame(Visibility::Protected, $constant->getVisibility(), 'a protected constant keeps it');
+        self::assertTrue($constant->isStatic(), 'a constant is reached on the class, whatever its visibility');
     }
 
     protected function makeSubject(

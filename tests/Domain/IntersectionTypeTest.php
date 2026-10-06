@@ -8,7 +8,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(IntersectionType::class)]
-#[CoversClass(LateStaticType::class)]
 class IntersectionTypeTest extends TestCase
 {
     /**

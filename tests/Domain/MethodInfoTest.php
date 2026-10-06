@@ -232,6 +232,25 @@ class MethodInfoTest extends TestCase
         self::assertFalse($method->isStatic());
     }
 
+    public function testReportsTheVisibilityAndStaticnessItWasDeclaredWith(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName(ClasslikeName::fromFullyQualified(self::class), 'run'),
+            visibility: Visibility::Private,
+            isStatic: true,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [],
+            returnType: null,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertSame(Visibility::Private, $method->getVisibility(), 'a private method keeps its visibility');
+        self::assertTrue($method->isStatic(), 'a static method reports it');
+    }
+
     public function testResolvedCallableMetadata(): void
     {
         $param = new ParameterInfo(

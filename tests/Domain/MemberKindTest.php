@@ -9,7 +9,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(MemberKind::class)]
-#[CoversClass(NameCase::class)]
 class MemberKindTest extends TestCase
 {
     public function testMembersOfReadsTheMapForItsKind(): void

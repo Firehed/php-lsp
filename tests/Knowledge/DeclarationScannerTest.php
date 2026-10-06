@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Index;
+namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\FileUri;
@@ -19,9 +19,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use ReflectionFunction;
 
-#[CoversClass(Declaration::class)]
 #[CoversClass(DeclarationScanner::class)]
-#[CoversClass(FileDeclarations::class)]
 final class DeclarationScannerTest extends TestCase
 {
     use LoadsFixturesTrait;

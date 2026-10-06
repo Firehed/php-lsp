@@ -41,6 +41,13 @@ final class NameKindTest extends TestCase
         self::assertSame($expected, $kind->normalize($name));
     }
 
+    public function testOnlyFunctionsAndConstantsFallBackToGlobal(): void
+    {
+        self::assertFalse(NameKind::ClassLike->fallsBackToGlobal(), 'PHP name resolution rule 6');
+        self::assertTrue(NameKind::Function_->fallsBackToGlobal(), 'PHP name resolution rule 7');
+        self::assertTrue(NameKind::Constant->fallsBackToGlobal(), 'PHP name resolution rule 7');
+    }
+
     public function testIsClassLikeIsTrueOnlyForClassLike(): void
     {
         self::assertTrue(NameKind::ClassLike->isClassLike());

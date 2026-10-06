@@ -9,7 +9,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ConstantInfo::class)]
-#[CoversClass(PrimitiveType::class)]
 class ConstantInfoTest extends TestCase
 {
     use HasSymbolLocationTestTrait;

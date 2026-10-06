@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Utility;
+namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -87,12 +87,35 @@ class ScopeTest extends TestCase
     public function testForNodeArrowFunctionHasNoStatements(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
-        $arrow = (new NodeFinder())->findFirstInstanceOf($ast, ArrowFunction::class);
-        self::assertInstanceOf(ArrowFunction::class, $arrow);
-
-        $scope = Scope::forNode($arrow);
+        $scope = Scope::forNode(self::findArrowFunction($ast));
 
         self::assertSame([], $scope->getStatements(), 'Arrow function body is an expression, not statements');
+    }
+
+    public function testOnlyAnArrowFunctionCapturesImplicitly(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
+
+        self::assertTrue(
+            Scope::forNode(self::findArrowFunction($ast))->allowsImplicitCapture(),
+            'fn () => $x reads $x without a use clause',
+        );
+        self::assertFalse(
+            Scope::forNode(self::findClosureWithUses($ast))->allowsImplicitCapture(),
+            'a closure sees only what its use clause names',
+        );
+        self::assertFalse(
+            Scope::forNode(self::findMethod('methodWithThis', $ast))->allowsImplicitCapture(),
+            'a method sees none of the enclosing variables',
+        );
+    }
+
+    public function testSourceNodeIsTheFunctionLikeTheScopeWasBuiltFrom(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
+        $method = self::findMethod('methodWithThis', $ast);
+
+        self::assertSame($method, Scope::forNode($method)->getSourceNode(), 'the scope points back at its method');
     }
 
     public function testForNodeCarriesEnclosingClassLike(): void
@@ -224,9 +247,10 @@ class ScopeTest extends TestCase
         self::assertNotEmpty($hasFunction, 'Namespace-level statements should be exposed for global scope');
     }
 
-    public function testClassLikeForThisAtWalksBackAcrossANamespace(): void
+    #[DataProvider('fileScopeThisFixtures')]
+    public function testClassLikeForThisAtWalksBackToTheClassDeclaredAbove(string $fixture, string $expected): void
     {
-        $ast = self::parseWithParents($this->loadFixture('src/Utility/FileScopeThisAfterClass.php'));
+        $ast = self::parseWithParents($this->loadFixture($fixture));
         $thisNode = self::findVariableNode('this', $ast);
         self::assertNotNull($thisNode);
 
@@ -237,7 +261,18 @@ class ScopeTest extends TestCase
             $classLike,
             'file-scope $this should walk back to the class declared above',
         );
-        self::assertSame('FileScopeThisAfterClass', $classLike->name?->toString());
+        self::assertSame($expected, $classLike->name?->toString());
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function fileScopeThisFixtures(): array
+    {
+        return [
+            'across a namespace' => ['src/Utility/FileScopeThisAfterClass.php', 'FileScopeThisAfterClass'],
+            'skipping a class declared below' => ['TopLevel/this_between_classes.php', 'DeclaredAbove'],
+        ];
     }
 
     public function testClassLikeForThisAtReturnsNullWhenNoClassLikeDeclared(): void
@@ -314,6 +349,16 @@ class ScopeTest extends TestCase
             fn(Node $n) => $n instanceof Closure && $n->uses !== [],
         );
         self::assertInstanceOf(Closure::class, $node, 'Closure with use() not found');
+        return $node;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function findArrowFunction(array $ast): ArrowFunction
+    {
+        $node = (new NodeFinder())->findFirstInstanceOf($ast, ArrowFunction::class);
+        self::assertInstanceOf(ArrowFunction::class, $node, 'Arrow function not found');
         return $node;
     }
 }
