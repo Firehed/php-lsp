@@ -11,7 +11,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(CompletionContext::class)]
 #[CoversClass(ContextDetector::class)]
 class ContextDetectorTest extends TestCase
 {
