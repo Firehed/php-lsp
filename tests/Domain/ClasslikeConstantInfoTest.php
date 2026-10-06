@@ -125,6 +125,22 @@ class ClasslikeConstantInfoTest extends TestCase
         self::assertTrue($constant->isStatic(), 'a class constant is reached on the class');
     }
 
+    public function testReportsTheVisibilityItWasDeclaredWith(): void
+    {
+        $constant = new ClasslikeConstantInfo(
+            name: new ClasslikeConstantName(ClasslikeName::fromFullyQualified(self::class), 'MAX'),
+            visibility: Visibility::Protected,
+            isFinal: false,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertSame(Visibility::Protected, $constant->getVisibility(), 'a protected constant keeps it');
+        self::assertTrue($constant->isStatic(), 'a constant is reached on the class, whatever its visibility');
+    }
+
     protected function makeSubject(
         ?string $file = null,
         ?int $line = null,
