@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\EndToEnd\Client;
 
+use RuntimeException;
 use stdClass;
 
 final class LspClient
@@ -32,12 +33,14 @@ final class LspClient
         $id = $this->nextId++;
         $this->send(['id' => $id, 'method' => $method], $params);
 
-        // Messages the server sends on its own initiative are passed over.
         while (true) {
             $message = $this->server->readMessage();
             $this->transcript[] = ['received' => $message->body];
             if ($message->method === null && $message->id === $id) {
                 return $message;
+            }
+            if ($message->method !== null && $message->id !== null) {
+                $this->answer($message->id, $message->method);
             }
         }
     }
@@ -57,6 +60,19 @@ final class LspClient
                 self::elideText($member);
             }
         }
+    }
+
+    /**
+     * Answers a request from the server as an editor that accepts it would.
+     */
+    private function answer(int|string $id, string $method): void
+    {
+        if ($method !== 'client/registerCapability') {
+            throw new RuntimeException("No answer for the server's {$method} request.");
+        }
+
+        // [LSP] client/registerCapability: the result is null.
+        $this->write(['id' => $id, 'result' => null]);
     }
 
     /**

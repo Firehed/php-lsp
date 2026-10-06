@@ -94,12 +94,12 @@ final class Session
     /**
      * @return ServerMessage The response to `initialize`.
      */
-    public function start(): ServerMessage
+    public function start(ClientCapabilities $capabilities): ServerMessage
     {
         $response = $this->client->request('initialize', (object) [
             'processId' => null,
             'rootUri' => 'file://' . $this->projectRoot,
-            'capabilities' => new stdClass(),
+            'capabilities' => $capabilities->toWire(),
         ]);
         $this->client->notify('initialized', new stdClass());
 
