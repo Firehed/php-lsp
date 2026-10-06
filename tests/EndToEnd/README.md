@@ -43,7 +43,11 @@ A script file declares `namespace Firehed\PhpLsp\Tests\EndToEnd;` and names type
   Lines and columns are 1-based, as the file reads.
 - Hover expectations are `Shows(...)` and `Hides(...)`, fragments of the content, `Formatted(MarkupKind)`, and `NoAnswer()`.
 - Signature help expectations are `SignatureShows(...)` and `DocumentationShows(...)` on the active signature, `DocumentationIs(text)` for its exact documentation, `ActiveParameter(index)`, `SignatureCount(n)`, and `NoAnswer()`.
-- Completion expectations are `Offers(...)`, every label present in any order, `Withholds(...)`, no label present in a complete list, and `Documents(label, text)` and `Details(label, text)`, one item with that label and exactly that documentation or detail, and `RanksAbove(higher, lower)`, the client sorts one above the other.
+- Completion expectations:
+  - `Offers(...)`: every label is present, in any order.
+  - `Withholds(...)`: no label is present, in a complete list.
+  - `Documents(label, text)` and `Details(label, text)`: one item has the label, with exactly that documentation or detail.
+  - `RanksAbove(higher, lower)`: the client sorts one above the other.
 - Steps name files relative to the project, and places in them by marker.
 - `CursorMarker` is the position just before a `/*|name*/` marker.
 - `SymbolMarker` is the symbol on a line ending in `//hover:name`.
