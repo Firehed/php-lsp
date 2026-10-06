@@ -474,7 +474,9 @@ final class BuiltinBackend implements SymbolSourceInterface
     {
         $defaultValue = null;
         if ($param->isDefaultValueAvailable()) {
-            $defaultValue = self::formatReflectionDefault($param->getDefaultValue());
+            $defaultValue = $param->isDefaultValueConstant()
+                ? $param->getDefaultValueConstantName()
+                : self::formatReflectionDefault($param->getDefaultValue());
         }
 
         return new ParameterInfo(
