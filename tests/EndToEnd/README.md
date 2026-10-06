@@ -37,10 +37,12 @@ A script file declares `namespace Firehed\PhpLsp\Tests\EndToEnd;` and names type
 - `Copy` and `Delete` change the disk as another program would, and the server is not told.
   `Copy` puts a prepared variant in place; variants live outside the autoload paths, such as `DiskChange/` in the fixture project.
 - `ReportChanges` is the client's file watcher reporting what changed, in one notification.
-- `Definition` and `Complete` are requests.
+- `Definition`, `Hover`, `SignatureHelp`, and `Complete` are requests.
   Each decodes the answer, failing on a malformed one, and checks it against `expect:`: one expectation, or a list that must all hold.
 - Definition expectations are `LandsOn(file, line, column)`, where the column is optional, and `NoAnswer()`.
   Lines and columns are 1-based, as the file reads.
+- Hover expectations are `Shows(...)` and `Hides(...)`, fragments of the content, `Formatted(MarkupKind)`, and `NoAnswer()`.
+- Signature help expectations are `SignatureShows(...)` and `DocumentationShows(...)` on the active signature, `ActiveParameter(index)`, `SignatureCount(n)`, and `NoAnswer()`.
 - Completion expectations are `Offers(...)`, every label present in any order, and `Withholds(...)`, no label present in a complete list.
 - Steps name files relative to the project, and places in them by marker.
 - `CursorMarker` is the position just before a `/*|name*/` marker.
