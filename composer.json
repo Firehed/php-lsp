@@ -20,6 +20,7 @@
         "symfony/cache": "^7 || ^8"
     },
     "require-dev": {
+        "amphp/process": "^2.1",
         "deptrac/deptrac": "^4.7",
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-deprecation-rules": "^2.0",
@@ -43,6 +44,7 @@
     "scripts": {
         "phpcs": "phpcs",
         "unit": "phpunit",
+        "e2e": "phpunit --testsuite end-to-end",
         "parity-coverage": "phpunit tests/Parity --coverage-text",
         "phpstan": "phpstan analyze",
         "deptrac": "deptrac analyse --no-progress",
