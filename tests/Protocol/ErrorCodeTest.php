@@ -27,7 +27,11 @@ class ErrorCodeTest extends TestCase
     #[DataProvider('defaultMessages')]
     public function testDefaultMessageNamesTheError(ErrorCode $case, string $expected): void
     {
-        self::assertSame($expected, $case->defaultMessage(), 'the message JSON-RPC 2.0 § 5.1 gives the code');
+        self::assertSame(
+            $expected,
+            $case->defaultMessage(),
+            'the JSON-RPC 2.0 § 5.1 message, or the LSP code name spelled out',
+        );
     }
 
     /**
