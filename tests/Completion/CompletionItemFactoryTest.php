@@ -33,6 +33,20 @@ final class CompletionItemFactoryTest extends TestCase
         );
     }
 
+    public function testBuiltinTypeSortsAheadOfClassLikes(): void
+    {
+        self::assertSame(
+            [
+                'label' => 'string',
+                'kind' => CompletionItemKind::Keyword->value,
+                'detail' => 'builtin type',
+                'sortText' => '!string',
+            ],
+            CompletionItemFactory::forBuiltinType('string'),
+            'a built-in type sorts first, so a capped list keeps it',
+        );
+    }
+
     public function testResolvedMemberShowsItsSignature(): void
     {
         $case = new EnumCaseInfo(
