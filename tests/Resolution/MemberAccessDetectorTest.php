@@ -26,7 +26,6 @@ use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
-use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -37,7 +36,6 @@ use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ExpressionResolver::class)]
 #[CoversClass(MemberAccessDetector::class)]
-#[CoversClass(ResolvedTypeOnly::class)]
 class MemberAccessDetectorTest extends TestCase
 {
     use LoadsFixturesTrait;
