@@ -11,7 +11,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ResponseMessage::class)]
-#[CoversClass(ResponseError::class)]
 class ResponseMessageTest extends TestCase
 {
     public function testSuccessResponseJsonFormat(): void
