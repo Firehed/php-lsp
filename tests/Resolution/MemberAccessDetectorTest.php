@@ -5,18 +5,32 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
+use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\MethodName;
+use Firehed\PhpLsp\Domain\PrimitiveType;
+use Firehed\PhpLsp\Domain\PropertyInfo;
+use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\TypeInterface;
+use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
+use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ExpressionResolver::class)]
@@ -25,6 +39,12 @@ use PHPUnit\Framework\TestCase;
 class MemberAccessDetectorTest extends TestCase
 {
     use LoadsFixturesTrait;
+
+    private const string CHAINS = 'src/Completion/ChainCompletion.php';
+
+    private const string MULTI_CLASS = 'MultiClass/MultiClass.php';
+
+    private const string PROCEDURAL = 'src/Mixed/ProceduralWithClass.php';
 
     private MemberAccessDetector $detector;
     private SyntaxSourceInterface $parser;
@@ -164,6 +184,171 @@ class MemberAccessDetectorTest extends TestCase
             $result->minVisibility,
             'A vantage that names the target class in different letter case still names the same class',
         );
+    }
+
+    /**
+     * @return iterable<string, array{string, string, ?MemberAccessContext}>
+     */
+    public static function receiverCases(): iterable
+    {
+        $user = self::type('Fixtures\Domain\User');
+        $methodAccess = self::type('Fixtures\Completion\MethodAccess');
+
+        yield 'property chain' => [self::CHAINS, 'property_chain', self::instance($user, Visibility::Public)];
+        yield 'method chain' => [self::CHAINS, 'method_chain', self::instance($user, Visibility::Public)];
+        yield 'nullsafe property chain' => [
+            self::CHAINS,
+            'nullsafe_property_chain',
+            self::instance(new UnionType([$user, new PrimitiveType('null')]), Visibility::Public),
+        ];
+        yield 'chain across lines' => [
+            self::CHAINS,
+            'multi_line_chain',
+            self::instance(self::type('Fixtures\Completion\Name'), Visibility::Public),
+        ];
+        yield 'chain from a function' => [
+            'src/Completion/FunctionCompletion.php',
+            'function_return_chain',
+            self::instance(self::type('Fixtures\Completion\Config'), Visibility::Public),
+        ];
+        yield 'variable from a static call' => [
+            self::PROCEDURAL,
+            'var_from_static_call',
+            self::instance(self::type('Fixtures\Completion\StaticAccess'), Visibility::Public),
+        ];
+        yield 'from a function' => [
+            self::PROCEDURAL,
+            'standalone_function_access',
+            self::instance($methodAccess, Visibility::Public),
+        ];
+        yield 'from another class' => [
+            'src/Completion/ExternalAccess.php',
+            'external_method_access',
+            self::instance($methodAccess, Visibility::Public),
+        ];
+        yield '$this in the second class of a file' => [
+            self::MULTI_CLASS,
+            'this_in_second_class',
+            self::instance(self::type('Fixtures\Completion\ChildInMultiFile'), Visibility::Private),
+        ];
+        yield '$this beside an unrelated class' => [
+            self::MULTI_CLASS,
+            'this_in_unrelated_second',
+            self::instance(self::type('Fixtures\Completion\SecondUnrelated'), Visibility::Private),
+        ];
+        yield 'unknown variable' => [self::PROCEDURAL, 'unknown_var', null];
+    }
+
+    #[DataProvider('receiverCases')]
+    public function testResolvesTheReceiverAndWhatTheAccessSiteMaySee(
+        string $fixture,
+        string $marker,
+        ?MemberAccessContext $expected,
+    ): void {
+        $content = $this->loadFixture($fixture);
+        ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+
+        self::assertEquals(
+            $expected,
+            self::detectorKnowingFixtureMembers($this->parser)
+                ->detect($document, $this->parser->parse($document), $line, $character),
+            'the receiver type comes from the expression before the arrow; visibility from where the access is',
+        );
+    }
+
+    /**
+     * Members the fixtures declare, so chains and static calls resolve; every
+     * other lookup finds nothing.
+     */
+    private static function detectorKnowingFixtureMembers(SyntaxSourceInterface $parser): MemberAccessDetector
+    {
+        $user = self::type('Fixtures\Domain\User');
+        $methods = [
+            'Fixtures\Completion\ChainCompletion::getUser' => $user,
+            'Fixtures\Completion\ChainCompletion::getChainableUser' => self::type('Fixtures\Completion\ChainableUser'),
+            'Fixtures\Completion\ChainableUser::getName' => self::type('Fixtures\Completion\Name'),
+            'Fixtures\Completion\StaticAccess::create' => self::type('Fixtures\Completion\StaticAccess'),
+        ];
+        $properties = [
+            'Fixtures\Completion\ChainCompletion::user' => $user,
+            'Fixtures\Completion\ChainCompletion::nullableUser' => new UnionType([$user, new PrimitiveType('null')]),
+        ];
+
+        $memberResolver = self::createStub(MemberResolverInterface::class);
+        $memberResolver->method('findMethod')->willReturnCallback(
+            static function (ClasslikeName $class, string $name) use ($methods): ?MethodInfo {
+                $type = $methods[self::memberKey($class, $name)] ?? null;
+                return $type === null ? null : new MethodInfo(
+                    new MethodName($class, $name),
+                    Visibility::Public,
+                    false,
+                    false,
+                    false,
+                    [],
+                    $type,
+                    null,
+                    null,
+                    null,
+                );
+            },
+        );
+        $memberResolver->method('findProperty')->willReturnCallback(
+            static function (ClasslikeName $class, string $name) use ($properties): ?PropertyInfo {
+                $type = $properties[self::memberKey($class, $name)] ?? null;
+                return $type === null ? null : new PropertyInfo(
+                    new PropertyName($class, $name),
+                    Visibility::Private,
+                    false,
+                    false,
+                    false,
+                    $type,
+                    null,
+                    null,
+                    null,
+                );
+            },
+        );
+
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupFunction')->willReturnCallback(
+            static fn (FunctionName $name): ?FunctionInfo => $name->qualifiedName->fullyQualifiedName()
+                === 'Fixtures\Completion\getConfig'
+                ? new FunctionInfo($name, [], self::type('Fixtures\Completion\Config'), null, null, null)
+                : null,
+        );
+
+        $methodAccess = self::type('Fixtures\Completion\MethodAccess');
+        $types = self::createStub(TypeSourceInterface::class);
+        $types->method('forFunctionParameter')->willReturnCallback(
+            static fn (FunctionName $function, string $parameter): ?TypeInterface =>
+                $function->qualifiedName->fullyQualifiedName() === 'Fixtures\Mixed\processMethodAccess'
+                    ? $methodAccess
+                    : null,
+        );
+        $types->method('forMethodParameter')->willReturnCallback(
+            static function (MethodName $method, string $parameter) use ($methodAccess): ?TypeInterface {
+                $key = self::memberKey($method->owner, $method->name);
+                return $key === 'Fixtures\Completion\ExternalAccess::accessMethodAccess' ? $methodAccess : null;
+            },
+        );
+
+        return new MemberAccessDetector($symbols, $memberResolver, $types, $parser);
+    }
+
+    private static function instance(TypeInterface $type, Visibility $visibility): MemberAccessContext
+    {
+        return MemberAccessContext::forInstance($type, $visibility, '');
+    }
+
+    private static function memberKey(ClasslikeName $class, string $name): string
+    {
+        return $class->qualifiedName->fullyQualifiedName() . '::' . $name;
+    }
+
+    private static function type(string $fqn): ClasslikeType
+    {
+        return new ClasslikeType(ClasslikeName::fromFullyQualified($fqn));
     }
 
     private function detect(string $fixture, int $line, int $character): ?MemberAccessContext
