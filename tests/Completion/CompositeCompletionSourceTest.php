@@ -82,6 +82,30 @@ final class CompositeCompletionSourceTest extends TestCase
     #[DataProvider('typePositions')]
     public function testATypePositionOffersTypesOnly(string $line, array $expected): void
     {
+        self::assertSame(
+            $expected,
+            self::labelsWithEverySymbolKindAfter($line),
+            'built-in types valid there and type-hintable class-likes, plus modifiers after visibility; '
+                . 'no traits, functions, or constants',
+        );
+    }
+
+    public function testAnExpressionOffersEverySymbolKind(): void
+    {
+        self::assertSame(
+            ['Widget', 'Mixin', 'PHP_VERSION', 'strlen'],
+            self::labelsWithEverySymbolKindAfter('$x = Z'),
+            'an expression offers class-likes, traits included, functions, and constants',
+        );
+    }
+
+    /**
+     * Offers a class, a trait that is not a valid type hint, a function, and a constant.
+     *
+     * @return list<string>
+     */
+    private static function labelsWithEverySymbolKindAfter(string $line): array
+    {
         $codeResolver = self::createStub(CodeResolverInterface::class);
         $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
         $codeResolver->method('isValidTypeHint')->willReturnCallback(
@@ -100,12 +124,7 @@ final class CompositeCompletionSourceTest extends TestCase
             },
         );
 
-        self::assertSame(
-            $expected,
-            self::labelsAfter($line, $symbols, $codeResolver),
-            'built-in types valid there and type-hintable class-likes, plus modifiers after visibility; '
-                . 'no traits, functions, or constants',
-        );
+        return self::labelsAfter($line, $symbols, $codeResolver);
     }
 
     /**
