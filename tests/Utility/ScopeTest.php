@@ -245,9 +245,10 @@ class ScopeTest extends TestCase
         self::assertNotEmpty($hasFunction, 'Namespace-level statements should be exposed for global scope');
     }
 
-    public function testClassLikeForThisAtWalksBackAcrossANamespace(): void
+    #[DataProvider('fileScopeThisFixtures')]
+    public function testClassLikeForThisAtWalksBackToTheClassDeclaredAbove(string $fixture, string $expected): void
     {
-        $ast = self::parseWithParents($this->loadFixture('src/Utility/FileScopeThisAfterClass.php'));
+        $ast = self::parseWithParents($this->loadFixture($fixture));
         $thisNode = self::findVariableNode('this', $ast);
         self::assertNotNull($thisNode);
 
@@ -258,19 +259,18 @@ class ScopeTest extends TestCase
             $classLike,
             'file-scope $this should walk back to the class declared above',
         );
-        self::assertSame('FileScopeThisAfterClass', $classLike->name?->toString());
+        self::assertSame($expected, $classLike->name?->toString());
     }
 
-    public function testClassLikeForThisAtIgnoresAClassLikeDeclaredBelow(): void
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function fileScopeThisFixtures(): array
     {
-        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_between_classes.php'));
-        $thisNode = self::findVariableNode('this', $ast);
-        self::assertNotNull($thisNode);
-
-        $classLike = Scope::classLikeForThisAt($ast, $thisNode->getStartFilePos());
-
-        self::assertInstanceOf(Stmt\Class_::class, $classLike, 'file-scope $this should walk back to a class');
-        self::assertSame('DeclaredAbove', $classLike->name?->toString(), 'a class declared below is skipped');
+        return [
+            'across a namespace' => ['src/Utility/FileScopeThisAfterClass.php', 'FileScopeThisAfterClass'],
+            'skipping a class declared below' => ['TopLevel/this_between_classes.php', 'DeclaredAbove'],
+        ];
     }
 
     public function testClassLikeForThisAtReturnsNullWhenNoClassLikeDeclared(): void
