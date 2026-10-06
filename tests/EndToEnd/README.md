@@ -35,12 +35,14 @@ A script file declares `namespace Firehed\PhpLsp\Tests\EndToEnd;` and names type
   Open only files a person would have open; the server finds the rest on its own.
 - `Definition` and `Complete` are requests.
   Each decodes the answer, failing on a malformed one, and checks it against `expect:`: one expectation, or a list that must all hold.
-- Definition expectations are `LandsOn(file, line)` and `NoAnswer()`.
-  Lines are 1-based, as the file reads.
+- Definition expectations are `LandsOn(file, line, column)`, where the column is optional, and `NoAnswer()`.
+  Lines and columns are 1-based, as the file reads.
 - Completion expectations are `Offers(...)`, every label present in any order, and `Withholds(...)`, no label present in a complete list.
 - Steps name files relative to the project, and places in them by marker.
 - `CursorMarker` is the position just before a `/*|name*/` marker.
 - `SymbolMarker` is the symbol on a line ending in `//hover:name`.
+- `VariableMarker` is the last `$var` on a line ending in `//jtd:name var`.
+  A cursor marker cannot sit inside a variable name without breaking the parse.
 - `Type` inserts a short literal fragment, as a person would type it.
   This is the one exception to the no-inline-PHP rule in `CONTRIBUTING.md`.
 

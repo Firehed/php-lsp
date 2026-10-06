@@ -10,18 +10,22 @@ use stdClass;
 
 /**
  * A place in a project file, as a person reads it: a path relative to the
- * project and a 1-based line.
+ * project, a 1-based line, and a 1-based column.
  */
 final readonly class Location
 {
+    /**
+     * @param int $column Counted in UTF-16 code units, as the wire counts them.
+     */
     public function __construct(
         public string $file,
         public int $line,
+        public int $column,
     ) {
     }
 
     /**
-     * Decodes an [LSP] Location, whose lines are 0-based.
+     * Decodes the start of an [LSP] Location, whose positions are 0-based.
      */
     public static function fromWire(mixed $wire, Session $session): self
     {
@@ -34,7 +38,9 @@ final readonly class Location
         Assert::assertInstanceOf(stdClass::class, $start, 'a Range has a start');
         $line = $start->line ?? null;
         Assert::assertIsInt($line, 'a Position has a line');
+        $character = $start->character ?? null;
+        Assert::assertIsInt($character, 'a Position has a character');
 
-        return new self($session->fileOf($uri), $line + 1);
+        return new self($session->fileOf($uri), $line + 1, $character + 1);
     }
 }
