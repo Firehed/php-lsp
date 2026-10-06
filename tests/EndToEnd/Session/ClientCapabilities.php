@@ -14,6 +14,7 @@ final readonly class ClientCapabilities
 {
     public function __construct(
         private bool $watchedFilesDynamicRegistration = false,
+        private bool $markdownHover = false,
     ) {
     }
 
@@ -22,6 +23,9 @@ final readonly class ClientCapabilities
         $capabilities = new stdClass();
         if ($this->watchedFilesDynamicRegistration) {
             $capabilities->workspace = ['didChangeWatchedFiles' => ['dynamicRegistration' => true]];
+        }
+        if ($this->markdownHover) {
+            $capabilities->textDocument = ['hover' => ['contentFormat' => ['markdown', 'plaintext']]];
         }
 
         return $capabilities;
