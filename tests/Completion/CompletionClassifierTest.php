@@ -46,8 +46,11 @@ class CompletionClassifierTest extends TestCase
         yield 'return type bare' => ['    public function f(): ', CompletionKind::ReturnType, ''];
         yield 'return type nullable' => ['    public function f(): ?Fo', CompletionKind::ReturnType, 'Fo'];
         yield 'return type nullable spaced' => ['    public function f(): ? ', CompletionKind::ReturnType, ''];
+        yield 'return type bare nullable' => ['    public function f(): ?', CompletionKind::ReturnType, ''];
         yield 'return type union' => ['    public function f(): int|Fo', CompletionKind::ReturnType, 'Fo'];
+        yield 'return type bare union' => ['    public function f(): int|', CompletionKind::ReturnType, ''];
         yield 'return type intersection' => ['    public function f(): Foo&Ba', CompletionKind::ReturnType, 'Ba'];
+        yield 'return type bare intersection' => ['    public function f(): Foo&', CompletionKind::ReturnType, ''];
 
         yield 'property type nullable' => ['    private ?Fo', CompletionKind::PropertyType, 'Fo'];
         yield 'property type union' => ['    public int|Fo', CompletionKind::PropertyType, 'Fo'];
@@ -57,6 +60,8 @@ class CompletionClassifierTest extends TestCase
             'Ba',
         ];
         yield 'property type bare nullable' => ['    private ?', CompletionKind::PropertyType, ''];
+        yield 'property type bare union' => ['    public int|', CompletionKind::PropertyType, ''];
+        yield 'property type bare intersection' => ['    private Foo&', CompletionKind::PropertyType, ''];
 
         yield 'parameter type after paren' => ['    public function f(Fo', CompletionKind::ParameterType, 'Fo'];
         yield 'parameter type after comma' => ['    public function f(int $a, Ba', CompletionKind::ParameterType, 'Ba'];
