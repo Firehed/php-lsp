@@ -45,6 +45,7 @@ class CompletionClassifierTest extends TestCase
         yield 'return type plain' => ['    public function f(): Fo', CompletionKind::ReturnType, 'Fo'];
         yield 'return type bare' => ['    public function f(): ', CompletionKind::ReturnType, ''];
         yield 'return type nullable' => ['    public function f(): ?Fo', CompletionKind::ReturnType, 'Fo'];
+        yield 'return type nullable spaced' => ['    public function f(): ? ', CompletionKind::ReturnType, ''];
         yield 'return type union' => ['    public function f(): int|Fo', CompletionKind::ReturnType, 'Fo'];
         yield 'return type intersection' => ['    public function f(): Foo&Ba', CompletionKind::ReturnType, 'Ba'];
 
