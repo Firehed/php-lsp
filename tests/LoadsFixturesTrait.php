@@ -16,6 +16,8 @@ use Firehed\PhpLsp\Protocol\PositionEncoding;
  */
 trait LoadsFixturesTrait
 {
+    use LocatesMarkersTrait;
+
     /**
      * The absolute path of a fixture, for tests that need to address the file
      * itself (a URI, a locator input) rather than only its contents.
@@ -40,26 +42,6 @@ trait LoadsFixturesTrait
     }
 
     /**
-     * Resolves a fixture cursor marker to the position immediately before it.
-     *
-     * Markers use the pattern SLASH*|marker_name*SLASH (where SLASH is /).
-     * This is the position math alone, with no document opened, so tests that
-     * drive the server over the wire can address a marker too.
-     *
-     * @param string $cursorName The marker name (without delimiters)
-     * @return array{line: int, character: int}
-     */
-    private function locateCursor(string $content, string $cursorName): array
-    {
-        ['line' => $line, 'before' => $before] = $this->splitAtCursor($content, $cursorName);
-
-        return [
-            'line' => $line,
-            'character' => strlen($before),
-        ];
-    }
-
-    /**
      * Resolves a fixture cursor marker to its position with `character` as the
      * negotiated-encoding (UTF-16) wire column — what a conformant client sends.
      * {@see locateCursor()} returns a byte column, which coincides with the wire
@@ -77,29 +59,6 @@ trait LoadsFixturesTrait
         return [
             'line' => $line,
             'character' => PositionEncoding::Utf16->codeUnitLength($before),
-        ];
-    }
-
-    /**
-     * The line the cursor marker sits on and the text preceding it on that line,
-     * shared by the byte- and wire-column marker resolvers.
-     *
-     * @param string $cursorName The marker name (without delimiters)
-     * @return array{line: int, before: string}
-     */
-    private function splitAtCursor(string $content, string $cursorName): array
-    {
-        $marker = "/*|{$cursorName}*/";
-        $pos = strpos($content, $marker);
-        assert($pos !== false, "Cursor marker not found: $cursorName");
-
-        $beforeMarker = substr($content, 0, $pos);
-        $lines = explode("\n", $beforeMarker);
-        $line = count($lines) - 1;
-
-        return [
-            'line' => $line,
-            'before' => $lines[$line],
         ];
     }
 }
