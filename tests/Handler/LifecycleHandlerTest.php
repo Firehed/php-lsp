@@ -20,7 +20,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(LifecycleHandler::class)]
-#[CoversClass(ServerInfo::class)]
 class LifecycleHandlerTest extends TestCase
 {
     public function testSupportsLifecycleMethods(): void
