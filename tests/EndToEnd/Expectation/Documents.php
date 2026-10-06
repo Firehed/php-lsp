@@ -20,15 +20,9 @@ final readonly class Documents implements CompletionExpectationInterface
 
     public function checkCompletion(CompletionList $completions): void
     {
-        $documented = [];
-        foreach ($completions->items as $item) {
-            if ($item->label === $this->label) {
-                $documented[] = $item->documentation;
-            }
-        }
         Assert::assertSame(
             [$this->documentation],
-            $documented,
+            array_column($completions->itemsLabelled($this->label), 'documentation'),
             "{$this->label} is offered once, documented as expected",
         );
     }
