@@ -387,6 +387,20 @@ final class BuiltinBackendTest extends TestCase
         );
     }
 
+    public function testConstantDefaultParameterFormatsAsTheConstantName(): void
+    {
+        $info = self::functionIn($this->backend, 'count');
+
+        self::assertNotNull($info, 'count must resolve so its parameters can be inspected');
+        $mode = $info->parameters[1];
+        self::assertSame('mode', $mode->name, 'count declares $mode second');
+        self::assertSame(
+            'COUNT_NORMAL',
+            $mode->defaultValue,
+            'a constant default is shown by name, without evaluating the constant (which may be deprecated)',
+        );
+    }
+
     public function testExceptionPropertyVisibilitiesAreMapped(): void
     {
         $info = self::classLikeIn($this->backend, \Exception::class);
