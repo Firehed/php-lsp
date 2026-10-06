@@ -28,6 +28,35 @@ final class EnumImplicitsTest extends TestCase
         self::assertSame(['name'], array_keys(EnumImplicits::properties($enum, null)), 'a unit case has no value');
     }
 
+    public function testEveryEnumIsAUnitEnumAndABackedEnumIsAlsoABackedEnum(): void
+    {
+        $unitEnum = ClasslikeName::fromFullyQualified(\UnitEnum::class);
+        $backedEnum = ClasslikeName::fromFullyQualified(\BackedEnum::class);
+
+        self::assertEquals([$unitEnum], EnumImplicits::interfaces(false), 'every enum implements UnitEnum');
+        self::assertEquals([$unitEnum, $backedEnum], EnumImplicits::interfaces(true), 'a backed enum adds BackedEnum');
+    }
+
+    /**
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function interfaceNames(): iterable
+    {
+        yield 'UnitEnum' => [\UnitEnum::class, true];
+        yield 'BackedEnum' => [\BackedEnum::class, true];
+        yield 'an interface an enum declares itself' => [\JsonSerializable::class, false];
+    }
+
+    #[DataProvider('interfaceNames')]
+    public function testOnlyTheSynthesizedInterfacesAreImplicit(string $fqn, bool $expected): void
+    {
+        self::assertSame(
+            $expected,
+            EnumImplicits::isImplicitInterface(ClasslikeName::fromFullyQualified($fqn)),
+            'only interfaces PHP adds to every enum are implicit; ones the source names are not',
+        );
+    }
+
     /**
      * @return iterable<string, array{PrimitiveType}>
      */
