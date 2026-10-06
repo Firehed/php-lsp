@@ -27,11 +27,9 @@ jobs:
       - name: Install fixture dependencies
         run: composer install --prefer-dist --no-progress --working-dir=tests/Fixtures
 
-      # Only the unit suite measures coverage.
-      - name: Run unit tests
-        run: composer unit
+      - name: Run unit tests with coverage
+        run: composer coverage
           --
-          --testsuite unit
           --coverage-clover coverage.xml
           --log-junit junit-unit.xml
 

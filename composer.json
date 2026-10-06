@@ -45,6 +45,7 @@
         "phpcs": "phpcs",
         "unit": "phpunit",
         "e2e": "phpunit --testsuite end-to-end",
+        "coverage": "phpunit --testsuite unit --coverage-text",
         "parity-coverage": "phpunit tests/Parity --coverage-text",
         "phpstan": "phpstan analyze",
         "deptrac": "deptrac analyse --no-progress",
