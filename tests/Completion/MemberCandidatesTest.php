@@ -59,15 +59,19 @@ final class MemberCandidatesTest extends TestCase
     #[DataProvider('contextCases')]
     public function testOffersTheResolvedMembersTheContextAccepts(MemberAccessContext $context, array $expected): void
     {
-        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $request = self::request();
+        $codeResolver = $this->createMock(CodeResolverInterface::class);
         $codeResolver->method('getMemberAccessContext')->willReturn($context);
-        $codeResolver->method('getAccessibleMembers')->willReturn([
-            self::member(new MethodName(self::owner(), 'getName'), MemberKind::Method),
-            self::member(new MethodName(self::owner(), 'getCount'), MemberKind::Method),
-            self::member(new PropertyName(self::owner(), 'name'), MemberKind::Property),
-        ]);
+        $codeResolver->expects(self::once())
+            ->method('getAccessibleMembers')
+            ->with($request->document, $context->type, $context->minVisibility, $context->memberFilter)
+            ->willReturn([
+                self::member(new MethodName(self::owner(), 'getName'), MemberKind::Method),
+                self::member(new MethodName(self::owner(), 'getCount'), MemberKind::Method),
+                self::member(new PropertyName(self::owner(), 'name'), MemberKind::Property),
+            ]);
 
-        $items = self::candidates($codeResolver)->find(self::request());
+        $items = self::candidates($codeResolver)->find($request);
 
         self::assertNotNull($items, 'a member access offers members');
         self::assertSame(
