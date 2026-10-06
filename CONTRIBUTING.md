@@ -3,6 +3,7 @@
 ## Development Workflow
 
 - Follow TDD. Coverage must be 100% for new code. Rewrite a dead branch out instead of excluding it.
+- Only the unit suite measures coverage, and a test counts only for what its `#[Covers…]` attributes name.
 - Update `docs/features/*.md` when merging features.
 - Run `composer test` before commits.
 - `composer.lock` is gitignored. Do not stage or commit it.
