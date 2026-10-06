@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Utility;
+namespace Firehed\PhpLsp\Tests\Resolution;
 
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
