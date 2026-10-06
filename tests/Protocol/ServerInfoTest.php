@@ -16,7 +16,7 @@ final class ServerInfoTest extends TestCase
         self::assertSame(
             ['name' => 'php-lsp', 'version' => '1.2.3'],
             (new ServerInfo('php-lsp', '1.2.3'))->toArray(),
-            '[LSP] InitializeResult.serverInfo has a name and a version',
+            '[LSP] InitializeResult.serverInfo carries the name and the optional version',
         );
     }
 }
