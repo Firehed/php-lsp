@@ -24,6 +24,27 @@ class ErrorCodeTest extends TestCase
         self::assertSame($expected, $case->value, 'the enum value is fixed by the JSON-RPC/LSP wire contract');
     }
 
+    #[DataProvider('defaultMessages')]
+    public function testDefaultMessageNamesTheError(ErrorCode $case, string $expected): void
+    {
+        self::assertSame($expected, $case->defaultMessage(), 'the message JSON-RPC 2.0 § 5.1 gives the code');
+    }
+
+    /**
+     * @return iterable<string, array{ErrorCode, string}>
+     *
+     * @codeCoverageIgnore
+     */
+    public static function defaultMessages(): iterable
+    {
+        yield 'ParseError' => [ErrorCode::ParseError, 'Parse error'];
+        yield 'InvalidRequest' => [ErrorCode::InvalidRequest, 'Invalid Request'];
+        yield 'MethodNotFound' => [ErrorCode::MethodNotFound, 'Method not found'];
+        yield 'InvalidParams' => [ErrorCode::InvalidParams, 'Invalid params'];
+        yield 'InternalError' => [ErrorCode::InternalError, 'Internal error'];
+        yield 'ServerNotInitialized' => [ErrorCode::ServerNotInitialized, 'Server not initialized'];
+    }
+
     /**
      * @return iterable<string, array{ErrorCode, int}>
      *
