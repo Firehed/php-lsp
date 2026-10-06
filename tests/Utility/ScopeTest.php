@@ -95,6 +95,27 @@ class ScopeTest extends TestCase
         self::assertSame([], $scope->getStatements(), 'Arrow function body is an expression, not statements');
     }
 
+    public function testOnlyAnArrowFunctionCapturesImplicitly(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
+        $arrow = (new NodeFinder())->findFirstInstanceOf($ast, ArrowFunction::class);
+        self::assertInstanceOf(ArrowFunction::class, $arrow);
+
+        self::assertTrue(Scope::forNode($arrow)->allowsImplicitCapture(), 'fn () => $x reads $x without a use clause');
+        self::assertFalse(
+            Scope::forNode(self::findClosureWithUses($ast))->allowsImplicitCapture(),
+            'a closure sees only what its use clause names',
+        );
+    }
+
+    public function testSourceNodeIsTheFunctionLikeTheScopeWasBuiltFrom(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
+        $method = self::findMethod('methodWithThis', $ast);
+
+        self::assertSame($method, Scope::forNode($method)->getSourceNode(), 'the scope points back at its method');
+    }
+
     public function testForNodeCarriesEnclosingClassLike(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
@@ -238,6 +259,18 @@ class ScopeTest extends TestCase
             'file-scope $this should walk back to the class declared above',
         );
         self::assertSame('FileScopeThisAfterClass', $classLike->name?->toString());
+    }
+
+    public function testClassLikeForThisAtIgnoresAClassLikeDeclaredBelow(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_between_classes.php'));
+        $thisNode = self::findVariableNode('this', $ast);
+        self::assertNotNull($thisNode);
+
+        $classLike = Scope::classLikeForThisAt($ast, $thisNode->getStartFilePos());
+
+        self::assertInstanceOf(Stmt\Class_::class, $classLike, 'file-scope $this should walk back to a class');
+        self::assertSame('DeclaredAbove', $classLike->name?->toString(), 'a class declared below is skipped');
     }
 
     public function testClassLikeForThisAtReturnsNullWhenNoClassLikeDeclared(): void
