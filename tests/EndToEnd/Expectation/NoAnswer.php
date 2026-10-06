@@ -20,6 +20,7 @@ final readonly class NoAnswer implements
 {
     public function checkCompletion(CompletionList $completions): void
     {
+        Assert::assertFalse($completions->isIncomplete, 'the list is complete, so nothing more is coming');
         Assert::assertSame([], $completions->labels(), 'nothing is offered');
     }
 
