@@ -16,6 +16,7 @@ final readonly class CompletionItem
 
     public function __construct(
         public string $label,
+        public ?string $detail,
         public ?string $documentation,
     ) {
     }
@@ -28,7 +29,9 @@ final readonly class CompletionItem
         Assert::assertInstanceOf(stdClass::class, $wire, 'a CompletionItem is an object');
         $label = $wire->label ?? null;
         Assert::assertIsString($label, 'a CompletionItem has a label');
+        $detail = $wire->detail ?? null;
+        Assert::assertTrue($detail === null || is_string($detail), 'a CompletionItem detail is a string');
 
-        return new self($label, self::documentationOf($wire->documentation ?? null));
+        return new self($label, $detail, self::documentationOf($wire->documentation ?? null));
     }
 }
