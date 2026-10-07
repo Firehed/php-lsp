@@ -15,7 +15,6 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
-use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
@@ -64,8 +63,8 @@ final class NativeTypeSourceTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                self::parameter('first', 0, 'MethodFirstParameter'),
-                self::parameter('second', 1, 'MethodSecondParameter'),
+                self::parameterInfo('first', self::type('MethodFirstParameter')),
+                self::parameterInfo('second', self::type('MethodSecondParameter')),
             ],
             returnType: self::type('MethodReturn'),
             docblock: null,
@@ -101,8 +100,8 @@ final class NativeTypeSourceTest extends TestCase
         $function = self::functionInfo(
             QualifiedName::fromFullyQualified(self::FUNCTION),
             parameters: [
-                self::parameter('first', 0, 'FunctionFirstParameter'),
-                self::parameter('second', 1, 'FunctionSecondParameter'),
+                self::parameterInfo('first', self::type('FunctionFirstParameter')),
+                self::parameterInfo('second', self::type('FunctionSecondParameter')),
             ],
             returnType: self::type('FunctionReturn'),
         );
@@ -251,11 +250,6 @@ final class NativeTypeSourceTest extends TestCase
         return $class->equals(self::className(self::OWNER))
             && $name === $declared
             && $visibility === Visibility::Private;
-    }
-
-    private static function parameter(string $name, int $position, string $typeLabel): ParameterInfo
-    {
-        return new ParameterInfo($name, self::type($typeLabel), false, null, $position, false, false);
     }
 
     private static function type(string $label): ClasslikeType

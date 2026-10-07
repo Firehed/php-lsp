@@ -19,8 +19,7 @@ use Firehed\PhpLsp\Domain\TypeInterface;
 
 /**
  * Builds minimal domain value objects for tests that need symbols without a real
- * parse — only the identity, the declaring file where precedence is under test,
- * and, for a class-like, the parent and interface edges a subtype walk follows.
+ * parse. Each builder takes only what a test may vary; everything else is empty.
  *
  * The `declared*` pair wraps the info in the {@see DeclaredSymbol} the kind-agnostic
  * write and lookup paths take, so a test states the kind once rather than picking a
@@ -115,6 +114,11 @@ trait BuildsSymbolInfoTrait
         ?TypeInterface $returnType = null,
     ): FunctionInfo {
         return new FunctionInfo(new FunctionName($name), $parameters, $returnType, null, $file, 1);
+    }
+
+    private static function parameterInfo(string $name, ?TypeInterface $type = null, int $position = 0): ParameterInfo
+    {
+        return new ParameterInfo($name, $type, false, null, $position, false, false);
     }
 
     /**
