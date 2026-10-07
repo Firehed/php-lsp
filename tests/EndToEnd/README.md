@@ -47,6 +47,7 @@ A script file declares `namespace Firehed\PhpLsp\Tests\EndToEnd;` and names type
   - `Offers(...)`: every label is present, in any order.
   - `Withholds(...)`: no label is present, in a complete list.
   - `Documents(label, text)` and `Details(label, text)`: one item has the label, with exactly that documentation or detail.
+  - `Inserts(label, text, format)`: one item has the label, and accepting it inserts exactly that text, plain text unless a snippet format is given.
   - `RanksAbove(higher, lower)`: the client sorts one above the other.
   - `NoAnswer()`: nothing is offered.
 - Steps name files relative to the project, and places in them by marker.
