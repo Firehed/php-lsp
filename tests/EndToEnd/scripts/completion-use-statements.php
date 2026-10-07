@@ -43,5 +43,6 @@ return [
         'Namespacing/ClosureUseCompletion.php',
         'closure_capture',
         new Expectation\Offers('$greeting'),
+        new Expectation\Withholds('Psr\Http\\'),
     ),
 ];
