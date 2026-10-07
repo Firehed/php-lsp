@@ -6,20 +6,26 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Closure;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
+use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\SymbolKind;
+use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompositeCompletionSource::class)]
@@ -30,24 +36,69 @@ final class CompositeCompletionSourceTest extends TestCase
 
     public function testVariableInsideACallOffersNamedArgumentsAndVariablesOnly(): void
     {
-        $callable = self::createStub(ResolvedCallableInterface::class);
-        $callable->method('getParameters')->willReturn([
-            new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
-        ]);
-        $codeResolver = self::createStub(CodeResolverInterface::class);
-        $codeResolver->method('getCallContext')->willReturn(new CallContext($callable, 0, []));
-        $codeResolver->method('getVariablesInScope')->willReturn([
-            new ResolvedVariable('variable', new PrimitiveType('string')),
-        ]);
-        $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
         $symbols->method('search')->willReturn([self::symbol('var_dump', SymbolKind::Function_)]);
 
         self::assertSame(
             ['name:', '$variable'],
-            self::labelsAfter('foo($va', $symbols, $codeResolver),
+            self::labelsAfter('foo($va', $symbols, self::insideACall()),
             'a variable being typed in a call offers argument names and variables, not expressions',
+        );
+    }
+
+    public function testMemberAccessAnswersAloneEvenWithNoMembers(): void
+    {
+        $codeResolver = self::insideACall();
+        $codeResolver->method('getMemberAccessContext')->willReturn(MemberAccessContext::forInstance(
+            new ClasslikeType(ClasslikeName::fromFullyQualified('Widget')),
+            Visibility::Public,
+            '',
+        ));
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('childrenOf')->willReturn(new NamespaceContents());
+
+        self::assertSame(
+            [],
+            self::labelsAfter('foo($x->', $symbols, $codeResolver),
+            'member access owns the position: no argument names or variables from the enclosing call',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, list<string>}>
+     */
+    public static function useStatements(): iterable
+    {
+        yield 'closure use' => ['$f = function () use ', ['$greeting']];
+        yield 'import' => ['use Lib\\', ['Widget']];
+    }
+
+    /**
+     * @param list<string> $expected
+     */
+    #[DataProvider('useStatements')]
+    public function testAUseOutsideAClassBodyIsAnImportUnlessItCapturesClosureVariables(
+        string $code,
+        array $expected,
+    ): void {
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
+        $codeResolver->method('isClassLike')->willReturn(true);
+        $codeResolver->method('getVariablesInScope')->willReturn([
+            new ResolvedVariable('greeting', new PrimitiveType('string')),
+        ]);
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('childrenOf')->willReturnCallback(
+            static fn (NamespaceName $namespace): NamespaceContents => $namespace->path === 'Lib'
+                ? new NamespaceContents(symbols: [new CatalogSymbol('Lib\Widget', NameKind::ClassLike)])
+                : new NamespaceContents(),
+        );
+
+        self::assertSame(
+            $expected,
+            self::labelsAfter($code, $symbols, $codeResolver),
+            'a closure use offers only variables; an import offers only navigated class-likes',
         );
     }
 
@@ -74,9 +125,9 @@ final class CompositeCompletionSourceTest extends TestCase
      * @param list<string> $withheld
      */
     #[DataProvider('typePositions')]
-    public function testATypePositionOffersTypesOnly(string $line, array $offered, array $withheld): void
+    public function testATypePositionOffersTypesOnly(string $code, array $offered, array $withheld): void
     {
-        $labels = self::labelsWithEverySymbolKindAfter($line);
+        $labels = self::labelsWithEverySymbolKindAfter($code);
 
         foreach ($offered as $label) {
             self::assertContains($label, $labels, "{$label}: a built-in type or type-hintable class-like here");
@@ -100,17 +151,18 @@ final class CompositeCompletionSourceTest extends TestCase
         yield 'catch' => ['} catch (', ['Failure']];
         yield 'attribute' => ['#[', ['Marker']];
         yield 'instanceof' => ['$x instanceof ', ['Widget', 'Contract', 'Base', 'Failure', 'Marker']];
+        yield 'trait use in a class body' => ["class Foo {\n    use ", ['Mixin']];
     }
 
     /**
      * @param list<string> $expected
      */
     #[DataProvider('classPositions')]
-    public function testAClassPositionOffersTheClassLikesItsFilterAccepts(string $line, array $expected): void
+    public function testAClassPositionOffersTheClassLikesItsFilterAccepts(string $code, array $expected): void
     {
         self::assertSame(
             $expected,
-            self::labelsWithEverySymbolKindAfter($line),
+            self::labelsWithEverySymbolKindAfter($code),
             'only class-likes valid in the position: no functions, constants, or keywords',
         );
     }
@@ -130,7 +182,7 @@ final class CompositeCompletionSourceTest extends TestCase
      *
      * @return list<string>
      */
-    private static function labelsWithEverySymbolKindAfter(string $line): array
+    private static function labelsWithEverySymbolKindAfter(string $code): array
     {
         $only = static fn (string $accepted): Closure
             => static fn (ClasslikeName $name): bool => $name->equals(ClasslikeName::fromFullyQualified($accepted));
@@ -144,6 +196,7 @@ final class CompositeCompletionSourceTest extends TestCase
         $codeResolver->method('isExtendableClass')->willReturnCallback($only('Base'));
         $codeResolver->method('isThrowable')->willReturnCallback($only('Failure'));
         $codeResolver->method('isAttribute')->willReturnCallback($only('Marker'));
+        $codeResolver->method('isTrait')->willReturnCallback($only('Mixin'));
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
         $symbols->method('search')->willReturnCallback(
@@ -161,19 +214,38 @@ final class CompositeCompletionSourceTest extends TestCase
             },
         );
 
-        return self::labelsAfter($line, $symbols, $codeResolver);
+        return self::labelsAfter($code, $symbols, $codeResolver);
+    }
+
+    /**
+     * A resolver that places the cursor in a call taking `$name`, with `$variable` in scope.
+     */
+    private static function insideACall(): CodeResolverInterface&Stub
+    {
+        $callable = self::createStub(ResolvedCallableInterface::class);
+        $callable->method('getParameters')->willReturn([
+            new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
+        ]);
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('getCallContext')->willReturn(new CallContext($callable, 0, []));
+        $codeResolver->method('getVariablesInScope')->willReturn([
+            new ResolvedVariable('variable', new PrimitiveType('string')),
+        ]);
+        $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
+
+        return $codeResolver;
     }
 
     /**
      * @return list<string>
      */
     private static function labelsAfter(
-        string $line,
+        string $code,
         SymbolSourceInterface $symbols,
         CodeResolverInterface $codeResolver,
     ): array {
         $source = self::completionSourceFor($symbols, $codeResolver, self::capabilitiesProvider());
 
-        return array_column($source->find(self::requestAfter($line)), 'label');
+        return array_column($source->find(self::requestAfter($code)), 'label');
     }
 }
