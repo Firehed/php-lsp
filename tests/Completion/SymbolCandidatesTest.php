@@ -4,19 +4,18 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
+use Closure;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
-use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ClasslikeName;
-use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
+use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolKind;
@@ -24,10 +23,8 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\NameContext;
-use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -37,11 +34,12 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SymbolCandidates::class)]
 final class SymbolCandidatesTest extends TestCase
 {
+    use BuildsCompletionInputsTrait;
     use BuildsSymbolInfoTrait;
 
     public function testSearchHitIsOfferedByItsReferenceRankedByReach(): void
     {
-        $items = self::candidates(new NameContext('App'), search: ['App\Widget'])
+        $items = self::candidates(new NameContext('App'), search: ['App\Widget', 'App\Gadget'])
             ->find(self::requestAfter('$x = Wid'), [NameKind::ClassLike], ClassCandidateFilter::Any);
 
         self::assertSame(
@@ -54,43 +52,63 @@ final class SymbolCandidatesTest extends TestCase
                 'sortText' => '0_Widget',
             ]],
             $items,
-            'the reference replaces the typed prefix and sorts by how near the symbol is',
+            'the typed prefix is searched, and the reference replaces it, sorted by how near the symbol is',
         );
     }
 
     public function testUnreachableSearchHitIsDroppedBeforeTheFilterRuns(): void
     {
         $asked = [];
-        $resolver = self::resolver(new NameContext('Elsewhere'));
-        $resolver->method('isInstantiable')->willReturnCallback(
-            static function (ClasslikeName $name) use (&$asked): bool {
+        $items = self::candidates(
+            new NameContext('Elsewhere'),
+            search: ['App\Widget'],
+            isInstantiable: static function (ClasslikeName $name) use (&$asked): bool {
                 $asked[] = $name;
                 return true;
             },
-        );
-
-        $items = self::candidates(new NameContext('Elsewhere'), search: ['App\Widget'], resolver: $resolver)
-            ->find(self::requestAfter('$x = Wid'), [NameKind::ClassLike], ClassCandidateFilter::Instantiable);
+        )->find(self::requestAfter('$x = Wid'), [NameKind::ClassLike], ClassCandidateFilter::Instantiable);
 
         self::assertSame([], $items, 'a class-like that needs an import or a leading \\ is not offered bare');
         self::assertSame([], $asked, 'the cheap reachability check runs before the filter resolves the class');
     }
 
-    public function testImportIsOfferedByItsAlias(): void
+    public function testImportsOfEveryKindAreOfferedByTheirAlias(): void
     {
-        $items = self::candidates(new NameContext('App', classImports: ['Gadget' => 'Lib\Device']))
-            ->find(self::requestAfter('$x = Ga'), [NameKind::ClassLike], ClassCandidateFilter::Any);
+        $context = new NameContext(
+            'App',
+            classImports: ['Gadget' => 'Lib\Device'],
+            functionImports: ['gather' => 'Lib\collect'],
+            constantImports: ['GAUGE' => 'Lib\METER'],
+        );
+        $range = Range::onLine(1, 5, 7)->toArray();
 
         self::assertSame(
-            [[
-                'label' => 'Gadget',
-                'kind' => CompletionItemKind::Class_->value,
-                'detail' => 'Lib\Device',
-                'filterText' => 'Gadget',
-                'textEdit' => ['range' => Range::onLine(1, 5, 7)->toArray(), 'newText' => 'Gadget'],
-            ]],
-            $items,
-            'an import is offered by the alias it binds',
+            [
+                [
+                    'label' => 'Gadget',
+                    'kind' => CompletionItemKind::Class_->value,
+                    'detail' => 'Lib\Device',
+                    'filterText' => 'Gadget',
+                    'textEdit' => ['range' => $range, 'newText' => 'Gadget'],
+                ],
+                [
+                    'label' => 'GAUGE',
+                    'kind' => CompletionItemKind::Constant->value,
+                    'detail' => 'Lib\METER',
+                    'filterText' => 'GAUGE',
+                    'textEdit' => ['range' => $range, 'newText' => 'GAUGE'],
+                ],
+                [
+                    'label' => 'gather',
+                    'kind' => CompletionItemKind::Function->value,
+                    'detail' => 'Lib\collect',
+                    'filterText' => 'gather',
+                    'textEdit' => ['range' => $range, 'newText' => 'gather'],
+                ],
+            ],
+            self::candidates($context)
+                ->find(self::requestAfter('$x = Ga'), NameKind::cases(), ClassCandidateFilter::Any),
+            'each kind\'s import is offered by the alias it binds',
         );
     }
 
@@ -127,23 +145,20 @@ final class SymbolCandidatesTest extends TestCase
     public function testFilterAppliesToEverySource(): void
     {
         $accepted = ['App\WidgetFound', 'Lib\WidgetImported', 'App\WidgetDeclared'];
-        $resolver = self::resolver(new NameContext('App', classImports: [
+        $context = new NameContext('App', classImports: [
             'WidgetImported' => 'Lib\WidgetImported',
             'WidgetRejectedImport' => 'Lib\WidgetRejectedImport',
-        ]));
-        $resolver->method('isInstantiable')->willReturnCallback(
-            static fn (ClasslikeName $name): bool => self::isOneOf($name, $accepted),
-        );
+        ]);
         $children = ['App' => new NamespaceContents(symbols: [
             new CatalogSymbol('App\WidgetDeclared', NameKind::ClassLike),
             new CatalogSymbol('App\WidgetRejectedDeclared', NameKind::ClassLike),
         ])];
 
         $items = self::candidates(
-            new NameContext('App'),
+            $context,
             search: ['App\WidgetFound', 'App\WidgetRejectedFound'],
             children: $children,
-            resolver: $resolver,
+            isInstantiable: static fn (ClasslikeName $name): bool => self::isOneOf($name, $accepted),
         )->find(self::requestAfter('$x = Wid'), [NameKind::ClassLike], ClassCandidateFilter::Instantiable);
 
         self::assertSame(
@@ -168,18 +183,26 @@ final class SymbolCandidatesTest extends TestCase
         );
     }
 
-    public function testNameSharedAcrossKindsIsOfferedOnce(): void
+    public function testNameSharedAcrossKindsIsOfferedOnceAsTheFirstRequestedKind(): void
     {
-        $items = self::candidates(
-            new NameContext('App'),
-            search: ['App\Thing'],
-            functionSearch: ['App\Thing'],
-        )->find(self::requestAfter('$x = Thi'), [NameKind::ClassLike, NameKind::Function_], ClassCandidateFilter::Any);
+        $candidates = self::candidates(new NameContext('App'), search: ['App\Thing'], functionSearch: ['App\Thing']);
+        $request = self::requestAfter('$x = Thi');
 
         self::assertSame(
             [CompletionItemKind::Class_->value],
-            array_column($items, 'kind'),
-            'a class and a function with one name are offered once, as the first requested kind',
+            array_column(
+                $candidates->find($request, [NameKind::ClassLike, NameKind::Function_], ClassCandidateFilter::Any),
+                'kind',
+            ),
+            'asked for class-likes first, the class is offered',
+        );
+        self::assertSame(
+            [CompletionItemKind::Function->value],
+            array_column(
+                $candidates->find($request, [NameKind::Function_, NameKind::ClassLike], ClassCandidateFilter::Any),
+                'kind',
+            ),
+            'asked for functions first, the function is offered',
         );
     }
 
@@ -205,15 +228,14 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testFunctionShowsItsSignature(): void
     {
-        $info = self::functionInfo(QualifiedName::fromFullyQualified('App\count_widgets'));
-        $symbols = self::symbolSource(functionSearch: ['App\count_widgets']);
-        $symbols->method('lookupFunction')->willReturn($info);
-
-        $items = (new SymbolCandidates($symbols, self::resolver(new NameContext('App')), self::capabilities()))
-            ->find(self::requestAfter('$x = count_'), [NameKind::Function_], ClassCandidateFilter::Any);
+        $items = self::candidates(
+            new NameContext('App'),
+            functionSearch: ['App\count_widgets'],
+            function: self::functionInfo(QualifiedName::fromFullyQualified('App\count_widgets')),
+        )->find(self::requestAfter('$x = count_'), [NameKind::Function_], ClassCandidateFilter::Any);
 
         self::assertSame(
-            [ResolvedSymbolPresenter::present($info)->signature],
+            ['function count_widgets()'],
             array_column($items, 'detail'),
             'a function shows its signature rather than its name',
         );
@@ -260,18 +282,18 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testNavigationOffersOnlyClassLikesThatResolveAndPassTheFilter(): void
     {
-        $resolver = self::resolver(new NameContext('App'), phantoms: ['Lib\Phantom']);
-        $resolver->method('isInstantiable')->willReturnCallback(
-            static fn (ClasslikeName $name): bool => !self::isOneOf($name, ['Lib\Abstraction']),
-        );
         $children = ['Lib' => new NamespaceContents(symbols: [
             new CatalogSymbol('Lib\Concrete', NameKind::ClassLike),
             new CatalogSymbol('Lib\Phantom', NameKind::ClassLike),
             new CatalogSymbol('Lib\Abstraction', NameKind::ClassLike),
         ])];
 
-        $items = self::candidates(new NameContext('App'), children: $children, resolver: $resolver)
-            ->find(self::requestAfter('$x = new \Lib\\'), [NameKind::ClassLike], ClassCandidateFilter::Instantiable);
+        $items = self::candidates(
+            new NameContext('App'),
+            children: $children,
+            phantoms: ['Lib\Phantom'],
+            isInstantiable: static fn (ClasslikeName $name): bool => !self::isOneOf($name, ['Lib\Abstraction']),
+        )->find(self::requestAfter('$x = new \Lib\\'), [NameKind::ClassLike], ClassCandidateFilter::Instantiable);
 
         self::assertSame(
             ['Concrete'],
@@ -373,13 +395,17 @@ final class SymbolCandidatesTest extends TestCase
             new CatalogSymbol('Lib\Widget', NameKind::ClassLike),
             new CatalogSymbol('Lib\wrap', NameKind::Function_),
         ])];
-
-        $items = self::candidates(new NameContext('App'), children: $children)->forUseStatement('\Lib\W', 1, 10);
+        $candidates = self::candidates(new NameContext('App'), children: $children);
 
         self::assertSame(
             ['Widget'],
-            self::labels($items),
-            'an import names class-likes from the global namespace, a leading \\ or not',
+            self::labels($candidates->forUseStatement('Lib\W', 1, 9)),
+            'an import names class-likes from the global namespace, not the current one',
+        );
+        self::assertSame(
+            ['Widget'],
+            self::labels($candidates->forUseStatement('\Lib\W', 1, 10)),
+            'a leading \\ names the same place',
         );
     }
 
@@ -387,79 +413,52 @@ final class SymbolCandidatesTest extends TestCase
      * @param list<string> $search class-like search hits
      * @param list<string> $functionSearch function search hits
      * @param array<string, NamespaceContents> $children keyed by namespace path
+     * @param list<string> $phantoms listed names with no class-like behind them
+     * @param ?Closure(ClasslikeName): bool $isInstantiable
      */
     private static function candidates(
         NameContext $context,
         array $search = [],
         array $functionSearch = [],
         array $children = [],
-        ?CodeResolverInterface $resolver = null,
+        array $phantoms = [],
+        ?Closure $isInstantiable = null,
+        ?FunctionInfo $function = null,
         SessionCapabilities $capabilities = new SessionCapabilities(),
     ): SymbolCandidates {
-        return new SymbolCandidates(
-            self::symbolSource($search, $functionSearch, $children),
-            $resolver ?? self::resolver($context),
-            self::capabilities($capabilities),
-        );
-    }
-
-    /**
-     * @param list<string> $search
-     * @param list<string> $functionSearch
-     * @param array<string, NamespaceContents> $children
-     */
-    private static function symbolSource(
-        array $search = [],
-        array $functionSearch = [],
-        array $children = [],
-    ): SymbolSourceInterface&Stub {
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('search')->willReturnCallback(
-            static fn (string $prefix, NameKind $kind): array => array_map(
-                static fn (string $fqn): Symbol => new Symbol(
-                    NamespaceName::shortNameOf($fqn),
-                    $fqn,
-                    SymbolKind::Class_,
-                    new Location('file:///f.php', 0, 0, 0, 0),
-                ),
+            static fn (string $prefix, NameKind $kind): array => array_values(array_filter(
                 match ($kind) {
-                    NameKind::ClassLike => $search,
-                    NameKind::Function_ => $functionSearch,
+                    NameKind::ClassLike => array_map(
+                        static fn (string $fqn): Symbol => self::symbol($fqn, SymbolKind::Class_),
+                        $search,
+                    ),
+                    NameKind::Function_ => array_map(
+                        static fn (string $fqn): Symbol => self::symbol($fqn, SymbolKind::Function_),
+                        $functionSearch,
+                    ),
                     NameKind::Constant => [],
                 },
-            ),
+                static fn (Symbol $symbol): bool => PrefixMatcher::matches($symbol->name, $prefix),
+            )),
         );
         $symbols->method('childrenOf')->willReturnCallback(
             static fn (NamespaceName $namespace): NamespaceContents
                 => $children[$namespace->path] ?? new NamespaceContents(),
         );
+        $symbols->method('lookupFunction')->willReturn($function);
 
-        return $symbols;
-    }
-
-    /**
-     * @param list<string> $phantoms listed names with no class-like behind them
-     */
-    private static function resolver(
-        NameContext $context,
-        array $phantoms = [],
-    ): CodeResolverInterface&Stub {
         $resolver = self::createStub(CodeResolverInterface::class);
         $resolver->method('getNameContext')->willReturn($context);
         $resolver->method('isClassLike')->willReturnCallback(
             static fn (ClasslikeName $name): bool => !self::isOneOf($name, $phantoms),
         );
+        if ($isInstantiable !== null) {
+            $resolver->method('isInstantiable')->willReturnCallback($isInstantiable);
+        }
 
-        return $resolver;
-    }
-
-    private static function capabilities(
-        SessionCapabilities $capabilities = new SessionCapabilities(),
-    ): SessionCapabilitiesProviderInterface {
-        $provider = self::createStub(SessionCapabilitiesProviderInterface::class);
-        $provider->method('getSessionCapabilities')->willReturn($capabilities);
-
-        return $provider;
+        return new SymbolCandidates($symbols, $resolver, self::capabilitiesProvider($capabilities));
     }
 
     /**
@@ -479,11 +478,6 @@ final class SymbolCandidatesTest extends TestCase
     private static function isOneOf(ClasslikeName $name, array $fullyQualifiedNames): bool
     {
         return in_array($name->qualifiedName->fullyQualifiedName(), $fullyQualifiedNames, true);
-    }
-
-    private static function requestAfter(string $line): CompletionRequest
-    {
-        return new CompletionRequest(new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}"), 1, strlen($line));
     }
 
     /**
