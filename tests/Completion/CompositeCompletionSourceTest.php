@@ -56,38 +56,38 @@ final class CompositeCompletionSourceTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{string, list<string>}>
+     * The built-in type lists themselves are BuiltinTypeCandidatesTest's; each
+     * case names a type that shows which position's list was asked for.
+     *
+     * @return iterable<string, array{string, list<string>, list<string>}>
      */
     public static function typePositions(): iterable
     {
-        $common = [
-            'string', 'int', 'float', 'bool', 'array', 'object',
-            'mixed', 'null', 'callable', 'iterable', 'true', 'false',
-        ];
-        yield 'return type' => [
-            'function foo(): ',
-            [...$common, 'void', 'never', 'self', 'static', 'parent', 'Widget'],
-        ];
-        yield 'parameter type' => ['function foo(', [...$common, 'self', 'parent', 'Widget']];
-        yield 'property type' => ['class Foo { private ?', [...$common, 'Widget']];
-        yield 'after a visibility keyword' => [
-            'class Foo { private ',
-            ['function', 'static', 'readonly', 'const', ...$common, 'Widget'],
-        ];
+        $nonTypes = ['Mixin', 'strlen', 'PHP_VERSION'];
+        yield 'return type' => ['function foo(): ', ['void', 'Widget'], [...$nonTypes, 'function']];
+        yield 'parameter type' => ['function foo(', ['self', 'Widget'], [...$nonTypes, 'function', 'void']];
+        yield 'property type' => ['class Foo { private ?', ['string', 'Widget'], [...$nonTypes, 'function', 'self']];
+        yield 'after a visibility keyword' => ['class Foo { private ', ['function', 'string', 'Widget'], [
+            ...$nonTypes,
+            'self',
+        ]];
     }
 
     /**
-     * @param list<string> $expected
+     * @param list<string> $offered
+     * @param list<string> $withheld
      */
     #[DataProvider('typePositions')]
-    public function testATypePositionOffersTypesOnly(string $line, array $expected): void
+    public function testATypePositionOffersTypesOnly(string $line, array $offered, array $withheld): void
     {
-        self::assertSame(
-            $expected,
-            self::labelsWithEverySymbolKindAfter($line),
-            'built-in types valid there and type-hintable class-likes, plus modifiers after visibility; '
-                . 'no traits, functions, or constants',
-        );
+        $labels = self::labelsWithEverySymbolKindAfter($line);
+
+        foreach ($offered as $label) {
+            self::assertContains($label, $labels, "{$label}: a built-in type or type-hintable class-like here");
+        }
+        foreach ($withheld as $label) {
+            self::assertNotContains($label, $labels, "{$label}: not a type here");
+        }
     }
 
     public function testAnExpressionOffersEverySymbolKind(): void
