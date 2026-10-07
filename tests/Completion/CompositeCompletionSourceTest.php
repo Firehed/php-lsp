@@ -25,6 +25,7 @@ use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompositeCompletionSource::class)]
@@ -35,44 +36,25 @@ final class CompositeCompletionSourceTest extends TestCase
 
     public function testVariableInsideACallOffersNamedArgumentsAndVariablesOnly(): void
     {
-        $callable = self::createStub(ResolvedCallableInterface::class);
-        $callable->method('getParameters')->willReturn([
-            new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
-        ]);
-        $codeResolver = self::createStub(CodeResolverInterface::class);
-        $codeResolver->method('getCallContext')->willReturn(new CallContext($callable, 0, []));
-        $codeResolver->method('getVariablesInScope')->willReturn([
-            new ResolvedVariable('variable', new PrimitiveType('string')),
-        ]);
-        $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
         $symbols->method('search')->willReturn([self::symbol('var_dump', SymbolKind::Function_)]);
 
         self::assertSame(
             ['name:', '$variable'],
-            self::labelsAfter('foo($va', $symbols, $codeResolver),
+            self::labelsAfter('foo($va', $symbols, self::insideACall()),
             'a variable being typed in a call offers argument names and variables, not expressions',
         );
     }
 
     public function testMemberAccessAnswersAloneEvenWithNoMembers(): void
     {
-        $callable = self::createStub(ResolvedCallableInterface::class);
-        $callable->method('getParameters')->willReturn([
-            new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
-        ]);
-        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver = self::insideACall();
         $codeResolver->method('getMemberAccessContext')->willReturn(MemberAccessContext::forInstance(
             new ClasslikeType(ClasslikeName::fromFullyQualified('Widget')),
             Visibility::Public,
             '',
         ));
-        $codeResolver->method('getCallContext')->willReturn(new CallContext($callable, 0, []));
-        $codeResolver->method('getVariablesInScope')->willReturn([
-            new ResolvedVariable('variable', new PrimitiveType('string')),
-        ]);
-        $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
 
@@ -233,6 +215,25 @@ final class CompositeCompletionSourceTest extends TestCase
         );
 
         return self::labelsAfter($code, $symbols, $codeResolver);
+    }
+
+    /**
+     * A resolver that places the cursor in a call taking `$name`, with `$variable` in scope.
+     */
+    private static function insideACall(): CodeResolverInterface&Stub
+    {
+        $callable = self::createStub(ResolvedCallableInterface::class);
+        $callable->method('getParameters')->willReturn([
+            new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
+        ]);
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('getCallContext')->willReturn(new CallContext($callable, 0, []));
+        $codeResolver->method('getVariablesInScope')->willReturn([
+            new ResolvedVariable('variable', new PrimitiveType('string')),
+        ]);
+        $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
+
+        return $codeResolver;
     }
 
     /**
