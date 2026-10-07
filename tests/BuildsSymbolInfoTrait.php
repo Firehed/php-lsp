@@ -13,7 +13,9 @@ use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\TypeInterface;
 
 /**
  * Builds minimal domain value objects for tests that need symbols without a real
@@ -89,20 +91,30 @@ trait BuildsSymbolInfoTrait
         );
     }
 
-    private static function constantInfo(QualifiedName $name, ?string $file = null): ConstantInfo
-    {
+    private static function constantInfo(
+        QualifiedName $name,
+        ?string $file = null,
+        ?TypeInterface $type = null,
+    ): ConstantInfo {
         return new ConstantInfo(
             name: new ConstantName($name),
-            type: null,
+            type: $type,
             docblock: null,
             file: $file,
             line: 1,
         );
     }
 
-    private static function functionInfo(QualifiedName $name, ?string $file = null): FunctionInfo
-    {
-        return new FunctionInfo(new FunctionName($name), [], null, null, $file, 1);
+    /**
+     * @param list<ParameterInfo> $parameters
+     */
+    private static function functionInfo(
+        QualifiedName $name,
+        ?string $file = null,
+        array $parameters = [],
+        ?TypeInterface $returnType = null,
+    ): FunctionInfo {
+        return new FunctionInfo(new FunctionName($name), $parameters, $returnType, null, $file, 1);
     }
 
     /**
