@@ -97,7 +97,7 @@ final class CompositeCompletionSourceTest extends TestCase
      */
     #[DataProvider('useStatements')]
     public function testAUseOutsideAClassBodyIsAnImportUnlessItCapturesClosureVariables(
-        string $line,
+        string $code,
         array $expected,
     ): void {
         $codeResolver = self::createStub(CodeResolverInterface::class);
@@ -115,7 +115,7 @@ final class CompositeCompletionSourceTest extends TestCase
 
         self::assertSame(
             $expected,
-            self::labelsAfter($line, $symbols, $codeResolver),
+            self::labelsAfter($code, $symbols, $codeResolver),
             'a closure use offers only variables; an import offers only navigated class-likes',
         );
     }
@@ -143,9 +143,9 @@ final class CompositeCompletionSourceTest extends TestCase
      * @param list<string> $withheld
      */
     #[DataProvider('typePositions')]
-    public function testATypePositionOffersTypesOnly(string $line, array $offered, array $withheld): void
+    public function testATypePositionOffersTypesOnly(string $code, array $offered, array $withheld): void
     {
-        $labels = self::labelsWithEverySymbolKindAfter($line);
+        $labels = self::labelsWithEverySymbolKindAfter($code);
 
         foreach ($offered as $label) {
             self::assertContains($label, $labels, "{$label}: a built-in type or type-hintable class-like here");
@@ -176,11 +176,11 @@ final class CompositeCompletionSourceTest extends TestCase
      * @param list<string> $expected
      */
     #[DataProvider('classPositions')]
-    public function testAClassPositionOffersTheClassLikesItsFilterAccepts(string $line, array $expected): void
+    public function testAClassPositionOffersTheClassLikesItsFilterAccepts(string $code, array $expected): void
     {
         self::assertSame(
             $expected,
-            self::labelsWithEverySymbolKindAfter($line),
+            self::labelsWithEverySymbolKindAfter($code),
             'only class-likes valid in the position: no functions, constants, or keywords',
         );
     }
@@ -200,7 +200,7 @@ final class CompositeCompletionSourceTest extends TestCase
      *
      * @return list<string>
      */
-    private static function labelsWithEverySymbolKindAfter(string $line): array
+    private static function labelsWithEverySymbolKindAfter(string $code): array
     {
         $only = static fn (string $accepted): Closure
             => static fn (ClasslikeName $name): bool => $name->equals(ClasslikeName::fromFullyQualified($accepted));
@@ -232,19 +232,19 @@ final class CompositeCompletionSourceTest extends TestCase
             },
         );
 
-        return self::labelsAfter($line, $symbols, $codeResolver);
+        return self::labelsAfter($code, $symbols, $codeResolver);
     }
 
     /**
      * @return list<string>
      */
     private static function labelsAfter(
-        string $line,
+        string $code,
         SymbolSourceInterface $symbols,
         CodeResolverInterface $codeResolver,
     ): array {
         $source = self::completionSourceFor($symbols, $codeResolver, self::capabilitiesProvider());
 
-        return array_column($source->find(self::requestAfter($line)), 'label');
+        return array_column($source->find(self::requestAfter($code)), 'label');
     }
 }
