@@ -61,6 +61,30 @@ final class CompositeCompletionSourceTest extends TestCase
         self::assertNotContains('namespace', $labels, 'only expression keywords are offered');
     }
 
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function silentPositions(): iterable
+    {
+        yield 'a comment' => ['// Z'];
+        yield 'after a finished statement' => ['$x = 1;'];
+    }
+
+    #[DataProvider('silentPositions')]
+    public function testAPositionWithNothingToCompleteOffersNothing(string $code): void
+    {
+        self::assertSame([], self::labelsWithEverySymbolKindAfter($code), 'no source is asked here');
+    }
+
+    public function testAnInterpolatedStringOffersOnlyVariables(): void
+    {
+        self::assertSame(
+            ['$variable'],
+            self::labelsAfter('foo("Z', self::everySymbolKind(), self::insideACall()),
+            'only a variable can be interpolated, even inside a call',
+        );
+    }
+
     public function testMemberAccessAnswersAloneEvenWithNoMembers(): void
     {
         $codeResolver = self::insideACall();
