@@ -20,10 +20,11 @@ trait BuildsCompletionInputsTrait
      */
     private static function requestAfter(string $code): CompletionRequest
     {
-        $lines = explode("\n", "<?php\n{$code}");
+        $content = "<?php\n{$code}";
+        $lines = explode("\n", $content);
 
         return new CompletionRequest(
-            new TextDocument('file:///t.php', 'php', 0, "<?php\n{$code}"),
+            new TextDocument('file:///t.php', 'php', 0, $content),
             count($lines) - 1,
             strlen(end($lines)),
         );
