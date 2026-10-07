@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
+use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -21,59 +22,60 @@ use Throwable;
 #[CoversClass(SymbolResolver::class)]
 final class SymbolResolverTest extends TestCase
 {
+    use BuildsSymbolInfoTrait;
+
     /**
      * @return iterable<string, array{Closure(SymbolResolver, ClasslikeName): bool, ?ClassInfo, bool}>
      */
     public static function classLikePredicates(): iterable
     {
+        $classLike = static fn (SymbolResolver $r, ClasslikeName $n): bool => $r->isClassLike($n);
+        yield 'unknown is not a class-like' => [$classLike, null, false];
+        yield 'trait is a class-like' => [$classLike, self::classInfo('Subject', ClassKind::Trait_), true];
+
         $instantiable = static fn (SymbolResolver $r, ClasslikeName $n): bool => $r->isInstantiable($n);
         yield 'unknown is instantiable' => [$instantiable, null, true];
-        yield 'concrete class is instantiable' => [$instantiable, self::classInfo(ClassKind::Class_), true];
+        yield 'concrete class is instantiable' => [$instantiable, self::classInfo('Subject'), true];
         yield 'abstract class is not instantiable' => [
             $instantiable,
-            self::classInfo(ClassKind::Class_, isAbstract: true),
+            self::classInfo('Subject', isAbstract: true),
             false,
         ];
-        yield 'interface is not instantiable' => [$instantiable, self::classInfo(ClassKind::Interface_), false];
+        yield 'interface is not instantiable' => [
+            $instantiable,
+            self::classInfo('Subject', ClassKind::Interface_),
+            false,
+        ];
+        yield 'enum is not instantiable' => [$instantiable, self::classInfo('Subject', ClassKind::Enum_), false];
 
         $typeHint = static fn (SymbolResolver $r, ClasslikeName $n): bool => $r->isValidTypeHint($n);
         yield 'unknown is a type hint' => [$typeHint, null, true];
-        yield 'enum is a type hint' => [$typeHint, self::classInfo(ClassKind::Enum_), true];
-        yield 'trait is not a type hint' => [$typeHint, self::classInfo(ClassKind::Trait_), false];
+        yield 'enum is a type hint' => [$typeHint, self::classInfo('Subject', ClassKind::Enum_), true];
+        yield 'trait is not a type hint' => [$typeHint, self::classInfo('Subject', ClassKind::Trait_), false];
 
         $extendable = static fn (SymbolResolver $r, ClasslikeName $n): bool => $r->isExtendableClass($n);
         yield 'unknown is not extendable' => [$extendable, null, false];
-        yield 'abstract class is extendable' => [
-            $extendable,
-            self::classInfo(ClassKind::Class_, isAbstract: true),
-            true,
-        ];
-        yield 'final class is not extendable' => [
-            $extendable,
-            self::classInfo(ClassKind::Class_, isFinal: true),
-            false,
-        ];
-        yield 'interface is not extendable' => [$extendable, self::classInfo(ClassKind::Interface_), false];
+        yield 'abstract class is extendable' => [$extendable, self::classInfo('Subject', isAbstract: true), true];
+        yield 'final class is not extendable' => [$extendable, self::classInfo('Subject', isFinal: true), false];
+        yield 'interface is not extendable' => [$extendable, self::classInfo('Subject', ClassKind::Interface_), false];
+        yield 'trait is not extendable' => [$extendable, self::classInfo('Subject', ClassKind::Trait_), false];
+        yield 'enum is not extendable' => [$extendable, self::classInfo('Subject', ClassKind::Enum_), false];
 
         $attribute = static fn (SymbolResolver $r, ClasslikeName $n): bool => $r->isAttribute($n);
         yield 'unknown is not an attribute' => [$attribute, null, false];
-        yield 'attribute class is an attribute' => [
-            $attribute,
-            self::classInfo(ClassKind::Class_, isAttribute: true),
-            true,
-        ];
-        yield 'plain class is not an attribute' => [$attribute, self::classInfo(ClassKind::Class_), false];
+        yield 'attribute class is an attribute' => [$attribute, self::classInfo('Subject', isAttribute: true), true];
+        yield 'plain class is not an attribute' => [$attribute, self::classInfo('Subject'), false];
 
         $throwable = static fn (SymbolResolver $r, ClasslikeName $n): bool => $r->isThrowable($n);
         yield 'unknown is not throwable' => [$throwable, null, false];
         yield 'Throwable itself is throwable' => [
             $throwable,
-            self::classInfo(ClassKind::Interface_, name: Throwable::class),
+            self::classInfo(Throwable::class, ClassKind::Interface_),
             true,
         ];
         yield 'class outside the Throwable hierarchy is not throwable' => [
             $throwable,
-            self::classInfo(ClassKind::Class_),
+            self::classInfo('Subject'),
             false,
         ];
     }
@@ -86,10 +88,11 @@ final class SymbolResolverTest extends TestCase
     {
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('lookupClassLike')->willReturn($declared);
+        $name = $declared->name ?? ClasslikeName::fromFullyQualified('Unknown');
 
         self::assertSame(
             $expected,
-            $predicate(self::resolver($symbols), ClasslikeName::fromFullyQualified('Subject')),
+            $predicate(self::resolver($symbols), $name),
             'the predicate follows the declaration, and an unknown name follows the position\'s default',
         );
     }
@@ -97,7 +100,7 @@ final class SymbolResolverTest extends TestCase
     public function testDescendantOfThrowableIsThrowable(): void
     {
         $symbols = self::createStub(SymbolSourceInterface::class);
-        $symbols->method('lookupClassLike')->willReturn(self::classInfo(ClassKind::Class_));
+        $symbols->method('lookupClassLike')->willReturn(self::classInfo('Subject'));
         $members = self::createStub(MemberResolverInterface::class);
         $members->method('isSubclassOf')->willReturnCallback(
             static fn (ClasslikeName $class, ClasslikeName $parent): bool
@@ -111,30 +114,29 @@ final class SymbolResolverTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{Closure(SymbolResolver, ClasslikeName): bool, string}>
+     * @return iterable<string, array{Closure(SymbolResolver, ClasslikeName): bool, string, bool}>
      */
     public static function memberResolverPredicates(): iterable
     {
-        yield 'interface' => [
-            static fn (SymbolResolver $r, ClasslikeName $n): bool => $r->isInterface($n),
-            'isInterface',
-        ];
-        yield 'trait' => [
-            static fn (SymbolResolver $r, ClasslikeName $n): bool => $r->isTrait($n),
-            'isTrait',
-        ];
+        $interface = static fn (SymbolResolver $r, ClasslikeName $n): bool => $r->isInterface($n);
+        $trait = static fn (SymbolResolver $r, ClasslikeName $n): bool => $r->isTrait($n);
+        yield 'interface' => [$interface, 'isInterface', true];
+        yield 'not an interface' => [$interface, 'isInterface', false];
+        yield 'trait' => [$trait, 'isTrait', true];
+        yield 'not a trait' => [$trait, 'isTrait', false];
     }
 
     /**
      * @param Closure(SymbolResolver, ClasslikeName): bool $predicate
      */
     #[DataProvider('memberResolverPredicates')]
-    public function testPredicateAsksTheMemberResolver(Closure $predicate, string $method): void
+    public function testPredicateAsksTheMemberResolver(Closure $predicate, string $method, bool $answer): void
     {
         $members = self::createStub(MemberResolverInterface::class);
-        $members->method($method)->willReturn(true);
+        $members->method($method)->willReturn($answer);
 
-        self::assertTrue(
+        self::assertSame(
+            $answer,
             $predicate(
                 self::resolver(self::createStub(SymbolSourceInterface::class), $members),
                 ClasslikeName::fromFullyQualified('Subject'),
@@ -152,33 +154,6 @@ final class SymbolResolverTest extends TestCase
             $symbols,
             $members ?? self::createStub(MemberResolverInterface::class),
             self::createStub(TypeSourceInterface::class),
-        );
-    }
-
-    private static function classInfo(
-        ClassKind $kind,
-        bool $isAbstract = false,
-        bool $isFinal = false,
-        bool $isAttribute = false,
-        string $name = 'Subject',
-    ): ClassInfo {
-        return new ClassInfo(
-            name: ClasslikeName::fromFullyQualified($name),
-            kind: $kind,
-            isAbstract: $isAbstract,
-            isFinal: $isFinal,
-            isReadonly: false,
-            isAttribute: $isAttribute,
-            parent: null,
-            interfaces: [],
-            traits: [],
-            methods: [],
-            properties: [],
-            constants: [],
-            enumCases: [],
-            docblock: null,
-            file: null,
-            line: null,
         );
     }
 }
