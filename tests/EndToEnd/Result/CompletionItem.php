@@ -41,7 +41,7 @@ final readonly class CompletionItem
         Assert::assertTrue($sortText === null || is_string($sortText), 'a CompletionItem sortText is a string');
         $edit = $wire->textEdit ?? null;
         Assert::assertTrue($edit === null || $edit instanceof stdClass, 'a CompletionItem textEdit is an object');
-        $inserted = $edit === null ? $wire->insertText ?? $label : $edit->newText ?? null;
+        $inserted = $edit === null ? ($wire->insertText ?? $label) : ($edit->newText ?? null);
         Assert::assertIsString($inserted, 'a CompletionItem inserts a string');
         $formatValue = $wire->insertTextFormat ?? InsertTextFormat::PlainText->value;
         Assert::assertIsInt($formatValue, 'a CompletionItem insertTextFormat is an integer');
