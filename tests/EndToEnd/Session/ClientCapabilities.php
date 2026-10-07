@@ -15,6 +15,7 @@ final readonly class ClientCapabilities
     public function __construct(
         private bool $watchedFilesDynamicRegistration = false,
         private bool $markdownHover = false,
+        private bool $snippetCompletion = false,
     ) {
     }
 
@@ -24,8 +25,15 @@ final readonly class ClientCapabilities
         if ($this->watchedFilesDynamicRegistration) {
             $capabilities->workspace = ['didChangeWatchedFiles' => ['dynamicRegistration' => true]];
         }
+        $textDocument = [];
         if ($this->markdownHover) {
-            $capabilities->textDocument = ['hover' => ['contentFormat' => ['markdown', 'plaintext']]];
+            $textDocument['hover'] = ['contentFormat' => ['markdown', 'plaintext']];
+        }
+        if ($this->snippetCompletion) {
+            $textDocument['completion'] = ['completionItem' => ['snippetSupport' => true]];
+        }
+        if ($textDocument !== []) {
+            $capabilities->textDocument = $textDocument;
         }
 
         return $capabilities;
