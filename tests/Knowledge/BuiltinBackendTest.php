@@ -85,7 +85,12 @@ final class BuiltinBackendTest extends TestCase
 
         self::assertNotNull($info, 'a built-in function must resolve through reflection');
         self::assertSame('str_contains', $info->name->qualifiedName->fullyQualifiedName());
-        self::assertCount(2, $info->parameters, 'the reflected signature must be carried');
+        self::assertSame(
+            ['string', 'string'],
+            array_map(static fn ($parameter): ?string => $parameter->type?->format(), $info->parameters),
+            'the reflected signature must be carried, with its parameter types',
+        );
+        self::assertSame('bool', $info->returnType?->format(), 'the reflected return type must be carried');
     }
 
     public function testLookupFunctionIsCaseInsensitive(): void
