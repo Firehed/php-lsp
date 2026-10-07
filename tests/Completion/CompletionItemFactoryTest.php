@@ -15,6 +15,8 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
+use Firehed\PhpLsp\Domain\PropertyInfo;
+use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\PresentedSymbol;
@@ -159,6 +161,27 @@ final class CompletionItemFactoryTest extends TestCase
             ['save($0)', InsertTextFormat::Snippet->value],
             [$item['insertText'] ?? null, $item['insertTextFormat'] ?? null],
             'a method gets call parentheses when the client takes snippets',
+        );
+    }
+
+    public function testPropertyNeverGetsACallSnippet(): void
+    {
+        $property = new PropertyInfo(
+            name: new PropertyName(ClasslikeName::fromFullyQualified('Fixtures\Domain\User'), 'name'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isReadonly: false,
+            isPromoted: false,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertArrayNotHasKey(
+            'insertText',
+            CompletionItemFactory::forResolvedMember($property, snippetSupport: true),
+            'a property is not callable, so no parentheses are inserted even when the client takes snippets',
         );
     }
 
