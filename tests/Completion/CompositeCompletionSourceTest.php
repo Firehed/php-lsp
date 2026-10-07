@@ -47,6 +47,20 @@ final class CompositeCompletionSourceTest extends TestCase
         );
     }
 
+    public function testAnExpressionInsideACallAlsoOffersKeywordsAndSymbols(): void
+    {
+        $labels = self::labelsAfter('foo(n', self::everySymbolKind(), self::insideACall());
+
+        foreach (['name:', '$variable', 'null', 'Widget', 'Mixin', 'strlen', 'PHP_VERSION'] as $label) {
+            self::assertContains(
+                $label,
+                $labels,
+                "{$label}: argument names, variables, expression keywords, and every symbol kind are offered",
+            );
+        }
+        self::assertNotContains('namespace', $labels, 'only expression keywords are offered');
+    }
+
     public function testMemberAccessAnswersAloneEvenWithNoMembers(): void
     {
         $codeResolver = self::insideACall();
@@ -177,8 +191,7 @@ final class CompositeCompletionSourceTest extends TestCase
     }
 
     /**
-     * Offers a function, a constant, a trait that is not a valid type hint, and
-     * one class-like for each class position's predicate.
+     * Each class position's predicate accepts exactly one of {@see everySymbolKind()}'s class-likes.
      *
      * @return list<string>
      */
@@ -197,6 +210,16 @@ final class CompositeCompletionSourceTest extends TestCase
         $codeResolver->method('isThrowable')->willReturnCallback($only('Failure'));
         $codeResolver->method('isAttribute')->willReturnCallback($only('Marker'));
         $codeResolver->method('isTrait')->willReturnCallback($only('Mixin'));
+
+        return self::labelsAfter($code, self::everySymbolKind(), $codeResolver);
+    }
+
+    /**
+     * Every search answers with a function, a constant, a trait that is not a
+     * valid type hint, and one class-like for each class position's predicate.
+     */
+    private static function everySymbolKind(): SymbolSourceInterface
+    {
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
         $symbols->method('search')->willReturnCallback(
@@ -214,7 +237,7 @@ final class CompositeCompletionSourceTest extends TestCase
             },
         );
 
-        return self::labelsAfter($code, $symbols, $codeResolver);
+        return $symbols;
     }
 
     /**
