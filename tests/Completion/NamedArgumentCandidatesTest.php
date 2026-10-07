@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -19,6 +20,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(NamedArgumentCandidates::class)]
 final class NamedArgumentCandidatesTest extends TestCase
 {
+    use BuildsSymbolInfoTrait;
+
     /**
      * @return iterable<string, array{list<string>, int, string, array<string, string>}>
      */
@@ -45,9 +48,9 @@ final class NamedArgumentCandidatesTest extends TestCase
     ): void {
         $callable = self::createStub(ResolvedCallableInterface::class);
         $callable->method('getParameters')->willReturn([
-            self::parameter('name', 'string', 0),
-            self::parameter('count', 'int', 1),
-            self::parameter('active', 'bool', 2),
+            self::parameterInfo('name', new PrimitiveType('string'), 0),
+            self::parameterInfo('count', new PrimitiveType('int'), 1),
+            self::parameterInfo('active', new PrimitiveType('bool'), 2),
             new ParameterInfo('values', new PrimitiveType('string'), false, null, 3, true, false),
         ]);
         $codeResolver = self::createStub(CodeResolverInterface::class);
@@ -79,10 +82,5 @@ final class NamedArgumentCandidatesTest extends TestCase
             (new NamedArgumentCandidates($codeResolver))->find($request),
             'a position outside any call offers no named arguments',
         );
-    }
-
-    private static function parameter(string $name, string $type, int $position): ParameterInfo
-    {
-        return new ParameterInfo($name, new PrimitiveType($type), false, null, $position, false, false);
     }
 }
