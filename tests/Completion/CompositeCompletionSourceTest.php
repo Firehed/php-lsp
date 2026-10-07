@@ -100,6 +100,7 @@ final class CompositeCompletionSourceTest extends TestCase
         yield 'catch' => ['} catch (', ['Failure']];
         yield 'attribute' => ['#[', ['Marker']];
         yield 'instanceof' => ['$x instanceof ', ['Widget', 'Contract', 'Base', 'Failure', 'Marker']];
+        yield 'trait use in a class body' => ["class Foo {\n    use ", ['Mixin']];
     }
 
     /**
@@ -144,6 +145,7 @@ final class CompositeCompletionSourceTest extends TestCase
         $codeResolver->method('isExtendableClass')->willReturnCallback($only('Base'));
         $codeResolver->method('isThrowable')->willReturnCallback($only('Failure'));
         $codeResolver->method('isAttribute')->willReturnCallback($only('Marker'));
+        $codeResolver->method('isTrait')->willReturnCallback($only('Mixin'));
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
         $symbols->method('search')->willReturnCallback(
