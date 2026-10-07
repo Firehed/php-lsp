@@ -19,7 +19,6 @@ use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -57,8 +56,6 @@ class CompletionHandlerIntegrationTest extends TestCase
     private DocumentManager $documents;
     private MemoizingSyntaxSource $parser;
     private CountingSyntaxSource $counter;
-    private SymbolSourceInterface $symbolSource;
-    private SymbolResolver $symbolResolver;
     private CompletionHandler $handler;
     private TextDocumentSyncHandler $syncHandler;
 
@@ -71,29 +68,22 @@ class CompletionHandlerIntegrationTest extends TestCase
 
         $fixturesRoot = __DIR__ . '/../Fixtures';
         $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
-        $this->symbolSource = $knowledge->source;
 
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
-        $this->symbolResolver = new SymbolResolver(
+        $symbolResolver = new SymbolResolver(
             $this->parser,
             $knowledge->source,
             $memberResolver,
             $typeSource,
         );
-        $this->handler = $this->makeHandler($this->symbolSource);
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
-    }
-
-    private function makeHandler(SymbolSourceInterface $symbolSource): CompletionHandler
-    {
         $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')->willReturn(new SessionCapabilities());
-
-        return new CompletionHandler(
+        $this->handler = new CompletionHandler(
             $this->documents,
-            self::completionSourceFor($symbolSource, $this->symbolResolver, $capabilities),
+            self::completionSourceFor($knowledge->source, $symbolResolver, $capabilities),
         );
+        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
     /**
