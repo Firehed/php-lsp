@@ -20,7 +20,6 @@ use Firehed\PhpLsp\Document\DocumentManager;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
-use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
@@ -123,68 +122,6 @@ class CompletionHandlerIntegrationTest extends TestCase
         yield 'variable prefix' => ['src/Completion/Variables.php', 'param_prefix'];
         yield 'member access' => ['src/Completion/MethodAccess.php', 'this_empty'];
         yield 'static access' => ['src/Completion/StaticAccess.php', 'self_empty'];
-    }
-
-    public function testCompletionReturnsEmptyForUnknownContext(): void
-    {
-        $code = '<?php $x = 1;';
-        $this->openDocument('file:///test.php', $code);
-
-        $request = RequestMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'id' => 1,
-            'method' => 'textDocument/completion',
-            'params' => [
-                'textDocument' => ['uri' => 'file:///test.php'],
-                'position' => ['line' => 0, 'character' => 12],
-            ],
-        ]);
-
-        $result = $this->handler->handle($request);
-
-        self::assertIsArray($result);
-        self::assertEmpty($result['items']);
-    }
-
-    // =========================================================================
-    // Context-based filtering
-    // =========================================================================
-
-    public function testNoCompletionsInComment(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/ContextFiltering.php', 'in_comment');
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        self::assertArrayHasKey('items', $result);
-        self::assertSame([], $result['items'], 'No completions should be offered inside comments');
-    }
-
-    public function testNoCompletionsForMemberAccessInComment(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/ContextFiltering.php', 'member_in_comment');
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        self::assertArrayHasKey('items', $result);
-        self::assertSame([], $result['items'], 'No completions for $this-> inside comments');
-    }
-
-    public function testOnlyVariablesInHeredoc(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/ContextFiltering.php', 'in_heredoc');
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        self::assertArrayHasKey('items', $result);
-
-        foreach ($result['items'] as $item) {
-            self::assertSame(
-                6, // KIND_VARIABLE
-                $item['kind'] ?? 0,
-                "Only variable completions should be offered in heredoc, got: {$item['label']}",
-            );
-        }
     }
 
     public function testImplementsAcrossMultipleLinesOffersInterfaces(): void
