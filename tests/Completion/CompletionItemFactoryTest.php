@@ -147,10 +147,9 @@ final class CompletionItemFactoryTest extends TestCase
         self::assertSame(
             $inserted,
             [$item['textEdit']['newText'] ?? null, $item['insertTextFormat'] ?? null],
-            'only a callable gets call parentheses, and only when the client takes snippets; the edit is what '
-            . 'the client inserts, since an edit makes insertText ignored ([LSP] CompletionItem.textEdit)',
+            'only a callable gets call parentheses, and only when the client takes snippets',
         );
-        self::assertArrayNotHasKey('insertText', $item, 'a client ignores insertText beside an edit');
+        self::assertArrayNotHasKey('insertText', $item, 'the edit is what the client inserts');
     }
 
     public function testMethodCarriesItsDescriptionAndCallSnippet(): void
@@ -193,10 +192,12 @@ final class CompletionItemFactoryTest extends TestCase
             line: null,
         );
 
-        self::assertArrayNotHasKey(
-            'insertText',
-            CompletionItemFactory::forResolvedMember($property, snippetSupport: true),
-            'a property is not callable, so no parentheses are inserted even when the client takes snippets',
+        $item = CompletionItemFactory::forResolvedMember($property, snippetSupport: true);
+
+        self::assertSame(
+            [null, null],
+            [$item['insertText'] ?? null, $item['insertTextFormat'] ?? null],
+            'a property is not callable, so it inserts its plain label even when the client takes snippets',
         );
     }
 
