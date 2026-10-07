@@ -23,7 +23,11 @@ $members = 'src/Completion/MethodAccess.php';
 $snippet = Result\InsertTextFormat::Snippet;
 
 return [
-    'built-in functions' => $complete($functions, 'builtin_function', new Expectation\Offers('array_map', 'array_filter')),
+    'built-in functions' => $complete(
+        $functions,
+        'builtin_function',
+        new Expectation\Offers('array_map', 'array_filter'),
+    ),
     'a user function shows its signature' => $complete(
         $global,
         'user_defined_function',
