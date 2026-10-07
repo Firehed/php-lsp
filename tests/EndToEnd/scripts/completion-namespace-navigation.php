@@ -15,47 +15,43 @@ $complete = fn (
         new Step\Complete($file, new Marker\CursorMarker($marker), expect: array_values($expect)),
     ],
 );
-$afterOpening = fn (Session\Script $script, string ...$files): Session\Script => new Session\Script(
-    project: $script->project,
-    steps: [
-        ...array_map(static fn (string $file): Step\Open => new Step\Open($file), array_values($files)),
-        ...$script->steps,
-    ],
-);
-
 $unqualified = 'Namespacing/UnqualifiedNewCompletion.php';
 $imported = 'Namespacing/ImportedPrefix.php';
 $catalog = 'Namespacing/CatalogProbe.php';
-$statement = 'src/Completion/Keywords.php';
-$statementCursor = new Marker\CursorMarker('statement');
 
-// Each fixture position follows `\Ps`; the inlined Psr\Http\ node shows navigation ran.
+// Each fixture position follows `\Ps`. The inlined Psr\Http\ node shows navigation
+// ran; the global PSFS_* constants match `Ps` but are not class-likes.
 $navigates = fn (string $marker): Session\Script => $complete(
     'Namespacing/AbsoluteNavigation.php',
     $marker,
     new Expectation\Offers('Psr\Http\\'),
+    new Expectation\Withholds('PSFS_PASS_ON'),
 );
 
 return [
-    'current namespace class is offered bare' => $afterOpening(
-        $complete(
-            $unqualified,
-            'unqualified_new',
-            new Expectation\Details('Theme', 'App\Theme'),
-            new Expectation\Withholds('Thing', '\Other\Thing', 'Other\Thing'),
-        ),
-        'Namespacing/UnrelatedNamespaceClass.php',
+    'current namespace class is offered bare' => new Session\Script(
+        project: 'tests/Fixtures',
+        steps: [
+            new Step\Open('Namespacing/UnrelatedNamespaceClass.php'),
+            new Step\Open($unqualified),
+            new Step\Complete($unqualified, new Marker\CursorMarker('unqualified_new'), expect: [
+                new Expectation\Details('Theme', 'App\Theme'),
+                new Expectation\Withholds('Thing', '\Other\Thing', 'Other\Thing'),
+            ]),
+        ],
     ),
-    'sub-namespace classes are offered by their relative names' => $afterOpening(
-        $complete(
-            $unqualified,
-            'subnamespace_new',
-            new Expectation\Details('Sub\Thing', 'App\Sub\Thing'),
-            new Expectation\Details('Deep\Thing', 'App\Deep\Thing'),
-            new Expectation\Withholds('Thing'),
-        ),
-        'Namespacing/SubNamespaceClass.php',
-        'Namespacing/SecondSubNamespaceClass.php',
+    'sub-namespace classes are offered by their relative names' => new Session\Script(
+        project: 'tests/Fixtures',
+        steps: [
+            new Step\Open('Namespacing/SubNamespaceClass.php'),
+            new Step\Open('Namespacing/SecondSubNamespaceClass.php'),
+            new Step\Open($unqualified),
+            new Step\Complete($unqualified, new Marker\CursorMarker('subnamespace_new'), expect: [
+                new Expectation\Details('Sub\Thing', 'App\Sub\Thing'),
+                new Expectation\Details('Deep\Thing', 'App\Deep\Thing'),
+                new Expectation\Withholds('Thing'),
+            ]),
+        ],
     ),
     'built-in class is not offered bare in a namespace' => $complete(
         $unqualified,
@@ -81,9 +77,13 @@ return [
     'absolute prefix offers global functions in an expression' => new Session\Script(
         project: 'tests/Fixtures',
         steps: [
-            new Step\Open($statement),
-            new Step\Type($statement, $statementCursor, '\strle'),
-            new Step\Complete($statement, $statementCursor, expect: [new Expectation\Offers('strlen')]),
+            new Step\Open('src/Completion/Keywords.php'),
+            new Step\Type('src/Completion/Keywords.php', new Marker\CursorMarker('statement'), '\strle'),
+            new Step\Complete(
+                'src/Completion/Keywords.php',
+                new Marker\CursorMarker('statement'),
+                expect: [new Expectation\Offers('strlen')],
+            ),
         ],
     ),
     'absolute prefix navigates in a catch clause' => $navigates('catch_nav'),
@@ -136,14 +136,16 @@ return [
         'imported_partial',
         new Expectation\Details('Repository', 'Fixtures\Model\Env\Repository'),
     ),
-    'open child class does not leak its members' => $afterOpening(
-        $complete(
-            $imported,
-            'imported_slash',
-            new Expectation\Offers('Repository'),
-            new Expectation\Withholds('persist'),
-        ),
-        'src/Model/Env/Repository.php',
+    'open child class does not leak its members' => new Session\Script(
+        project: 'tests/Fixtures',
+        steps: [
+            new Step\Open('src/Model/Env/Repository.php'),
+            new Step\Open($imported),
+            new Step\Complete($imported, new Marker\CursorMarker('imported_slash'), expect: [
+                new Expectation\Offers('Repository'),
+                new Expectation\Withholds('persist'),
+            ]),
+        ],
     ),
     'qualified import prefix matching no child offers nothing' => $complete(
         $imported,
