@@ -9,6 +9,8 @@ use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
@@ -73,7 +75,34 @@ final class CompositeCompletionSourceTest extends TestCase
     #[DataProvider('silentPositions')]
     public function testAPositionWithNothingToCompleteOffersNothing(string $code): void
     {
-        self::assertSame([], self::labelsWithEverySymbolKindAfter($code), 'no source is asked here');
+        self::assertSame([], self::labelsWithEverySymbolKindAfter($code), 'nothing is offered here');
+    }
+
+    public function testMemberAccessInACommentOffersNothing(): void
+    {
+        $owner = ClasslikeName::fromFullyQualified('Widget');
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('getMemberAccessContext')->willReturn(
+            MemberAccessContext::forInstance(new ClasslikeType($owner), Visibility::Public, ''),
+        );
+        $codeResolver->method('getAccessibleMembers')->willReturn([new MethodInfo(
+            name: new MethodName($owner, 'save'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [],
+            returnType: null,
+            docblock: null,
+            file: null,
+            line: null,
+        )]);
+
+        self::assertSame(
+            [],
+            self::labelsAfter('// $x->', self::everySymbolKind(), $codeResolver),
+            'a comment is checked before member access, so its members are not offered',
+        );
     }
 
     public function testAnInterpolatedStringOffersOnlyVariables(): void
