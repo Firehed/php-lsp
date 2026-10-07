@@ -11,7 +11,6 @@ use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
-use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
@@ -46,9 +45,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-/**
- * @phpstan-import-type CompletionItem from CompletionItemFactory
- */
 #[CoversClass(CompletionHandler::class)]
 #[CoversClass(BuiltinTypeCandidates::class)]
 #[CoversClass(CompletionItemFactory::class)]
@@ -109,32 +105,15 @@ class CompletionHandlerIntegrationTest extends TestCase
         $this->openDocument($uri, $source);
     }
 
-    private function makeHandler(SymbolSourceInterface $symbolSource, bool $snippetSupport = false): CompletionHandler
+    private function makeHandler(SymbolSourceInterface $symbolSource): CompletionHandler
     {
         $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
-        $capabilities->method('getSessionCapabilities')
-            ->willReturn(new SessionCapabilities(snippetSupport: $snippetSupport));
+        $capabilities->method('getSessionCapabilities')->willReturn(new SessionCapabilities());
 
         return new CompletionHandler(
             $this->documents,
             self::completionSourceFor($symbolSource, $this->symbolResolver, $capabilities),
         );
-    }
-
-    /**
-     * @param array{items: list<CompletionItem>} $result
-     *
-     * @return CompletionItem
-     */
-    private static function itemFor(array $result, string $label): array
-    {
-        foreach ($result['items'] as $item) {
-            if ($item['label'] === $label) {
-                return $item;
-            }
-        }
-
-        self::fail("no completion item labelled {$label}");
     }
 
     public function testCapsResultsAndReportsIncompleteWhenNavigationOverflows(): void
@@ -220,93 +199,6 @@ class CompletionHandlerIntegrationTest extends TestCase
         self::assertCount(100, $result['items'], 'Unranked completions are capped at the limit');
     }
 
-    public function testFunctionCompletion(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/FunctionCompletion.php', 'builtin_function');
-
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $labels = array_column($result['items'], 'label');
-        // Should include built-in functions starting with "arr"
-        self::assertContains('array_map', $labels);
-        self::assertContains('array_filter', $labels);
-    }
-
-    /**
-     * @param non-empty-string $fixture
-     * @param non-empty-string $marker
-     */
-    #[DataProvider('callableSnippetCases')]
-    public function testCallableCompletionInsertsSnippetWhenClientSupportsIt(
-        string $fixture,
-        string $marker,
-        string $label,
-    ): void {
-        $handler = $this->makeHandler($this->symbolSource, snippetSupport: true);
-        $cursor = $this->openFixtureAtCursor($fixture, $marker);
-
-        $result = $handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $item = self::itemFor($result, $label);
-        self::assertSame(
-            $label . '($0)',
-            $item['insertText'] ?? null,
-            'a snippet-capable client gets the parentheses typed with the cursor between them',
-        );
-        self::assertSame(
-            InsertTextFormat::Snippet->value,
-            $item['insertTextFormat'] ?? null,
-            'insertText is only interpreted as a snippet when tagged as one',
-        );
-    }
-
-    public function testCallableCompletionOmitsSnippetWithoutClientSupport(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
-
-        // The default handler is built with snippetSupport off.
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $item = self::itemFor($result, 'setName');
-        self::assertArrayNotHasKey(
-            'insertText',
-            $item,
-            'a client without snippet support inserts the bare label, so no snippet text is emitted',
-        );
-        self::assertArrayNotHasKey('insertTextFormat', $item, 'nothing marks the item as a snippet');
-    }
-
-    public function testNonCallableMemberNeverInsertsSnippet(): void
-    {
-        $handler = $this->makeHandler($this->symbolSource, snippetSupport: true);
-        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
-
-        $result = $handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $property = self::itemFor($result, 'name');
-        self::assertArrayNotHasKey(
-            'insertText',
-            $property,
-            'a property is not callable, so no parentheses are inserted even when snippets are supported',
-        );
-    }
-
-    /**
-     * @codeCoverageIgnore
-     *
-     * @return iterable<string, array{non-empty-string, non-empty-string, string}>
-     */
-    public static function callableSnippetCases(): iterable
-    {
-        yield 'method' => ['src/Completion/MethodAccess.php', 'this_empty', 'setName'];
-        yield 'user function' => ['src/Completion/FunctionCompletion.php', 'user_function', 'calculateSum'];
-        yield 'builtin function' => ['src/Completion/FunctionCompletion.php', 'builtin_function', 'array_map'];
-    }
-
     /**
      * One parse per handled message. Completion is the fan-out
      * that made this matter — its sources each call a different CodeResolverInterface
@@ -365,52 +257,6 @@ class CompletionHandlerIntegrationTest extends TestCase
 
         self::assertIsArray($result);
         self::assertEmpty($result['items']);
-    }
-
-    public function testUserDefinedFunctionCompletion(): void
-    {
-        $cursor = $this->openFixtureAtCursor('FunctionCompletion.php', 'user_defined_function');
-
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        $items = $result['items'];
-        $labels = array_column($items, 'label');
-
-        self::assertContains('calculateSum', $labels, 'calculateSum should be in completions');
-
-        $functionItem = null;
-        foreach ($items as $item) {
-            if ($item['label'] === 'calculateSum') {
-                $functionItem = $item;
-                break;
-            }
-        }
-
-        self::assertNotNull($functionItem);
-        self::assertSame(3, $functionItem['kind'] ?? null); // KIND_FUNCTION
-        $detail = $functionItem['detail'] ?? '';
-        self::assertStringContainsString('function calculateSum', $detail);
-        self::assertStringContainsString('int $a', $detail);
-        self::assertStringContainsString('int $b', $detail);
-        self::assertStringContainsString(': int', $detail);
-        self::assertStringContainsString('Adds two numbers', $functionItem['documentation'] ?? '');
-    }
-
-    public function testConditionallyDeclaredFunctionCompletion(): void
-    {
-        $cursor = $this->openFixtureAtCursor('FunctionCompletion.php', 'user_defined_function');
-
-        $result = $this->handler->handle($this->completionRequestAt($cursor));
-
-        self::assertIsArray($result);
-        self::assertContains(
-            'calculateProduct',
-            array_column($result['items'], 'label'),
-            'a function_exists-guarded polyfill is a name the file declares, so completion must offer it '
-            . '— hover already resolves one, and a name visible to lookup but not to enumeration is the '
-            . 'split RFC 1 §4.2 forbids',
-        );
     }
 
     // =========================================================================

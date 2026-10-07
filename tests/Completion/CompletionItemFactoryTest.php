@@ -15,6 +15,8 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
+use Firehed\PhpLsp\Domain\PropertyInfo;
+use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\PresentedSymbol;
@@ -110,30 +112,44 @@ final class CompletionItemFactoryTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{NameKind, bool, int, ?string}>
+     * @return iterable<string, array{NameKind, bool, int, array{string, ?int}}>
      */
     public static function symbolKinds(): iterable
     {
-        yield 'function' => [NameKind::Function_, false, CompletionItemKind::Function->value, null];
-        yield 'function with snippets' => [NameKind::Function_, true, CompletionItemKind::Function->value, 'wrap($0)'];
-        yield 'constant with snippets' => [NameKind::Constant, true, CompletionItemKind::Constant->value, null];
+        yield 'function' => [NameKind::Function_, false, CompletionItemKind::Function->value, ['wrap', null]];
+        yield 'function with snippets' => [
+            NameKind::Function_,
+            true,
+            CompletionItemKind::Function->value,
+            ['wrap($0)', InsertTextFormat::Snippet->value],
+        ];
+        yield 'constant with snippets' => [
+            NameKind::Constant,
+            true,
+            CompletionItemKind::Constant->value,
+            ['wrap', null],
+        ];
     }
 
+    /**
+     * @param array{string, ?int} $inserted the edit's new text and its insertTextFormat
+     */
     #[DataProvider('symbolKinds')]
     public function testSymbolKindDecidesItsItemKindAndCallSnippet(
         NameKind $kind,
         bool $snippetSupport,
         int $itemKind,
-        ?string $insertText,
+        array $inserted,
     ): void {
         $item = CompletionItemFactory::forSymbol('wrap', 'Lib\wrap', $kind, Range::onLine(0, 0, 0), $snippetSupport);
 
         self::assertSame($itemKind, $item['kind'] ?? null, 'the item kind follows the symbol kind');
         self::assertSame(
-            $insertText,
-            $item['insertText'] ?? null,
+            $inserted,
+            [$item['textEdit']['newText'] ?? null, $item['insertTextFormat'] ?? null],
             'only a callable gets call parentheses, and only when the client takes snippets',
         );
+        self::assertArrayNotHasKey('insertText', $item, 'the edit is what the client inserts');
     }
 
     public function testMethodCarriesItsDescriptionAndCallSnippet(): void
@@ -159,6 +175,29 @@ final class CompletionItemFactoryTest extends TestCase
             ['save($0)', InsertTextFormat::Snippet->value],
             [$item['insertText'] ?? null, $item['insertTextFormat'] ?? null],
             'a method gets call parentheses when the client takes snippets',
+        );
+    }
+
+    public function testPropertyNeverGetsACallSnippet(): void
+    {
+        $property = new PropertyInfo(
+            name: new PropertyName(ClasslikeName::fromFullyQualified('Fixtures\Domain\User'), 'name'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isReadonly: false,
+            isPromoted: false,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        $item = CompletionItemFactory::forResolvedMember($property, snippetSupport: true);
+
+        self::assertSame(
+            [null, null],
+            [$item['insertText'] ?? null, $item['insertTextFormat'] ?? null],
+            'a property is not callable, so it inserts its plain label even when the client takes snippets',
         );
     }
 

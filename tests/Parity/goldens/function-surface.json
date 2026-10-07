@@ -60,10 +60,9 @@
                         "character": 4
                     }
                 },
-                "newText": "calculateSum"
+                "newText": "calculateSum($0)"
             },
             "documentation": "Adds two numbers.",
-            "insertText": "calculateSum($0)",
             "insertTextFormat": 2,
             "sortText": "0_calculateSum"
         },
@@ -83,10 +82,9 @@
                         "character": 4
                     }
                 },
-                "newText": "calculateProduct"
+                "newText": "calculateProduct($0)"
             },
             "documentation": "Multiplies two numbers.",
-            "insertText": "calculateProduct($0)",
             "insertTextFormat": 2,
             "sortText": "0_calculateProduct"
         }
@@ -196,9 +194,8 @@
                         "character": 12
                     }
                 },
-                "newText": "str_contains"
+                "newText": "str_contains($0)"
             },
-            "insertText": "str_contains($0)",
             "insertTextFormat": 2,
             "sortText": "3_str_contains"
         }
