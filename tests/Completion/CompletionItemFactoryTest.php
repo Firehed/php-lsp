@@ -6,15 +6,20 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
+use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
+use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\PresentedSymbol;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompletionItemFactory::class)]
@@ -101,6 +106,59 @@ final class CompletionItemFactoryTest extends TestCase
                 Range::onLine(3, 8, 10),
             ),
             'the reference replaces the typed prefix, filters by its short name, and shows the full name',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{NameKind, bool, int, ?string}>
+     */
+    public static function symbolKinds(): iterable
+    {
+        yield 'function' => [NameKind::Function_, false, CompletionItemKind::Function->value, null];
+        yield 'function with snippets' => [NameKind::Function_, true, CompletionItemKind::Function->value, 'wrap($0)'];
+        yield 'constant with snippets' => [NameKind::Constant, true, CompletionItemKind::Constant->value, null];
+    }
+
+    #[DataProvider('symbolKinds')]
+    public function testSymbolKindDecidesItsItemKindAndCallSnippet(
+        NameKind $kind,
+        bool $snippetSupport,
+        int $itemKind,
+        ?string $insertText,
+    ): void {
+        $item = CompletionItemFactory::forSymbol('wrap', 'Lib\wrap', $kind, Range::onLine(0, 0, 0), $snippetSupport);
+
+        self::assertSame($itemKind, $item['kind'] ?? null, 'the item kind follows the symbol kind');
+        self::assertSame(
+            $insertText,
+            $item['insertText'] ?? null,
+            'only a callable gets call parentheses, and only when the client takes snippets',
+        );
+    }
+
+    public function testMethodCarriesItsDescriptionAndCallSnippet(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName(ClasslikeName::fromFullyQualified('Fixtures\Domain\User'), 'save'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [],
+            returnType: null,
+            docblock: "/**\n * Persists the user.\n */",
+            file: null,
+            line: null,
+        );
+
+        $item = CompletionItemFactory::forResolvedMember($method, snippetSupport: true);
+
+        self::assertSame(CompletionItemKind::Method->value, $item['kind'] ?? null, 'a method is a method item');
+        self::assertSame('Persists the user.', $item['documentation'] ?? null, 'the docblock description is shown');
+        self::assertSame(
+            ['save($0)', InsertTextFormat::Snippet->value],
+            [$item['insertText'] ?? null, $item['insertTextFormat'] ?? null],
+            'a method gets call parentheses when the client takes snippets',
         );
     }
 
