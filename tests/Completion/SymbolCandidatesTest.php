@@ -251,7 +251,7 @@ final class SymbolCandidatesTest extends TestCase
 
         self::assertSame(
             ['count_widgets($0)'],
-            array_column($items, 'insertText'),
+            array_column(array_column($items, 'textEdit'), 'newText'),
             'a client that takes snippets gets the call parentheses',
         );
     }

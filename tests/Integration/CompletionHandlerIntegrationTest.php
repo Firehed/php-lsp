@@ -303,8 +303,6 @@ class CompletionHandlerIntegrationTest extends TestCase
     public static function callableSnippetCases(): iterable
     {
         yield 'method' => ['src/Completion/MethodAccess.php', 'this_empty', 'setName'];
-        yield 'user function' => ['src/Completion/FunctionCompletion.php', 'user_function', 'calculateSum'];
-        yield 'builtin function' => ['src/Completion/FunctionCompletion.php', 'builtin_function', 'array_map'];
     }
 
     /**

@@ -112,30 +112,41 @@ final class CompletionItemFactoryTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{NameKind, bool, int, ?string}>
+     * @return iterable<string, array{NameKind, bool, int, array{string, ?int}}>
      */
     public static function symbolKinds(): iterable
     {
-        yield 'function' => [NameKind::Function_, false, CompletionItemKind::Function->value, null];
-        yield 'function with snippets' => [NameKind::Function_, true, CompletionItemKind::Function->value, 'wrap($0)'];
-        yield 'constant with snippets' => [NameKind::Constant, true, CompletionItemKind::Constant->value, null];
+        $snippet = InsertTextFormat::Snippet->value;
+        yield 'function' => [NameKind::Function_, false, CompletionItemKind::Function->value, ['wrap', null]];
+        yield 'function with snippets' => [
+            NameKind::Function_,
+            true,
+            CompletionItemKind::Function->value,
+            ['wrap($0)', $snippet],
+        ];
+        yield 'constant with snippets' => [NameKind::Constant, true, CompletionItemKind::Constant->value, ['wrap', null]];
     }
 
+    /**
+     * @param array{string, ?int} $inserted the edit's new text and its insertTextFormat
+     */
     #[DataProvider('symbolKinds')]
     public function testSymbolKindDecidesItsItemKindAndCallSnippet(
         NameKind $kind,
         bool $snippetSupport,
         int $itemKind,
-        ?string $insertText,
+        array $inserted,
     ): void {
         $item = CompletionItemFactory::forSymbol('wrap', 'Lib\wrap', $kind, Range::onLine(0, 0, 0), $snippetSupport);
 
         self::assertSame($itemKind, $item['kind'] ?? null, 'the item kind follows the symbol kind');
         self::assertSame(
-            $insertText,
-            $item['insertText'] ?? null,
-            'only a callable gets call parentheses, and only when the client takes snippets',
+            $inserted,
+            [$item['textEdit']['newText'] ?? null, $item['insertTextFormat'] ?? null],
+            'only a callable gets call parentheses, and only when the client takes snippets; the edit is what '
+            . 'the client inserts, since an edit makes insertText ignored ([LSP] CompletionItem.textEdit)',
         );
+        self::assertArrayNotHasKey('insertText', $item, 'a client ignores insertText beside an edit');
     }
 
     public function testMethodCarriesItsDescriptionAndCallSnippet(): void

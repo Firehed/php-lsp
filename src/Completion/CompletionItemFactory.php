@@ -206,8 +206,10 @@ final class CompletionItemFactory
      * Insert `name($0)` for a callable so the parentheses are typed for the user
      * and the cursor lands between them. Emitted only when the client declared
      * snippet support (RFC 1 §4.8); otherwise the item inserts its bare label, as
-     * a plaintext client would show `$0` literally. The label is an identifier, so
-     * it needs no snippet escaping.
+     * a plaintext client would show `$0` literally. A PHP name holds no `$`, `}`,
+     * or doubled backslash, so it needs no snippet escaping. An item with a text edit takes the
+     * snippet there, because the edit makes a client ignore `insertText` ([LSP]
+     * CompletionItem.textEdit).
      *
      * @param CompletionItem $item
      * @return CompletionItem
@@ -218,7 +220,11 @@ final class CompletionItemFactory
             return $item;
         }
 
-        $item['insertText'] = $item['label'] . '($0)';
+        if (array_key_exists('textEdit', $item)) {
+            $item['textEdit']['newText'] .= '($0)';
+        } else {
+            $item['insertText'] = $item['label'] . '($0)';
+        }
         $item['insertTextFormat'] = InsertTextFormat::Snippet->value;
 
         return $item;
