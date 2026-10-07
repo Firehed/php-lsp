@@ -26,11 +26,6 @@ class AbsoluteNavigation
     public function withReturn(): \Ps/*|return_nav*/
     {
     }
-
-    public function flood(): void
-    {
-        new \Flood\/*|flood_nav*/
-    }
 }
 
 class ExtendsAbsoluteNavigation extends \Ps/*|extends_nav*/
