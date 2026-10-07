@@ -207,9 +207,9 @@ final class CompletionItemFactory
      * and the cursor lands between them. Emitted only when the client declared
      * snippet support (RFC 1 §4.8); otherwise the item inserts its bare label, as
      * a plaintext client would show `$0` literally. A PHP name holds no `$`, `}`,
-     * or doubled backslash, so it needs no snippet escaping. An item with a text edit takes the
-     * snippet there, because the edit makes a client ignore `insertText` ([LSP]
-     * CompletionItem.textEdit).
+     * or doubled backslash, so it needs no snippet escaping. An item with a text
+     * edit takes the snippet there, because the edit makes a client ignore
+     * `insertText` ([LSP] CompletionItem.textEdit).
      *
      * @param CompletionItem $item
      * @return CompletionItem
