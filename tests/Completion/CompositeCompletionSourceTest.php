@@ -6,9 +6,11 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Closure;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
+use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
+use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
@@ -48,6 +50,43 @@ final class CompositeCompletionSourceTest extends TestCase
             ['name:', '$variable'],
             self::labelsAfter('foo($va', $symbols, $codeResolver),
             'a variable being typed in a call offers argument names and variables, not expressions',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, list<string>}>
+     */
+    public static function useStatements(): iterable
+    {
+        yield 'closure use' => ['$f = function () use ', ['$greeting']];
+        yield 'import' => ['use Lib\\', ['Widget']];
+    }
+
+    /**
+     * @param list<string> $expected
+     */
+    #[DataProvider('useStatements')]
+    public function testAUseOutsideAClassBodyIsAnImportUnlessItCapturesClosureVariables(
+        string $line,
+        array $expected,
+    ): void {
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
+        $codeResolver->method('isClassLike')->willReturn(true);
+        $codeResolver->method('getVariablesInScope')->willReturn([
+            new ResolvedVariable('greeting', new PrimitiveType('string')),
+        ]);
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('childrenOf')->willReturnCallback(
+            static fn (NamespaceName $namespace): NamespaceContents => $namespace->path === 'Lib'
+                ? new NamespaceContents(symbols: [new CatalogSymbol('Lib\Widget', NameKind::ClassLike)])
+                : new NamespaceContents(),
+        );
+
+        self::assertSame(
+            $expected,
+            self::labelsAfter($line, $symbols, $codeResolver),
+            'a closure use offers only variables; an import offers only navigated class-likes',
         );
     }
 
