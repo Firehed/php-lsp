@@ -186,8 +186,9 @@ final class SymbolCandidatesTest extends TestCase
     public function testShadowedNamespaceFunctionYieldsToTheImport(): void
     {
         $context = new NameContext('App', functionImports: ['calculateSum' => 'str_contains']);
-
-        $children = ['App' => new NamespaceContents(symbols: [new CatalogSymbol('App\calculateSum', NameKind::Function_)])];
+        $children = ['App' => new NamespaceContents(symbols: [
+            new CatalogSymbol('App\calculateSum', NameKind::Function_),
+        ])];
 
         $items = self::candidates(
             $context,
