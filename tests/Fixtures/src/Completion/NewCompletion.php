@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Fixtures\Completion;
 
+use Fixtures\Domain\Entity;
 use Fixtures\Utility\AbstractBase;
 use Fixtures\Utility\SealedClass;
 
