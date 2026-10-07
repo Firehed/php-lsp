@@ -259,6 +259,9 @@ class ServerTest extends TestCase
      * A request needs the tree, and trees are kept for one message only. Two
      * identical completion requests separate that from a standing tree cache:
      * the second re-parses only if the first message's memo was discarded.
+     *
+     * A variable prefix asks the resolver several questions, so it also shows
+     * each request costs one parse; a member or static access asks only one.
      */
     public function testParsesAreScopedToOneMessageOnTheRequestPath(): void
     {
