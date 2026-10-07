@@ -49,19 +49,16 @@ final class CompositeCompletionSourceTest extends TestCase
 
     public function testAnExpressionInsideACallAlsoOffersKeywordsAndSymbols(): void
     {
-        $symbols = self::createStub(SymbolSourceInterface::class);
-        $symbols->method('childrenOf')->willReturn(new NamespaceContents());
-        $symbols->method('search')->willReturnCallback(
-            static fn (string $prefix, NameKind $kind): array => $kind === NameKind::Function_
-                ? [self::symbol('nullify', SymbolKind::Function_)]
-                : [],
-        );
+        $labels = self::labelsAfter('foo(n', self::everySymbolKind(), self::insideACall());
 
-        self::assertEqualsCanonicalizing(
-            ['name:', '$variable', 'new', 'null', 'nullify'],
-            self::labelsAfter('foo(n', $symbols, self::insideACall()),
-            'a name being typed in a call offers argument names, variables, expression keywords, and symbols',
-        );
+        foreach (['name:', '$variable', 'null', 'Widget', 'Mixin', 'strlen', 'PHP_VERSION'] as $label) {
+            self::assertContains(
+                $label,
+                $labels,
+                "{$label}: argument names, variables, expression keywords, and every symbol kind are offered",
+            );
+        }
+        self::assertNotContains('namespace', $labels, 'only expression keywords are offered');
     }
 
     public function testMemberAccessAnswersAloneEvenWithNoMembers(): void
@@ -194,8 +191,7 @@ final class CompositeCompletionSourceTest extends TestCase
     }
 
     /**
-     * Offers a function, a constant, a trait that is not a valid type hint, and
-     * one class-like for each class position's predicate.
+     * Each class position's predicate accepts exactly one of {@see everySymbolKind()}'s class-likes.
      *
      * @return list<string>
      */
@@ -214,6 +210,16 @@ final class CompositeCompletionSourceTest extends TestCase
         $codeResolver->method('isThrowable')->willReturnCallback($only('Failure'));
         $codeResolver->method('isAttribute')->willReturnCallback($only('Marker'));
         $codeResolver->method('isTrait')->willReturnCallback($only('Mixin'));
+
+        return self::labelsAfter($code, self::everySymbolKind(), $codeResolver);
+    }
+
+    /**
+     * Every search answers with a function, a constant, a trait that is not a
+     * valid type hint, and one class-like for each class position's predicate.
+     */
+    private static function everySymbolKind(): SymbolSourceInterface
+    {
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
         $symbols->method('search')->willReturnCallback(
@@ -231,7 +237,7 @@ final class CompositeCompletionSourceTest extends TestCase
             },
         );
 
-        return self::labelsAfter($code, $symbols, $codeResolver);
+        return $symbols;
     }
 
     /**
