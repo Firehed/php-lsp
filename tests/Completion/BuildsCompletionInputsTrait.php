@@ -16,11 +16,17 @@ use Firehed\PhpLsp\Domain\SymbolKind;
 trait BuildsCompletionInputsTrait
 {
     /**
-     * A request at the end of $line, the only line after the open tag.
+     * A request at the end of $code, which follows the open tag.
      */
-    private static function requestAfter(string $line): CompletionRequest
+    private static function requestAfter(string $code): CompletionRequest
     {
-        return new CompletionRequest(new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}"), 1, strlen($line));
+        $lines = explode("\n", "<?php\n{$code}");
+
+        return new CompletionRequest(
+            new TextDocument('file:///t.php', 'php', 0, "<?php\n{$code}"),
+            count($lines) - 1,
+            strlen(end($lines)),
+        );
     }
 
     private static function capabilitiesProvider(
