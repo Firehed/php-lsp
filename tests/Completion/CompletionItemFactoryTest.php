@@ -116,15 +116,19 @@ final class CompletionItemFactoryTest extends TestCase
      */
     public static function symbolKinds(): iterable
     {
-        $snippet = InsertTextFormat::Snippet->value;
         yield 'function' => [NameKind::Function_, false, CompletionItemKind::Function->value, ['wrap', null]];
         yield 'function with snippets' => [
             NameKind::Function_,
             true,
             CompletionItemKind::Function->value,
-            ['wrap($0)', $snippet],
+            ['wrap($0)', InsertTextFormat::Snippet->value],
         ];
-        yield 'constant with snippets' => [NameKind::Constant, true, CompletionItemKind::Constant->value, ['wrap', null]];
+        yield 'constant with snippets' => [
+            NameKind::Constant,
+            true,
+            CompletionItemKind::Constant->value,
+            ['wrap', null],
+        ];
     }
 
     /**
