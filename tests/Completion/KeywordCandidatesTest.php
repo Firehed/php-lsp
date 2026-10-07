@@ -16,26 +16,50 @@ use PHPUnit\Framework\TestCase;
 final class KeywordCandidatesTest extends TestCase
 {
     /**
-     * @return iterable<string, array{KeywordGroup, string, list<string>, list<string>}>
+     * @return iterable<string, array{KeywordGroup, string, list<string>}>
      */
     public static function groupCases(): iterable
     {
-        yield 'statement' => [KeywordGroup::All, 'fore', ['foreach'], ['for']];
-        yield 'class body' => [KeywordGroup::ClassBody, 'class Foo { p', ['public', 'private', 'protected'], ['print']];
-        yield 'after visibility' => [KeywordGroup::AfterVisibility, 'public f', ['function'], ['fn']];
-        yield 'expression' => [KeywordGroup::Expression, 'foo(cl', ['clone'], ['class']];
+        yield 'statement' => [KeywordGroup::All, '', [
+            'if', 'else', 'elseif', 'switch', 'case', 'default',
+            'while', 'do', 'for', 'foreach', 'break', 'continue',
+            'return', 'throw', 'try', 'catch', 'finally',
+            'function', 'class', 'interface', 'trait', 'enum', 'namespace', 'use',
+            'extends', 'implements', 'const', 'public', 'protected', 'private',
+            'static', 'final', 'abstract', 'readonly',
+            'new', 'instanceof', 'clone', 'yield', 'match',
+            'echo', 'print', 'include', 'include_once', 'require', 'require_once',
+            'global', 'unset', 'isset', 'empty', 'list', 'fn',
+        ]];
+        yield 'statement with a prefix' => [KeywordGroup::All, 'fore', ['foreach']];
+        yield 'class body' => [KeywordGroup::ClassBody, 'class Foo { ', [
+            'public', 'private', 'protected', 'static', 'final', 'abstract', 'readonly', 'const', 'function', 'use',
+        ]];
+        yield 'class body with a prefix' => [
+            KeywordGroup::ClassBody,
+            'class Foo { p',
+            ['public', 'private', 'protected'],
+        ];
+        yield 'after visibility' => [
+            KeywordGroup::AfterVisibility,
+            'public ',
+            ['function', 'static', 'readonly', 'const'],
+        ];
+        yield 'after visibility with a prefix' => [KeywordGroup::AfterVisibility, 'public f', ['function']];
+        yield 'expression' => [KeywordGroup::Expression, 'foo(', [
+            'new', 'clone', 'yield', 'match', 'fn', 'isset', 'empty', 'list', 'true', 'false', 'null',
+        ]];
+        yield 'expression with a prefix' => [KeywordGroup::Expression, 'foo(cl', ['clone']];
     }
 
     /**
-     * @param list<string> $offered
-     * @param list<string> $withheld
+     * @param list<string> $expected
      */
     #[DataProvider('groupCases')]
     public function testGroupOffersItsKeywordsMatchingThePrefix(
         KeywordGroup $group,
         string $line,
-        array $offered,
-        array $withheld,
+        array $expected,
     ): void {
         $doc = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
         $request = new CompletionRequest($doc, 1, strlen($line));
@@ -43,13 +67,11 @@ final class KeywordCandidatesTest extends TestCase
         $items = (new KeywordCandidates())->find($request, $group);
 
         self::assertNotNull($items, 'a keyword position offers keywords');
-        $labels = array_column($items, 'label');
-        foreach ($offered as $label) {
-            self::assertContains($label, $labels, "{$label} is in the group and matches the prefix");
-        }
-        foreach ($withheld as $label) {
-            self::assertNotContains($label, $labels, "{$label} is outside the group or misses the prefix");
-        }
+        self::assertSame(
+            $expected,
+            array_column($items, 'label'),
+            'exactly the keywords valid in the position that start with what was typed',
+        );
     }
 
     public function testExpressionGroupReturnsNullWhenPrefixIsVariable(): void

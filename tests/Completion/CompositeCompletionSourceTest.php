@@ -9,7 +9,9 @@ use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
@@ -22,6 +24,7 @@ use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CompositeCompletionSource::class)]
@@ -43,21 +46,105 @@ final class CompositeCompletionSourceTest extends TestCase
         $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
-        $symbols->method('search')->willReturn([
-            new Symbol('var_dump', 'var_dump', SymbolKind::Function_, new Location('file:///f.php', 0, 0, 0, 0)),
-        ]);
-        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
-        $capabilities->method('getSessionCapabilities')->willReturn(new SessionCapabilities());
-        $source = self::completionSourceFor($symbols, $codeResolver, $capabilities);
-        $line = 'foo($va';
-        $document = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
-
-        $items = $source->find(new CompletionRequest($document, 1, strlen($line)));
+        $symbols->method('search')->willReturn([self::symbol('var_dump', SymbolKind::Function_)]);
 
         self::assertSame(
             ['name:', '$variable'],
-            array_column($items, 'label'),
+            self::labelsAfter('foo($va', $symbols, $codeResolver),
             'a variable being typed in a call offers argument names and variables, not expressions',
         );
+    }
+
+    /**
+     * The built-in type lists themselves are BuiltinTypeCandidatesTest's; each
+     * case names a type that shows which position's list was asked for.
+     *
+     * @return iterable<string, array{string, list<string>, list<string>}>
+     */
+    public static function typePositions(): iterable
+    {
+        $nonTypes = ['Mixin', 'strlen', 'PHP_VERSION'];
+        yield 'return type' => ['function foo(): ', ['void', 'Widget'], [...$nonTypes, 'function']];
+        yield 'parameter type' => ['function foo(', ['self', 'Widget'], [...$nonTypes, 'function', 'void']];
+        yield 'property type' => ['class Foo { private ?', ['string', 'Widget'], [...$nonTypes, 'function', 'self']];
+        yield 'after a visibility keyword' => ['class Foo { private ', ['function', 'string', 'Widget'], [
+            ...$nonTypes,
+            'self',
+        ]];
+    }
+
+    /**
+     * @param list<string> $offered
+     * @param list<string> $withheld
+     */
+    #[DataProvider('typePositions')]
+    public function testATypePositionOffersTypesOnly(string $line, array $offered, array $withheld): void
+    {
+        $labels = self::labelsWithEverySymbolKindAfter($line);
+
+        foreach ($offered as $label) {
+            self::assertContains($label, $labels, "{$label}: a built-in type or type-hintable class-like here");
+        }
+        foreach ($withheld as $label) {
+            self::assertNotContains($label, $labels, "{$label}: not a type here");
+        }
+    }
+
+    public function testAnExpressionOffersEverySymbolKind(): void
+    {
+        self::assertSame(
+            ['Widget', 'Mixin', 'PHP_VERSION', 'strlen'],
+            self::labelsWithEverySymbolKindAfter('$x = Z'),
+            'an expression offers class-likes, traits included, functions, and constants',
+        );
+    }
+
+    /**
+     * Offers a class, a trait that is not a valid type hint, a function, and a constant.
+     *
+     * @return list<string>
+     */
+    private static function labelsWithEverySymbolKindAfter(string $line): array
+    {
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
+        $codeResolver->method('isValidTypeHint')->willReturnCallback(
+            static fn (ClasslikeName $name): bool => !$name->equals(ClasslikeName::fromFullyQualified('Mixin')),
+        );
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('childrenOf')->willReturn(new NamespaceContents());
+        $symbols->method('search')->willReturnCallback(
+            static fn (string $prefix, NameKind $kind): array => match ($kind) {
+                NameKind::ClassLike => [
+                    self::symbol('Widget', SymbolKind::Class_),
+                    self::symbol('Mixin', SymbolKind::Trait_),
+                ],
+                NameKind::Function_ => [self::symbol('strlen', SymbolKind::Function_)],
+                NameKind::Constant => [self::symbol('PHP_VERSION', SymbolKind::Constant)],
+            },
+        );
+
+        return self::labelsAfter($line, $symbols, $codeResolver);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function labelsAfter(
+        string $line,
+        SymbolSourceInterface $symbols,
+        CodeResolverInterface $codeResolver,
+    ): array {
+        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
+        $capabilities->method('getSessionCapabilities')->willReturn(new SessionCapabilities());
+        $document = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
+        $request = new CompletionRequest($document, 1, strlen($line));
+
+        return array_column(self::completionSourceFor($symbols, $codeResolver, $capabilities)->find($request), 'label');
+    }
+
+    private static function symbol(string $name, SymbolKind $kind): Symbol
+    {
+        return new Symbol($name, $name, $kind, new Location('file:///f.php', 0, 0, 0, 0));
     }
 }
