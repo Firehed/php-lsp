@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -26,6 +25,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(MemberCandidates::class)]
 final class MemberCandidatesTest extends TestCase
 {
+    use BuildsCompletionInputsTrait;
+
     /**
      * @return iterable<string, array{MemberAccessContext, list<string>}>
      */
@@ -125,12 +126,10 @@ final class MemberCandidatesTest extends TestCase
         CodeResolverInterface $codeResolver,
         bool $snippetSupport = false,
     ): MemberCandidates {
-        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
-        $capabilities->method('getSessionCapabilities')->willReturn(new SessionCapabilities(
-            snippetSupport: $snippetSupport,
-        ));
-
-        return new MemberCandidates($codeResolver, $capabilities);
+        return new MemberCandidates(
+            $codeResolver,
+            self::capabilitiesProvider(new SessionCapabilities(snippetSupport: $snippetSupport)),
+        );
     }
 
     private static function member(MethodName|PropertyName $name, MemberKind $kind): ResolvedMemberInterface

@@ -5,19 +5,13 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Closure;
-use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
-use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeName;
-use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
-use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Resolution\CallContext;
@@ -31,6 +25,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(CompositeCompletionSource::class)]
 final class CompositeCompletionSourceTest extends TestCase
 {
+    use BuildsCompletionInputsTrait;
     use WiresCompletionSourceTrait;
 
     public function testVariableInsideACallOffersNamedArgumentsAndVariablesOnly(): void
@@ -177,16 +172,8 @@ final class CompositeCompletionSourceTest extends TestCase
         SymbolSourceInterface $symbols,
         CodeResolverInterface $codeResolver,
     ): array {
-        $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
-        $capabilities->method('getSessionCapabilities')->willReturn(new SessionCapabilities());
-        $document = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
-        $request = new CompletionRequest($document, 1, strlen($line));
+        $source = self::completionSourceFor($symbols, $codeResolver, self::capabilitiesProvider());
 
-        return array_column(self::completionSourceFor($symbols, $codeResolver, $capabilities)->find($request), 'label');
-    }
-
-    private static function symbol(string $name, SymbolKind $kind): Symbol
-    {
-        return new Symbol($name, $name, $kind, new Location('file:///f.php', 0, 0, 0, 0));
+        return array_column($source->find(self::requestAfter($line)), 'label');
     }
 }
