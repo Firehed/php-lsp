@@ -6,12 +6,12 @@ namespace Firehed\PhpLsp\Tests\Handler;
 
 use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -19,6 +19,7 @@ use PHPUnit\Framework\TestCase;
 class SignatureHelpHandlerTest extends TestCase
 {
     use BuildsHandlerRequestsTrait;
+    use BuildsSymbolInfoTrait;
     use StubsCollaboratorsTrait;
 
     private const METHOD = 'textDocument/signatureHelp';
@@ -95,8 +96,8 @@ class SignatureHelpHandlerTest extends TestCase
         $callable->method('format')->willReturn('signatureHelpAdd(int $a, int $b): int');
         $callable->method('getDocumentation')->willReturn('Adds two numbers together.');
         $callable->method('getParameters')->willReturn([
-            $this->parameter('a', position: 0),
-            $this->parameter('b', position: 1),
+            self::parameterInfo('a', new PrimitiveType('int'), 0),
+            self::parameterInfo('b', new PrimitiveType('int'), 1),
         ]);
         $context = new CallContext($callable, activeParameterIndex: 1, usedParameterNames: []);
 
@@ -148,18 +149,5 @@ class SignatureHelpHandlerTest extends TestCase
         $stub = self::createStub(CodeResolverInterface::class);
         $stub->method('getCallContext')->willReturn($context);
         return $stub;
-    }
-
-    private function parameter(string $name, int $position): ParameterInfo
-    {
-        return new ParameterInfo(
-            name: $name,
-            type: new PrimitiveType('int'),
-            hasDefault: false,
-            defaultValue: null,
-            position: $position,
-            isVariadic: false,
-            isPassedByReference: false,
-        );
     }
 }

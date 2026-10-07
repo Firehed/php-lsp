@@ -13,12 +13,13 @@ use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\TypeInterface;
 
 /**
  * Builds minimal domain value objects for tests that need symbols without a real
- * parse — only the identity, the declaring file where precedence is under test,
- * and, for a class-like, the parent and interface edges a subtype walk follows.
+ * parse. Each builder takes only what a test may vary; everything else is empty.
  *
  * The `declared*` pair wraps the info in the {@see DeclaredSymbol} the kind-agnostic
  * write and lookup paths take, so a test states the kind once rather than picking a
@@ -89,20 +90,35 @@ trait BuildsSymbolInfoTrait
         );
     }
 
-    private static function constantInfo(QualifiedName $name, ?string $file = null): ConstantInfo
-    {
+    private static function constantInfo(
+        QualifiedName $name,
+        ?string $file = null,
+        ?TypeInterface $type = null,
+    ): ConstantInfo {
         return new ConstantInfo(
             name: new ConstantName($name),
-            type: null,
+            type: $type,
             docblock: null,
             file: $file,
             line: 1,
         );
     }
 
-    private static function functionInfo(QualifiedName $name, ?string $file = null): FunctionInfo
+    /**
+     * @param list<ParameterInfo> $parameters
+     */
+    private static function functionInfo(
+        QualifiedName $name,
+        ?string $file = null,
+        array $parameters = [],
+        ?TypeInterface $returnType = null,
+    ): FunctionInfo {
+        return new FunctionInfo(new FunctionName($name), $parameters, $returnType, null, $file, 1);
+    }
+
+    private static function parameterInfo(string $name, ?TypeInterface $type = null, int $position = 0): ParameterInfo
     {
-        return new FunctionInfo(new FunctionName($name), [], null, null, $file, 1);
+        return new ParameterInfo($name, $type, false, null, $position, false, false);
     }
 
     /**
