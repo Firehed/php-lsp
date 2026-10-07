@@ -104,6 +104,24 @@ final class CompletionItemFactoryTest extends TestCase
         );
     }
 
+    public function testNamespaceIsANodeEndingInASeparator(): void
+    {
+        self::assertSame(
+            [
+                'label' => 'Http\\',
+                'kind' => CompletionItemKind::Module->value,
+                'detail' => 'Psr\Http',
+                'filterText' => 'Http',
+                'textEdit' => [
+                    'range' => ['start' => ['line' => 2, 'character' => 4], 'end' => ['line' => 2, 'character' => 6]],
+                    'newText' => 'Http\\',
+                ],
+            ],
+            CompletionItemFactory::forNamespace('Http', 'Psr\Http', Range::onLine(2, 4, 6)),
+            'the inserted text carries the separator, so accepting it is ready for the next segment',
+        );
+    }
+
     public function testPresentedSymbolShowsItsSignatureAndDocumentation(): void
     {
         $item = CompletionItemFactory::forSymbol(
