@@ -47,6 +47,23 @@ final class CompositeCompletionSourceTest extends TestCase
         );
     }
 
+    public function testAnExpressionInsideACallAlsoOffersKeywordsAndSymbols(): void
+    {
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('childrenOf')->willReturn(new NamespaceContents());
+        $symbols->method('search')->willReturnCallback(
+            static fn (string $prefix, NameKind $kind): array => $kind === NameKind::Function_
+                ? [self::symbol('nullify', SymbolKind::Function_)]
+                : [],
+        );
+
+        self::assertEqualsCanonicalizing(
+            ['name:', '$variable', 'new', 'null', 'nullify'],
+            self::labelsAfter('foo(n', $symbols, self::insideACall()),
+            'a name being typed in a call offers argument names, variables, expression keywords, and symbols',
+        );
+    }
+
     public function testMemberAccessAnswersAloneEvenWithNoMembers(): void
     {
         $codeResolver = self::insideACall();
