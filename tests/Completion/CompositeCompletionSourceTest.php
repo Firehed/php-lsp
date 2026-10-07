@@ -8,6 +8,7 @@ use Closure;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
@@ -15,9 +16,11 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\SymbolKind;
+use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -50,6 +53,33 @@ final class CompositeCompletionSourceTest extends TestCase
             ['name:', '$variable'],
             self::labelsAfter('foo($va', $symbols, $codeResolver),
             'a variable being typed in a call offers argument names and variables, not expressions',
+        );
+    }
+
+    public function testMemberAccessAnswersAloneEvenWithNoMembers(): void
+    {
+        $callable = self::createStub(ResolvedCallableInterface::class);
+        $callable->method('getParameters')->willReturn([
+            new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
+        ]);
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('getMemberAccessContext')->willReturn(MemberAccessContext::forInstance(
+            new ClasslikeType(ClasslikeName::fromFullyQualified('Widget')),
+            Visibility::Public,
+            '',
+        ));
+        $codeResolver->method('getCallContext')->willReturn(new CallContext($callable, 0, []));
+        $codeResolver->method('getVariablesInScope')->willReturn([
+            new ResolvedVariable('variable', new PrimitiveType('string')),
+        ]);
+        $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('childrenOf')->willReturn(new NamespaceContents());
+
+        self::assertSame(
+            [],
+            self::labelsAfter('foo($x->', $symbols, $codeResolver),
+            'member access owns the position: no argument names or variables from the enclosing call',
         );
     }
 
