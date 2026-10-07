@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
-use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\TypeHintContext;
-use Firehed\PhpLsp\Document\TextDocument;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -15,6 +13,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(BuiltinTypeCandidates::class)]
 final class BuiltinTypeCandidatesTest extends TestCase
 {
+    use BuildsCompletionInputsTrait;
+
     private const array COMMON = [
         'string', 'int', 'float', 'bool', 'array', 'object',
         'mixed', 'null', 'callable', 'iterable', 'true', 'false',
@@ -53,10 +53,5 @@ final class BuiltinTypeCandidatesTest extends TestCase
             ),
             'only types starting with what was typed',
         );
-    }
-
-    private static function requestAfter(string $line): CompletionRequest
-    {
-        return new CompletionRequest(new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}"), 1, strlen($line));
     }
 }
