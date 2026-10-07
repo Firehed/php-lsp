@@ -1485,6 +1485,50 @@ final class MemberResolverTest extends TestCase
         );
     }
 
+    public function testNamedAliasResolvesOnTheUsingClassOnly(): void
+    {
+        $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $className = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $traitInfo = $this->createClassInfo(
+            $traitName,
+            ClassKind::Trait_,
+            methods: ['helper' => $this->createMethodInfo('helper', Visibility::Public, $traitName)],
+        );
+        $classInfo = $this->createClassInfo(
+            $className,
+            traits: [$traitName],
+            traitAliases: [new TraitAlias(
+                trait: $traitName,
+                method: 'helper',
+                newName: 'exposedName',
+                newVisibility: null,
+            )],
+        );
+
+        $repo = self::createStub(SymbolSourceInterface::class);
+        $repo->method('lookupClassLike')->willReturnCallback(
+            fn (ClasslikeName $name) => match ($name->qualifiedName->fullyQualifiedName()) {
+                $traitName->qualifiedName->fullyQualifiedName() => $traitInfo,
+                $className->qualifiedName->fullyQualifiedName() => $classInfo,
+                default => null,
+            },
+        );
+
+        $resolver = new MemberResolver($repo);
+
+        $resolved = $resolver->findMethod($className, 'exposedName', Visibility::Public);
+        self::assertNotNull($resolved, 'the using class exposes the trait method under its alias');
+        self::assertSame(
+            $traitName->qualifiedName->fullyQualifiedName(),
+            $resolved->aliasedFrom?->owner->qualifiedName->fullyQualifiedName(),
+            'the alias points back at the named trait',
+        );
+        self::assertNull(
+            $resolver->findMethod($traitName, 'exposedName', Visibility::Public),
+            'only the using class declares the alias, so the trait itself has no such method',
+        );
+    }
+
     public function testNamelessAliasResolvesThroughUsedTraits(): void
     {
         $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
