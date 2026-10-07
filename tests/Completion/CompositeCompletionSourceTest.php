@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
+use Closure;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\CompletionRequest;
@@ -90,33 +91,74 @@ final class CompositeCompletionSourceTest extends TestCase
         }
     }
 
+    /**
+     * Each class-like in the stub passes exactly one position's filter, so the
+     * list shows which filter the position asked for.
+     *
+     * @return iterable<string, array{string, list<string>}>
+     */
+    public static function classPositions(): iterable
+    {
+        yield 'new' => ['$x = new ', ['Widget']];
+        yield 'implements' => ['class Foo implements ', ['Contract']];
+        yield 'class extends' => ['class Foo extends ', ['Base']];
+        yield 'catch' => ['} catch (', ['Failure']];
+        yield 'attribute' => ['#[', ['Marker']];
+        yield 'instanceof' => ['$x instanceof ', ['Widget', 'Contract', 'Base', 'Failure', 'Marker']];
+    }
+
+    /**
+     * @param list<string> $expected
+     */
+    #[DataProvider('classPositions')]
+    public function testAClassPositionOffersTheClassLikesItsFilterAccepts(string $line, array $expected): void
+    {
+        self::assertSame(
+            $expected,
+            self::labelsWithEverySymbolKindAfter($line),
+            'only class-likes valid in the position: no functions, constants, or keywords',
+        );
+    }
+
     public function testAnExpressionOffersEverySymbolKind(): void
     {
         self::assertSame(
-            ['Widget', 'Mixin', 'PHP_VERSION', 'strlen'],
+            ['Widget', 'Contract', 'Base', 'Failure', 'Marker', 'Mixin', 'PHP_VERSION', 'strlen'],
             self::labelsWithEverySymbolKindAfter('$x = Z'),
             'an expression offers class-likes, traits included, functions, and constants',
         );
     }
 
     /**
-     * Offers a class, a trait that is not a valid type hint, a function, and a constant.
+     * Offers a function, a constant, a trait that is not a valid type hint, and
+     * one class-like for each class position's predicate.
      *
      * @return list<string>
      */
     private static function labelsWithEverySymbolKindAfter(string $line): array
     {
+        $only = static fn (string $accepted): Closure
+            => static fn (ClasslikeName $name): bool => $name->equals(ClasslikeName::fromFullyQualified($accepted));
         $codeResolver = self::createStub(CodeResolverInterface::class);
         $codeResolver->method('getNameContext')->willReturn(new NameContext(''));
         $codeResolver->method('isValidTypeHint')->willReturnCallback(
             static fn (ClasslikeName $name): bool => !$name->equals(ClasslikeName::fromFullyQualified('Mixin')),
         );
+        $codeResolver->method('isInstantiable')->willReturnCallback($only('Widget'));
+        $codeResolver->method('isInterface')->willReturnCallback($only('Contract'));
+        $codeResolver->method('isExtendableClass')->willReturnCallback($only('Base'));
+        $codeResolver->method('isThrowable')->willReturnCallback($only('Failure'));
+        $codeResolver->method('isAttribute')->willReturnCallback($only('Marker'));
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
         $symbols->method('search')->willReturnCallback(
             static fn (string $prefix, NameKind $kind): array => match ($kind) {
                 NameKind::ClassLike => [
                     self::symbol('Widget', SymbolKind::Class_),
+                    self::symbol('Contract', SymbolKind::Interface_),
+                    self::symbol('Base', SymbolKind::Class_),
+                    self::symbol('Failure', SymbolKind::Class_),
+                    self::symbol('Marker', SymbolKind::Class_),
                     self::symbol('Mixin', SymbolKind::Trait_),
                 ],
                 NameKind::Function_ => [self::symbol('strlen', SymbolKind::Function_)],
