@@ -42,6 +42,12 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
     private const string NON_FUNCTION_KEYWORD_PATTERN
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
 
+    /**
+     * A name as written: optionally fully qualified, never empty, never ending
+     * in a separator.
+     */
+    private const string NAME = '\\\\?[A-Za-z_][A-Za-z0-9_]*(?:\\\\[A-Za-z_][A-Za-z0-9_]*)*';
+
     private readonly NodeAtPosition $nodeAtPosition;
     private readonly TreeAnnotator $annotator;
 
@@ -162,7 +168,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         // Static: ClasslikeName::prefix, excluding $var::.
         if (
             preg_match_all(
-                '/(?<!\$)([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)(::)(\w*)/',
+                '/(?<![\w\\\\$])(' . self::NAME . ')(::)(\w*)/',
                 $lineText,
                 $staticMatches,
                 PREG_OFFSET_CAPTURE | PREG_SET_ORDER,
@@ -260,7 +266,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
 
         if (
             preg_match(
-                '/#\[\s*(?:[\w\\\\]+\s*,\s*)*([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/',
+                '/#\[\s*(?:[\w\\\\]+\s*,\s*)*(' . self::NAME . ')\s*$/',
                 $text,
                 $m,
                 PREG_OFFSET_CAPTURE,
@@ -274,7 +280,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
 
         if (
             preg_match(
-                '/([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::(\w+)\s*$/',
+                '/(?<![\w\\\\])(' . self::NAME . ')::(\w+)\s*$/',
                 $text,
                 $m,
                 PREG_OFFSET_CAPTURE,
@@ -321,7 +327,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
 
         if (
             preg_match(
-                '/\bnew\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/',
+                '/\bnew\s+(' . self::NAME . ')\s*$/',
                 $text,
                 $m,
                 PREG_OFFSET_CAPTURE,
@@ -339,7 +345,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
 
         if (
             preg_match(
-                '/(\\\\?\b[A-Za-z_][A-Za-z0-9_\\\\]*)\s*$/',
+                '/(?<![\w\\\\:])(' . self::NAME . ')\s*$/',
                 $text,
                 $m,
                 PREG_OFFSET_CAPTURE,
