@@ -6,9 +6,12 @@ namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
+use PhpParser\Node\AttributeGroup;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\Error;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -18,21 +21,21 @@ use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Stmt;
+use PhpParser\Node\UseItem;
 use PhpParser\Node\VarLikeIdentifier;
 
 /**
  * Synthesizes the member-access or call node at the cursor from the document
- * text. `parse()` yields nothing; `nodeAt()` ignores the tree it is handed.
- * Placed last in the composite, so it answers only when every earlier member
- * has answered null (RFC 1 §4.11).
+ * text. `parse()` yields nothing. Placed last in the composite, so it answers
+ * only when every earlier member has answered null (RFC 1 §4.11).
  *
- * The outer node has no `parent` attribute set, so a downstream reader that
- * needs the enclosing class-like reads it from the node's position rather
- * than the parent chain.
+ * The synthesized node is resolved and linked into the tree `nodeAt()` is
+ * handed, so it meets the same contract as a parsed node.
  */
 final class CursorTextSyntaxSource implements SyntaxSourceInterface
 {
@@ -40,10 +43,12 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
 
     private readonly NodeAtPosition $nodeAtPosition;
+    private readonly TreeAnnotator $annotator;
 
     public function __construct()
     {
         $this->nodeAtPosition = new NodeAtPosition();
+        $this->annotator = new TreeAnnotator(tolerant: true);
     }
 
     /**
@@ -75,7 +80,69 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         if ($root === null) {
             return null;
         }
+        $this->attach($root, $tree);
+
         return $this->nodeAtPosition->find([$root], $offset);
+    }
+
+    /**
+     * Resolves the fragment's names against the namespace and imports in
+     * effect where it starts, through the annotator every tree source uses,
+     * then links it under the innermost statement or function-like of $tree
+     * that contains it.
+     *
+     * @param array<Stmt> $tree
+     */
+    private function attach(Expr|Attribute $root, array $tree): void
+    {
+        $start = $root->getStartFilePos();
+        $namespace = null;
+        $scope = $tree;
+        foreach ($tree as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_ && $stmt->getStartFilePos() <= $start) {
+                $namespace = $stmt;
+                $scope = $stmt->stmts;
+            }
+        }
+
+        $body = [];
+        foreach ($scope as $stmt) {
+            if ($stmt->getStartFilePos() > $start) {
+                break;
+            }
+            if ($stmt instanceof Stmt\Use_ || $stmt instanceof Stmt\GroupUse) {
+                $body[] = self::copyImport($stmt);
+            }
+        }
+        // Php-parser resolves an attribute's name only within a declaration's
+        // attribute groups, so an attribute is held by a stand-in declaration.
+        $body[] = $root instanceof Attribute
+            ? new Stmt\Function_('_', ['attrGroups' => [new AttributeGroup([$root])]])
+            : new Stmt\Expression($root);
+        $this->annotator->annotate($namespace === null ? $body : [
+            new Stmt\Namespace_($namespace->name === null ? null : new Name($namespace->name->name), $body),
+        ]);
+
+        $root->setAttribute('parent', $this->nodeAtPosition->find(
+            $tree,
+            $start,
+            fn (Node $node) => $node instanceof Stmt || $node instanceof FunctionLike,
+        ));
+    }
+
+    /**
+     * A fresh copy, so annotating it leaves the document's own tree untouched.
+     */
+    private static function copyImport(Stmt\Use_|Stmt\GroupUse $import): Stmt\Use_|Stmt\GroupUse
+    {
+        $uses = array_map(
+            fn (UseItem $use) => new UseItem(new Name($use->name->name), $use->alias?->name, $use->type),
+            $import->uses,
+        );
+
+        return $import instanceof Stmt\GroupUse
+            ? new Stmt\GroupUse(new Name($import->prefix->name), $uses, $import->type)
+            : new Stmt\Use_($uses, $import->type);
     }
 
     /**
@@ -84,8 +151,12 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
      * (`$this->x->y->prefix`) reuses the instance path on the leaf `$var->`
      * segment: the source is a cursor-position primitive, not a chain typer.
      */
-    private static function synthesizeMemberAccess(string $lineText, int $lineStart, int $offset, int $line): ?Node
-    {
+    private static function synthesizeMemberAccess(
+        string $lineText,
+        int $lineStart,
+        int $offset,
+        int $line,
+    ): PropertyFetch|StaticPropertyFetch|null {
         // Static: ClasslikeName::prefix, excluding $var::.
         if (
             preg_match_all(
@@ -129,16 +200,14 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
 
     /**
      * `$memberInside` becomes the value of the trailing {@see Arg} so a walk
-     * up from the member-access still reaches the enclosing call. Class-like
-     * receivers get no `resolvedName`: `NameContext` sits in the Resolution
-     * layer, out of reach; a downstream reader fills it in.
+     * up from the member-access still reaches the enclosing call.
      */
     private static function synthesizeCall(
         string $content,
         int $offset,
         int $line,
         ?Node $memberInside,
-    ): ?Node {
+    ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
         $parenPos = self::findUnclosedParen($content, $offset);
         if ($parenPos === null) {
             return null;
@@ -473,10 +542,6 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             $name,
             self::posAttrs($varStart, $matchEnd, $line),
         );
-        // Inner children carry a parent so a downstream reader that walked the
-        // Identifier/Error → outer expression edge still finds the fetch. The
-        // outer node has no parent, so enclosing-class lookup falls onto the
-        // node's file position rather than a parent chain (RFC 1 §4.11).
         $currentReceiver->setAttribute('parent', $fetch);
         $name->setAttribute('parent', $fetch);
         return $fetch;
