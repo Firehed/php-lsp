@@ -141,6 +141,115 @@ final class AstTextAgreementTest extends TestCase
         ];
     }
 
+    /**
+     * The syntax-source contract: a node from any source sits in the same
+     * enclosing class-like and function-like, and carries the same resolved
+     * names, as the parsed node it stands in for.
+     */
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function callContextMarkers(): array
+    {
+        return array_map(fn (array $case) => [$case[0], $case[1]], self::callContextFixtures());
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function memberAccessMarkers(): array
+    {
+        return array_map(fn (array $case) => [$case[0], $case[1]], self::memberAccessFixtures());
+    }
+
+    #[DataProvider('callContextMarkers')]
+    public function testCallContextCursorMeetsTheTreeContract(string $fixture, string $marker): void
+    {
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $ast = $this->parser->parse($document);
+        $offset = $this->markerOffset($content, $marker);
+
+        $compositeCall = self::resolveToCallNode($this->parser->nodeAt($ast, $document, $offset) ?? self::fail());
+        $cursorCall = self::resolveToCallNode($this->cursorText->nodeAt($ast, $document, $offset) ?? self::fail());
+
+        self::assertNotNull($compositeCall, 'composite node must be inside a call expression');
+        self::assertNotNull($cursorCall, 'cursor-text node must be inside a call expression');
+        self::assertTreeContractAgrees($compositeCall, $cursorCall);
+    }
+
+    #[DataProvider('memberAccessMarkers')]
+    public function testMemberAccessCursorMeetsTheTreeContract(string $fixture, string $marker): void
+    {
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $ast = $this->parser->parse($document);
+        ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
+        $probe = max(0, $document->offsetAt($line, $character) - 1);
+
+        $compositeAccess = self::resolveToAccessNode($this->parser->nodeAt($ast, $document, $probe) ?? self::fail());
+        $cursorAccess = self::resolveToAccessNode($this->cursorText->nodeAt($ast, $document, $probe) ?? self::fail());
+
+        self::assertNotNull($compositeAccess, 'composite node must be inside a member-access expression');
+        self::assertNotNull($cursorAccess, 'cursor-text node must be inside a member-access expression');
+        self::assertTreeContractAgrees($compositeAccess, $cursorAccess);
+    }
+
+    private static function assertTreeContractAgrees(Node $parsed, Node $synthesized): void
+    {
+        self::assertSame(
+            self::describeEnclosing($parsed, Stmt\ClassLike::class),
+            self::describeEnclosing($synthesized, Stmt\ClassLike::class),
+            'the enclosing class-like must agree, found through parent links',
+        );
+        self::assertSame(
+            self::describeEnclosing($parsed, Node\FunctionLike::class),
+            self::describeEnclosing($synthesized, Node\FunctionLike::class),
+            'the enclosing function-like must agree, found through parent links',
+        );
+        self::assertSame(
+            self::describeNames($parsed),
+            self::describeNames($synthesized),
+            'names must be resolved the same way',
+        );
+    }
+
+    /**
+     * @param class-string<Node> $kind
+     */
+    private static function describeEnclosing(Node $node, string $kind): string
+    {
+        $current = $node->getAttribute('parent');
+        while ($current instanceof Node && !$current instanceof $kind) {
+            $current = $current->getAttribute('parent');
+        }
+        if (!$current instanceof Node) {
+            return '(none)';
+        }
+
+        return self::shortClass($current) . '@' . $current->getStartFilePos();
+    }
+
+    /**
+     * The name the node is called or accessed through: its class, its text,
+     * and the namespaced form name resolution records for a function name.
+     */
+    private static function describeNames(Node $node): string
+    {
+        $name = match (true) {
+            $node instanceof FuncCall, $node instanceof Attribute => $node->name,
+            $node instanceof New_, $node instanceof StaticCall, $node instanceof StaticPropertyFetch => $node->class,
+            default => null,
+        };
+        if (!$name instanceof Node\Name) {
+            return '(none)';
+        }
+        $namespaced = $name->getAttribute('namespacedName');
+
+        return self::shortClass($name) . '(' . $name->toString() . ')'
+            . ($namespaced instanceof Node\Name ? ' ns:' . $namespaced->toString() : '');
+    }
+
     private static function resolveToCallNode(Node $node): ?Node
     {
         while (
