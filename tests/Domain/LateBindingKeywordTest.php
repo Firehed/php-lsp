@@ -81,16 +81,7 @@ final class LateBindingKeywordTest extends TestCase
         self::assertNull(LateBindingKeyword::Self->resolveIn($class));
     }
 
-    public function testResolveInParentReadsExtendsResolvedName(): void
-    {
-        $extends = new Name('Base');
-        $extends->setAttribute('resolvedName', new Name('App\\Base'));
-        $class = new Stmt\Class_('Foo', ['extends' => $extends]);
-
-        self::assertSame('App\\Base', LateBindingKeyword::Parent->resolveIn($class));
-    }
-
-    public function testResolveInParentFallsBackToRawExtendsName(): void
+    public function testResolveInParentReadsTheExtendsName(): void
     {
         $class = new Stmt\Class_('Foo', ['extends' => new Name('App\\Base')]);
 

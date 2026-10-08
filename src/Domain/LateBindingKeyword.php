@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 
 /**
@@ -49,10 +48,8 @@ enum LateBindingKeyword: string
             if (!$enclosing instanceof Stmt\Class_ || $enclosing->extends === null) {
                 return null;
             }
-            $extends = $enclosing->extends;
-            $resolved = $extends->getAttribute('resolvedName');
             /** @var class-string */
-            return $resolved instanceof Name ? $resolved->toString() : $extends->toString();
+            return $enclosing->extends->toString();
         }
         if ($enclosing->name === null) {
             return null;
