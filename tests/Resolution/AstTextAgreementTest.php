@@ -138,6 +138,9 @@ final class AstTextAgreementTest extends TestCase
             'nullsafe method call' => [
                 'SignatureHelp.php', 'nullsafe_param', NullsafeMethodCall::class,
             ],
+            'attribute arguments' => [
+                'src/Completion/AttributeNamedArguments.php', 'attr_arg_empty', Attribute::class,
+            ],
         ];
     }
 
