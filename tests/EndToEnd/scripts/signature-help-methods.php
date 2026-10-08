@@ -58,6 +58,12 @@ return [
     'static static call' => $signatureHelp($child, 'static_sig', new Expectation\SignatureShows('staticMethod')),
     'self static call while typing' => $typeThenSignatureHelp($inProgress, 'typing', 'self::make(', $make),
     'static static call while typing' => $typeThenSignatureHelp($inProgress, 'typing', 'static::make(', $make),
+    'parent static call while typing' => $typeThenSignatureHelp(
+        'src/SignatureHelp/LateBindingCallInProgressChild.php',
+        'typing',
+        'parent::make(',
+        $make,
+    ),
     'incomplete code' => $signatureHelp(
         'src/IncompleteCode/SingleIncompleteSigHelp.php',
         'sig_this_call',
