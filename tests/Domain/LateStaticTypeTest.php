@@ -81,13 +81,6 @@ class LateStaticTypeTest extends TestCase
         self::assertSame($type->declaringClass, $resolved->name);
     }
 
-    public function testValueTypeIsNull(): void
-    {
-        $type = new LateStaticType(LateBindingKeyword::Static, ClasslikeName::fromFullyQualified(Traversable::class));
-
-        self::assertNull($type->valueType());
-    }
-
     public function testEqualsSameKeywordAndDeclaringClass(): void
     {
         $a = new LateStaticType(LateBindingKeyword::Static, ClasslikeName::fromFullyQualified(Traversable::class));

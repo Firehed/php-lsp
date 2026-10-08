@@ -42,11 +42,6 @@ final class LateStaticType implements TypeInterface
         };
     }
 
-    public function valueType(): ?TypeInterface
-    {
-        return null;
-    }
-
     public function equals(TypeInterface $other): bool
     {
         return $other instanceof self

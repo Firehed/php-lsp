@@ -96,38 +96,6 @@ class UnionTypeTest extends TestCase
         self::assertFalse($type->isNullable());
     }
 
-    public function testValueTypeAgreesWhenMembersAgree(): void
-    {
-        $value = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        $type = new UnionType([
-            new ClasslikeType(ClasslikeName::fromFullyQualified(\ArrayIterator::class), [$value]),
-            new PrimitiveType('array', [$value]),
-        ]);
-        $valueType = $type->valueType();
-        self::assertInstanceOf(ClasslikeType::class, $valueType);
-        self::assertSame(\stdClass::class, $valueType->name->qualifiedName->fullyQualifiedName());
-    }
-
-    public function testValueTypeIsNullWhenMembersDisagree(): void
-    {
-        $stdClass = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        $type = new UnionType([
-            new ClasslikeType(ClasslikeName::fromFullyQualified(\ArrayIterator::class), [$stdClass]),
-            new PrimitiveType('array', [new PrimitiveType('int')]),
-        ]);
-        self::assertNull($type->valueType());
-    }
-
-    public function testValueTypeIsNullWhenAnyMemberHasNone(): void
-    {
-        $stdClass = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        $type = new UnionType([
-            new ClasslikeType(ClasslikeName::fromFullyQualified(\ArrayIterator::class), [$stdClass]),
-            new PrimitiveType('array'),
-        ]);
-        self::assertNull($type->valueType());
-    }
-
     public function testEqualsSameMembersInOrder(): void
     {
         $stdClass = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));

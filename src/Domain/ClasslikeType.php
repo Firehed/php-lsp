@@ -62,9 +62,4 @@ final readonly class ClasslikeType implements TypeInterface
     {
         return $this;
     }
-
-    public function valueType(): ?TypeInterface
-    {
-        return $this->typeArguments[0] ?? null;
-    }
 }

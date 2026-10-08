@@ -60,11 +60,6 @@ final readonly class PrimitiveType implements TypeInterface
         return $this;
     }
 
-    public function valueType(): ?TypeInterface
-    {
-        return $this->typeArguments[0] ?? null;
-    }
-
     public function equals(TypeInterface $other): bool
     {
         if (!$other instanceof self) {

@@ -36,19 +36,6 @@ class ClasslikeTypeTest extends TestCase
         self::assertSame($type, $resolved, 'a concrete class-like type has nothing to resolve');
     }
 
-    public function testValueTypeIsNullWhenNoTypeArguments(): void
-    {
-        $type = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        self::assertNull($type->valueType(), 'no generics means no value type');
-    }
-
-    public function testValueTypeIsFirstTypeArgument(): void
-    {
-        $value = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        $type = new ClasslikeType(ClasslikeName::fromFullyQualified(\ArrayIterator::class), [$value]);
-        self::assertSame($value, $type->valueType(), 'the first type argument is the value type by convention');
-    }
-
     public function testEqualsTrue(): void
     {
         $a = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));

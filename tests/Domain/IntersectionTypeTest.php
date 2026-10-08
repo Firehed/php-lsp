@@ -49,36 +49,6 @@ class IntersectionTypeTest extends TestCase
         self::assertFalse($type->isNullable());
     }
 
-    public function testValueTypeAgreesWhenMembersAgree(): void
-    {
-        $value = self::classlike(\stdClass::class);
-        $type = new IntersectionType([
-            self::classlike(\ArrayIterator::class, [$value]),
-            self::classlike(\IteratorAggregate::class, [$value]),
-        ]);
-        $valueType = $type->valueType();
-        self::assertInstanceOf(ClasslikeType::class, $valueType);
-        self::assertSame(\stdClass::class, $valueType->name->qualifiedName->fullyQualifiedName());
-    }
-
-    public function testValueTypeIsNullWhenMembersDisagree(): void
-    {
-        $type = new IntersectionType([
-            self::classlike(\ArrayIterator::class, [self::classlike(\stdClass::class)]),
-            self::classlike(\IteratorAggregate::class, [self::classlike(\Iterator::class)]),
-        ]);
-        self::assertNull($type->valueType());
-    }
-
-    public function testValueTypeIsNullWhenAnyMemberHasNone(): void
-    {
-        $type = new IntersectionType([
-            self::classlike(\ArrayIterator::class, [self::classlike(\stdClass::class)]),
-            self::classlike(\IteratorAggregate::class),
-        ]);
-        self::assertNull($type->valueType());
-    }
-
     public function testEqualsSameMembersInOrder(): void
     {
         $a = new IntersectionType([self::classlike(\Iterator::class), self::classlike(\Countable::class)]);

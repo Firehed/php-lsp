@@ -26,7 +26,5 @@ interface TypeInterface extends FormattableInterface
      */
     public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): TypeInterface;
 
-    public function valueType(): ?TypeInterface;
-
     public function equals(TypeInterface $other): bool;
 }
