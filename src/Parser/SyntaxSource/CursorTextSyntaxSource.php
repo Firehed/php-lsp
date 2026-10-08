@@ -114,16 +114,18 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
                 $body[] = self::copyImport($stmt);
             }
         }
-        // Php-parser resolves an attribute's name only within a declaration's
-        // attribute groups, so an attribute is held by a stand-in declaration.
-        $body[] = $root instanceof Attribute
-            ? new Stmt\Function_('_', ['attrGroups' => [new AttributeGroup([$root])]])
-            : new Stmt\Expression($root);
+        // The root sits in the node that holds its kind in a parsed tree. Php-parser
+        // resolves an attribute's name only within a declaration's attribute
+        // groups, so for annotation the group is held by a stand-in declaration.
+        $holder = $root instanceof Attribute ? new AttributeGroup([$root]) : new Stmt\Expression($root);
+        $body[] = $holder instanceof AttributeGroup
+            ? new Stmt\Function_('_', ['attrGroups' => [$holder]])
+            : $holder;
         $this->annotator->annotate($namespace === null ? $body : [
             new Stmt\Namespace_($namespace->name === null ? null : new Name($namespace->name->name), $body),
         ]);
 
-        $root->setAttribute('parent', $this->nodeAtPosition->find(
+        $holder->setAttribute('parent', $this->nodeAtPosition->find(
             $tree,
             $start,
             fn (Node $node) => $node instanceof Stmt || $node instanceof FunctionLike,
