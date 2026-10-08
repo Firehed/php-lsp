@@ -433,13 +433,6 @@ final class AstTextAgreementTest extends TestCase
         return $pos === false ? $class : substr($class, $pos + 1);
     }
 
-    private function markerOffset(string $content, string $marker): int
-    {
-        $pos = strpos($content, '/*|' . $marker . '*/');
-        self::assertNotFalse($pos, "Marker {$marker} not found");
-        return $pos;
-    }
-
     /**
      * Producer agreement: the skeleton and the parsed tree describe
      * the same file the same way, so a downstream reader that switches trees

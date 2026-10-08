@@ -363,14 +363,6 @@ class CursorTextSyntaxSourceTest extends TestCase
         return $call;
     }
 
-    private function markerOffset(string $content, string $marker): int
-    {
-        $offset = strpos($content, '/*|' . $marker . '*/');
-        self::assertNotFalse($offset, "marker {$marker} is in the fixture");
-
-        return $offset;
-    }
-
     private static function synthesizeCallAtCursor(string $content): ?Node
     {
         $source = new CursorTextSyntaxSource();
