@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parity;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\MemberKind;
+use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
@@ -82,8 +84,12 @@ final class TypeGraphParityTest extends TestCase
     public function testPublicMethodsMatchRuntime(string $fqcn): void
     {
         $resolved = array_map(
-            fn ($method) => $method->name->name,
-            $this->resolver->getMethods(ClasslikeName::fromFullyQualified($fqcn), Visibility::Public),
+            fn ($method) => $method->getName()->name,
+            $this->resolver->getMembersOfKind(
+                ClasslikeName::fromFullyQualified($fqcn),
+                MemberKind::Method,
+                Visibility::Public,
+            ),
         );
 
         self::assertSame(
@@ -105,8 +111,12 @@ final class TypeGraphParityTest extends TestCase
         );
 
         $resolved = array_map(
-            fn ($property) => $property->name->name,
-            $this->resolver->getProperties(ClasslikeName::fromFullyQualified($fqcn), Visibility::Public),
+            fn ($property) => $property->getName()->name,
+            $this->resolver->getMembersOfKind(
+                ClasslikeName::fromFullyQualified($fqcn),
+                MemberKind::Property,
+                Visibility::Public,
+            ),
         );
 
         self::assertSame(
@@ -133,12 +143,20 @@ final class TypeGraphParityTest extends TestCase
         // domain here splits ConstantInfo from EnumCaseInfo, so parity is
         // asserted against the union of both.
         $resolved = array_map(
-            fn ($constant) => $constant->name->name,
-            $this->resolver->getConstants(ClasslikeName::fromFullyQualified($fqcn), Visibility::Public),
+            fn ($constant) => $constant->getName()->name,
+            $this->resolver->getMembersOfKind(
+                ClasslikeName::fromFullyQualified($fqcn),
+                MemberKind::Constant,
+                Visibility::Public,
+            ),
         );
         $resolved = array_merge($resolved, array_map(
-            fn ($case) => $case->name->name,
-            $this->resolver->getEnumCases(ClasslikeName::fromFullyQualified($fqcn)),
+            fn ($case) => $case->getName()->name,
+            $this->resolver->getMembersOfKind(
+                ClasslikeName::fromFullyQualified($fqcn),
+                MemberKind::EnumCase,
+                Visibility::Public,
+            ),
         ));
 
         self::assertSame(
@@ -204,10 +222,14 @@ final class TypeGraphParityTest extends TestCase
         string $method,
         string $expectedTrait,
     ): void {
-        $methods = $this->resolver->getMethods(ClasslikeName::fromFullyQualified($fqcn), Visibility::Public);
+        $methods = $this->resolver->getMembersOfKind(
+            ClasslikeName::fromFullyQualified($fqcn),
+            MemberKind::Method,
+            Visibility::Public,
+        );
         $conflicting = null;
         foreach ($methods as $candidate) {
-            if ($candidate->name->name === $method) {
+            if ($candidate->getName()->name === $method) {
                 $conflicting = $candidate;
                 break;
             }
@@ -251,19 +273,20 @@ final class TypeGraphParityTest extends TestCase
 
     public function testAliasReplacesAnAlreadyWalkedInheritedMethod(): void
     {
-        $methods = $this->resolver->getMethods(
+        $methods = $this->resolver->getMembersOfKind(
             ClasslikeName::fromFullyQualified('Fixtures\Hierarchy\TraitAliasCollidingUser'),
+            MemberKind::Method,
             Visibility::Public,
         );
         $collision = null;
         foreach ($methods as $candidate) {
-            if ($candidate->name->name === 'inheritedMethod') {
+            if ($candidate->getName()->name === 'inheritedMethod') {
                 $collision = $candidate;
                 break;
             }
         }
 
-        self::assertNotNull($collision, 'the aliased method must appear exactly once');
+        self::assertInstanceOf(MethodInfo::class, $collision, 'the aliased method must appear exactly once');
         self::assertSame(
             'Fixtures\Hierarchy\TraitAliasCollidingUser',
             $collision->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
