@@ -142,6 +142,21 @@ final class AstTextAgreementTest extends TestCase
             'attribute arguments' => [
                 'src/Completion/AttributeNamedArguments.php', 'attr_arg_empty', Attribute::class,
             ],
+            'imported function' => [
+                'src/Resolution/CursorTextResolution.php', 'imported_function', FuncCall::class,
+            ],
+            'qualified class through an import' => [
+                'src/Resolution/CursorTextResolution.php', 'qualified_static', StaticCall::class,
+            ],
+            'qualified function through an import' => [
+                'src/Resolution/CursorTextResolution.php', 'qualified_function', FuncCall::class,
+            ],
+            'namespace-relative class' => [
+                'src/Resolution/CursorTextResolution.php', 'relative_static', StaticCall::class,
+            ],
+            'namespace-relative function' => [
+                'src/Resolution/CursorTextResolution.php', 'relative_function', FuncCall::class,
+            ],
         ];
     }
 

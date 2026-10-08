@@ -293,6 +293,27 @@ class CursorTextSyntaxSourceTest extends TestCase
                 'namespaced_function',
                 'Name(helper) ns:Fixtures\Resolution\helper',
             ],
+            'imported function' => [$fixture, 'imported_function', 'FullyQualified(Fixtures\Utility\formatName)'],
+            'qualified class through an import' => [
+                $fixture,
+                'qualified_static',
+                'FullyQualified(Fixtures\Domain\User)',
+            ],
+            'qualified function through an import' => [
+                $fixture,
+                'qualified_function',
+                'FullyQualified(Fixtures\Domain\helper)',
+            ],
+            'namespace-relative class' => [
+                $fixture,
+                'relative_static',
+                'FullyQualified(Fixtures\Resolution\CursorTextResolution)',
+            ],
+            'namespace-relative function' => [
+                $fixture,
+                'relative_function',
+                'FullyQualified(Fixtures\Resolution\helper)',
+            ],
             'import outside any namespace' => [
                 'SignatureHelp.php',
                 'constructor',
