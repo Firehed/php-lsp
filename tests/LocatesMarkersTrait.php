@@ -163,11 +163,7 @@ trait LocatesMarkersTrait
      */
     private function splitAtCursor(string $content, string $cursorName): array
     {
-        $marker = "/*|{$cursorName}*/";
-        $pos = strpos($content, $marker);
-        assert($pos !== false, "Cursor marker not found: $cursorName");
-
-        $beforeMarker = substr($content, 0, $pos);
+        $beforeMarker = substr($content, 0, $this->markerOffset($content, $cursorName));
         $lines = explode("\n", $beforeMarker);
         $line = count($lines) - 1;
 
