@@ -16,8 +16,8 @@ use PhpParser\ParserFactory;
  * The {@see SyntaxSourceInterface} backed by php-parser: the one class that names
  * {@see \PhpParser\Parser}. Recovers from partial or invalid input through the
  * error-collecting handler, and hands the resulting tree to {@see TreeAnnotator}
- * so `parent`, `resolvedName`, and `namespacedName` are set the same way every
- * other tree-producing source has them set.
+ * so parent links and resolved names are set the same way every other
+ * tree-producing source has them set.
  */
 final class PhpParserSyntaxSource implements SyntaxSourceInterface
 {

@@ -17,8 +17,9 @@ use PhpParser\NodeVisitor\ParentConnectingVisitor;
  *
  * A skeleton tree ({@see SyntaxSource\SkeletonSyntaxSource})
  * is annotated by the same code as a parsed one, so a downstream
- * reader that expects `parent`, `resolvedName`, or `namespacedName` finds
- * them regardless of which source produced the tree.
+ * reader finds the parent links and resolved names
+ * {@see SyntaxSource\SyntaxSourceInterface} promises regardless of which
+ * source produced the tree.
  */
 final class TreeAnnotator
 {
