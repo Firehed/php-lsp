@@ -6,6 +6,9 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
@@ -18,12 +21,16 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Name\FullyQualified;
+use PhpParser\Node\Stmt;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CursorTextSyntaxSource::class)]
 class CursorTextSyntaxSourceTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     public function testParseYieldsAnEmptyTree(): void
     {
         $source = new CursorTextSyntaxSource();
@@ -268,6 +275,100 @@ class CursorTextSyntaxSourceTest extends TestCase
             $arg->value,
             'the value is a placeholder Variable when the arg carries no expression',
         );
+    }
+
+    /**
+     * @return array<string, array{string, string, string}>
+     */
+    public static function resolvedNames(): array
+    {
+        $fixture = 'src/Resolution/CursorTextResolution.php';
+        return [
+            'aliased import, static call' => [$fixture, 'aliased_static', 'FullyQualified(Fixtures\Domain\User)'],
+            'group import, static call' => [$fixture, 'group_static', 'FullyQualified(Fixtures\Enum\Priority)'],
+            'aliased import, new' => [$fixture, 'aliased_new', 'FullyQualified(Fixtures\Domain\User)'],
+            'aliased import, attribute' => [$fixture, 'attribute', 'FullyQualified(Fixtures\Domain\User)'],
+            'unqualified function in a namespace' => [
+                $fixture,
+                'namespaced_function',
+                'Name(helper) ns:Fixtures\Resolution\helper',
+            ],
+            'import outside any namespace' => [
+                'SignatureHelp.php',
+                'constructor',
+                'FullyQualified(Fixtures\Domain\User)',
+            ],
+        ];
+    }
+
+    #[DataProvider('resolvedNames')]
+    public function testNamesResolveAgainstTheImportsInEffect(string $fixture, string $marker, string $expected): void
+    {
+        $call = $this->callAtMarker($fixture, $marker);
+
+        $name = match (true) {
+            $call instanceof FuncCall, $call instanceof Attribute => $call->name,
+            $call instanceof New_, $call instanceof StaticCall => $call->class,
+            default => null,
+        };
+        self::assertInstanceOf(Node\Name::class, $name);
+        $namespaced = $name->getAttribute('namespacedName');
+        self::assertSame(
+            $expected,
+            (new \ReflectionClass($name))->getShortName() . '(' . $name->toString() . ')'
+                . ($namespaced instanceof Node\Name ? ' ns:' . $namespaced->toString() : ''),
+            'the name resolves the way the parser resolves it',
+        );
+    }
+
+    public function testTheSynthesizedNodeIsLinkedUnderItsEnclosingMethod(): void
+    {
+        $call = $this->callAtMarker('src/Resolution/CursorTextResolution.php', 'aliased_static');
+
+        $enclosing = $call->getAttribute('parent');
+        while ($enclosing instanceof Node && !$enclosing instanceof Stmt\ClassMethod) {
+            $enclosing = $enclosing->getAttribute('parent');
+        }
+        self::assertInstanceOf(Stmt\ClassMethod::class, $enclosing, 'parent links reach the enclosing method');
+        self::assertSame('run', $enclosing->name->toString());
+    }
+
+    public function testTheDocumentTreeIsLeftUntouched(): void
+    {
+        $fixture = 'src/Resolution/CursorTextResolution.php';
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $tree = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document);
+        $namespace = $tree[1];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $import = $namespace->stmts[0];
+        self::assertInstanceOf(Stmt\Use_::class, $import);
+
+        (new CursorTextSyntaxSource())->nodeAt($tree, $document, $this->markerOffset($content, 'aliased_static'));
+
+        self::assertSame($namespace, $import->getAttribute('parent'), 'the document\'s imports keep their own parents');
+    }
+
+    private function callAtMarker(string $fixture, string $marker): Node
+    {
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $tree = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document);
+
+        $call = self::resolveToCall(
+            (new CursorTextSyntaxSource())->nodeAt($tree, $document, $this->markerOffset($content, $marker)),
+        );
+        self::assertNotNull($call, 'a call is synthesized at the marker');
+
+        return $call;
+    }
+
+    private function markerOffset(string $content, string $marker): int
+    {
+        $offset = strpos($content, '/*|' . $marker . '*/');
+        self::assertNotFalse($offset, "marker {$marker} is in the fixture");
+
+        return $offset;
     }
 
     private static function synthesizeCallAtCursor(string $content): ?Node
