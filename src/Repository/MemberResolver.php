@@ -77,50 +77,6 @@ final class MemberResolver implements MemberResolverInterface
     }
 
     /**
-     * @return list<ClasslikeConstantInfo>
-     */
-    public function getConstants(ClasslikeName $class, Visibility $minVisibility): array
-    {
-        return $this->collectMembers($class, MemberKind::Constant, $minVisibility, MemberFilter::All);
-    }
-
-    /**
-     * @return list<EnumCaseInfo>
-     */
-    public function getEnumCases(ClasslikeName $class): array
-    {
-        return $this->collectMembers($class, MemberKind::EnumCase, Visibility::Public, MemberFilter::All);
-    }
-
-    /**
-     * @return list<MethodInfo>
-     */
-    public function getMethods(
-        ClasslikeName $class,
-        Visibility $minVisibility,
-        MemberFilter $filter = MemberFilter::All,
-    ): array {
-        $origin = $this->source->lookupClassLike($class);
-        if ($origin === null) {
-            return [];
-        }
-        $methods = $this->collectMembers($class, MemberKind::Method, $minVisibility, $filter, $origin);
-
-        return $this->applyMethodAliases($methods, $origin, $minVisibility, $filter);
-    }
-
-    /**
-     * @return list<PropertyInfo>
-     */
-    public function getProperties(
-        ClasslikeName $class,
-        Visibility $minVisibility,
-        MemberFilter $filter = MemberFilter::All,
-    ): array {
-        return $this->collectMembers($class, MemberKind::Property, $minVisibility, $filter);
-    }
-
-    /**
      * Every member of the given kind visible from $class. Kind-parameterized so the
      * caller can iterate over kinds without a per-kind method for every one, which
      * is how member completion collapses to one loop over MemberKind cases.

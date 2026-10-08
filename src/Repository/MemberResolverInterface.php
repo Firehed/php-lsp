@@ -43,39 +43,11 @@ interface MemberResolverInterface
     ): ?PropertyInfo;
 
     /**
-     * @return list<ClasslikeConstantInfo>
-     */
-    public function getConstants(ClasslikeName $class, Visibility $minVisibility): array;
-
-    /**
-     * @return list<EnumCaseInfo>
-     */
-    public function getEnumCases(ClasslikeName $class): array;
-
-    /**
      * @return list<MemberInfoInterface>
      */
     public function getMembersOfKind(
         ClasslikeName $class,
         MemberKind $kind,
-        Visibility $minVisibility,
-        MemberFilter $filter = MemberFilter::All,
-    ): array;
-
-    /**
-     * @return list<MethodInfo>
-     */
-    public function getMethods(
-        ClasslikeName $class,
-        Visibility $minVisibility,
-        MemberFilter $filter = MemberFilter::All,
-    ): array;
-
-    /**
-     * @return list<PropertyInfo>
-     */
-    public function getProperties(
-        ClasslikeName $class,
         Visibility $minVisibility,
         MemberFilter $filter = MemberFilter::All,
     ): array;
