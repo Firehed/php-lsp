@@ -99,6 +99,15 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testACaughtVariableTakesTheCaughtType(): void
+    {
+        self::assertEquals(
+            new ClasslikeType(self::className(\Throwable::class)),
+            $this->resolveVariableAt(self::BINDINGS, 'catch_usage')?->getType(),
+            'a caught variable is typed by its catch clause',
+        );
+    }
+
     public function testConstantOnAVariableClassIsUnresolved(): void
     {
         self::assertNull(
