@@ -83,18 +83,9 @@ final class TypeGraphParityTest extends TestCase
     #[DataProvider('hierarchyTypes')]
     public function testPublicMethodsMatchRuntime(string $fqcn): void
     {
-        $resolved = array_map(
-            fn ($method) => $method->getName()->name,
-            $this->resolver->getMembersOfKind(
-                ClasslikeName::fromFullyQualified($fqcn),
-                MemberKind::Method,
-                Visibility::Public,
-            ),
-        );
-
         self::assertSame(
             self::normalize(get_class_methods($fqcn)),
-            self::normalize($resolved),
+            self::normalize($this->publicMemberNames($fqcn, MemberKind::Method)),
             'resolved public methods should match the methods available at runtime',
         );
     }
@@ -110,18 +101,9 @@ final class TypeGraphParityTest extends TestCase
             (new ReflectionClass($fqcn))->getProperties(ReflectionProperty::IS_PUBLIC),
         );
 
-        $resolved = array_map(
-            fn ($property) => $property->getName()->name,
-            $this->resolver->getMembersOfKind(
-                ClasslikeName::fromFullyQualified($fqcn),
-                MemberKind::Property,
-                Visibility::Public,
-            ),
-        );
-
         self::assertSame(
             self::normalize($expected),
-            self::normalize($resolved),
+            self::normalize($this->publicMemberNames($fqcn, MemberKind::Property)),
             'resolved public properties should match the properties available at runtime',
         );
     }
@@ -142,22 +124,10 @@ final class TypeGraphParityTest extends TestCase
         // PHP's reflection treats an enum case as a public constant; the
         // domain here splits ConstantInfo from EnumCaseInfo, so parity is
         // asserted against the union of both.
-        $resolved = array_map(
-            fn ($constant) => $constant->getName()->name,
-            $this->resolver->getMembersOfKind(
-                ClasslikeName::fromFullyQualified($fqcn),
-                MemberKind::Constant,
-                Visibility::Public,
-            ),
+        $resolved = array_merge(
+            $this->publicMemberNames($fqcn, MemberKind::Constant),
+            $this->publicMemberNames($fqcn, MemberKind::EnumCase),
         );
-        $resolved = array_merge($resolved, array_map(
-            fn ($case) => $case->getName()->name,
-            $this->resolver->getMembersOfKind(
-                ClasslikeName::fromFullyQualified($fqcn),
-                MemberKind::EnumCase,
-                Visibility::Public,
-            ),
-        ));
 
         self::assertSame(
             self::normalize($expected),
@@ -297,6 +267,18 @@ final class TypeGraphParityTest extends TestCase
             'Fixtures\Hierarchy\ConflictingTraitA',
             $collision->aliasedFrom->owner->qualifiedName->fullyQualifiedName(),
             'aliasedFrom carries the trait the alias replaced with',
+        );
+    }
+
+    /**
+     * @param class-string $fqcn
+     * @return list<string>
+     */
+    private function publicMemberNames(string $fqcn, MemberKind $kind): array
+    {
+        return array_map(
+            fn ($member) => $member->getName()->name,
+            $this->resolver->getMembersOfKind(ClasslikeName::fromFullyQualified($fqcn), $kind, Visibility::Public),
         );
     }
 
