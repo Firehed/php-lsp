@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MemberFilter;
+use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -22,6 +23,7 @@ use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Tests\ProvidesMemberKindsTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -29,6 +31,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(MemberResolver::class)]
 final class MemberResolverTest extends TestCase
 {
+    use ProvidesMemberKindsTrait;
+
     public function testFindMethodReturnsNullForUnknownClass(): void
     {
         $repo = self::createStub(SymbolSourceInterface::class);
@@ -87,54 +91,6 @@ final class MemberResolverTest extends TestCase
         );
 
         self::assertNull($result);
-    }
-
-    public function testGetMethodsReturnsEmptyForUnknownClass(): void
-    {
-        $repo = self::createStub(SymbolSourceInterface::class);
-        $repo->method('lookupClassLike')->willReturn(null);
-
-        $resolver = new MemberResolver($repo);
-
-        $result = $resolver->getMethods(ClasslikeName::fromFullyQualified(self::fakeClass()), Visibility::Public);
-
-        self::assertSame([], $result);
-    }
-
-    public function testGetPropertiesReturnsEmptyForUnknownClass(): void
-    {
-        $repo = self::createStub(SymbolSourceInterface::class);
-        $repo->method('lookupClassLike')->willReturn(null);
-
-        $resolver = new MemberResolver($repo);
-
-        $result = $resolver->getProperties(ClasslikeName::fromFullyQualified(self::fakeClass()), Visibility::Public);
-
-        self::assertSame([], $result);
-    }
-
-    public function testGetConstantsReturnsEmptyForUnknownClass(): void
-    {
-        $repo = self::createStub(SymbolSourceInterface::class);
-        $repo->method('lookupClassLike')->willReturn(null);
-
-        $resolver = new MemberResolver($repo);
-
-        $result = $resolver->getConstants(ClasslikeName::fromFullyQualified(self::fakeClass()), Visibility::Public);
-
-        self::assertSame([], $result);
-    }
-
-    public function testGetEnumCasesReturnsEmptyForUnknownClass(): void
-    {
-        $repo = self::createStub(SymbolSourceInterface::class);
-        $repo->method('lookupClassLike')->willReturn(null);
-
-        $resolver = new MemberResolver($repo);
-
-        $result = $resolver->getEnumCases(ClasslikeName::fromFullyQualified(self::fakeClass()));
-
-        self::assertSame([], $result);
     }
 
     public function testFindMethodReturnsMethodFromClass(): void
@@ -449,7 +405,7 @@ final class MemberResolverTest extends TestCase
         self::assertNull($result);
     }
 
-    public function testGetMethodsReturnsAllAccessibleMethods(): void
+    public function testListedMethodsReturnsAllAccessibleMethods(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -480,7 +436,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getMethods($childName, Visibility::Private);
+        $result = $resolver->getMembersOfKind($childName, MemberKind::Method, Visibility::Private);
 
         self::assertCount(3, $result);
         self::assertContains($childMethod, $result);
@@ -489,7 +445,7 @@ final class MemberResolverTest extends TestCase
         self::assertNotContains($parentPrivate, $result);
     }
 
-    public function testGetMethodsIncludesMethodsOfExtendedInterfaces(): void
+    public function testListedMethodsIncludesMethodsOfExtendedInterfaces(): void
     {
         $messageName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $requestName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -515,12 +471,12 @@ final class MemberResolverTest extends TestCase
 
         self::assertSame(
             [$getMethod, $getHeaders],
-            (new MemberResolver($repo))->getMethods($requestName, Visibility::Public),
+            (new MemberResolver($repo))->getMembersOfKind($requestName, MemberKind::Method, Visibility::Public),
             'an interface offers its own methods and those of every interface it extends',
         );
     }
 
-    public function testGetMethodsFiltersStatic(): void
+    public function testListedMethodsFiltersStatic(): void
     {
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
         $instanceMethod = $this->createMethodInfo('instance', Visibility::Public, $className, isStatic: false);
@@ -536,14 +492,24 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $staticOnly = $resolver->getMethods($className, Visibility::Public, MemberFilter::Static);
-        $instanceOnly = $resolver->getMethods($className, Visibility::Public, MemberFilter::Instance);
+        $staticOnly = $resolver->getMembersOfKind(
+            $className,
+            MemberKind::Method,
+            Visibility::Public,
+            MemberFilter::Static,
+        );
+        $instanceOnly = $resolver->getMembersOfKind(
+            $className,
+            MemberKind::Method,
+            Visibility::Public,
+            MemberFilter::Instance,
+        );
 
         self::assertSame([$staticMethod], $staticOnly);
         self::assertSame([$instanceMethod], $instanceOnly);
     }
 
-    public function testGetPropertiesReturnsAllAccessibleProperties(): void
+    public function testListedPropertiesReturnsAllAccessibleProperties(): void
     {
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
         $prop1 = $this->createPropertyInfo('prop1', Visibility::Public, $className);
@@ -559,12 +525,12 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getProperties($className, Visibility::Protected);
+        $result = $resolver->getMembersOfKind($className, MemberKind::Property, Visibility::Protected);
 
         self::assertCount(2, $result);
     }
 
-    public function testGetPropertiesIncludesParentProperties(): void
+    public function testListedPropertiesIncludesParentProperties(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -595,7 +561,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getProperties($childName, Visibility::Private);
+        $result = $resolver->getMembersOfKind($childName, MemberKind::Property, Visibility::Private);
 
         self::assertCount(3, $result);
         self::assertContains($childProp, $result);
@@ -604,7 +570,7 @@ final class MemberResolverTest extends TestCase
         self::assertNotContains($parentPrivate, $result);
     }
 
-    public function testGetPropertiesFiltersStatic(): void
+    public function testListedPropertiesFiltersStatic(): void
     {
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
         $instanceProp = $this->createPropertyInfo('instance', Visibility::Public, $className, isStatic: false);
@@ -620,14 +586,24 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $staticOnly = $resolver->getProperties($className, Visibility::Public, MemberFilter::Static);
-        $instanceOnly = $resolver->getProperties($className, Visibility::Public, MemberFilter::Instance);
+        $staticOnly = $resolver->getMembersOfKind(
+            $className,
+            MemberKind::Property,
+            Visibility::Public,
+            MemberFilter::Static,
+        );
+        $instanceOnly = $resolver->getMembersOfKind(
+            $className,
+            MemberKind::Property,
+            Visibility::Public,
+            MemberFilter::Instance,
+        );
 
         self::assertSame([$staticProp], $staticOnly);
         self::assertSame([$instanceProp], $instanceOnly);
     }
 
-    public function testGetPropertiesIncludesTraitProperties(): void
+    public function testListedPropertiesIncludesTraitProperties(): void
     {
         $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -655,14 +631,14 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getProperties($className, Visibility::Public);
+        $result = $resolver->getMembersOfKind($className, MemberKind::Property, Visibility::Public);
 
         self::assertCount(2, $result);
         self::assertContains($classProp, $result);
         self::assertContains($traitProp, $result);
     }
 
-    public function testGetConstantsReturnsAllAccessibleConstants(): void
+    public function testListedConstantsReturnsAllAccessibleConstants(): void
     {
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
         $const1 = $this->createConstantInfo('CONST1', Visibility::Public, $className);
@@ -674,12 +650,12 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getConstants($className, Visibility::Public);
+        $result = $resolver->getMembersOfKind($className, MemberKind::Constant, Visibility::Public);
 
         self::assertSame([$const1], $result);
     }
 
-    public function testGetConstantsIncludesParentConstants(): void
+    public function testListedConstantsIncludesParentConstants(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -703,14 +679,14 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getConstants($childName, Visibility::Public);
+        $result = $resolver->getMembersOfKind($childName, MemberKind::Constant, Visibility::Public);
 
         self::assertCount(2, $result);
         self::assertContains($childConst, $result);
         self::assertContains($parentConst, $result);
     }
 
-    public function testGetConstantsIncludesTraitConstants(): void
+    public function testListedConstantsIncludesTraitConstants(): void
     {
         $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -738,14 +714,14 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getConstants($className, Visibility::Public);
+        $result = $resolver->getMembersOfKind($className, MemberKind::Constant, Visibility::Public);
 
         self::assertCount(2, $result);
         self::assertContains($classConst, $result);
         self::assertContains($traitConst, $result);
     }
 
-    public function testGetEnumCasesReturnsAllCases(): void
+    public function testListedEnumCasesReturnsAllCases(): void
     {
         $enumName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $case1 = $this->createEnumCaseInfo('Case1', $enumName);
@@ -761,7 +737,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getEnumCases($enumName);
+        $result = $resolver->getMembersOfKind($enumName, MemberKind::EnumCase, Visibility::Public);
 
         self::assertCount(2, $result);
         self::assertContains($case1, $result);
@@ -834,7 +810,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getMethods($childName, Visibility::Public);
+        $result = $resolver->getMembersOfKind($childName, MemberKind::Method, Visibility::Public);
 
         self::assertCount(1, $result);
     }
@@ -952,7 +928,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame($method2, $result);
     }
 
-    public function testGetConstantsFiltersInaccessibleConstants(): void
+    public function testListedConstantsFiltersInaccessibleConstants(): void
     {
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
         $publicConst = $this->createConstantInfo('PUBLIC', Visibility::Public, $className);
@@ -968,12 +944,12 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getConstants($className, Visibility::Public);
+        $result = $resolver->getMembersOfKind($className, MemberKind::Constant, Visibility::Public);
 
         self::assertSame([$publicConst], $result);
     }
 
-    public function testGetMethodsChildOverridesParent(): void
+    public function testListedMethodsChildOverridesParent(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -995,13 +971,13 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getMethods($childName, Visibility::Public);
+        $result = $resolver->getMembersOfKind($childName, MemberKind::Method, Visibility::Public);
 
         self::assertCount(1, $result);
         self::assertSame($childMethod, $result[0]);
     }
 
-    public function testGetPropertiesChildOverridesParent(): void
+    public function testListedPropertiesChildOverridesParent(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1023,13 +999,13 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getProperties($childName, Visibility::Public);
+        $result = $resolver->getMembersOfKind($childName, MemberKind::Property, Visibility::Public);
 
         self::assertCount(1, $result);
         self::assertSame($childProp, $result[0]);
     }
 
-    public function testGetConstantsChildOverridesParent(): void
+    public function testListedConstantsChildOverridesParent(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1051,13 +1027,13 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getConstants($childName, Visibility::Public);
+        $result = $resolver->getMembersOfKind($childName, MemberKind::Constant, Visibility::Public);
 
         self::assertCount(1, $result);
         self::assertSame($childConst, $result[0]);
     }
 
-    public function testGetPropertiesDiamondInheritance(): void
+    public function testListedPropertiesDiamondInheritance(): void
     {
         $baseTrait = ClasslikeName::fromFullyQualified(self::fakeClass());
         $trait1 = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1086,12 +1062,12 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getProperties($childName, Visibility::Public);
+        $result = $resolver->getMembersOfKind($childName, MemberKind::Property, Visibility::Public);
 
         self::assertCount(1, $result);
     }
 
-    public function testGetConstantsDiamondInheritance(): void
+    public function testListedConstantsDiamondInheritance(): void
     {
         $baseTrait = ClasslikeName::fromFullyQualified(self::fakeClass());
         $trait1 = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1120,7 +1096,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getConstants($childName, Visibility::Public);
+        $result = $resolver->getMembersOfKind($childName, MemberKind::Constant, Visibility::Public);
 
         self::assertCount(1, $result);
     }
@@ -1214,7 +1190,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame($interfaceConst, $result);
     }
 
-    public function testGetConstantsIncludesInterfaceConstants(): void
+    public function testListedConstantsIncludesInterfaceConstants(): void
     {
         $interfaceName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1244,7 +1220,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getConstants($className, Visibility::Public);
+        $result = $resolver->getMembersOfKind($className, MemberKind::Constant, Visibility::Public);
 
         self::assertCount(2, $result);
         self::assertContains($classConst, $result);
@@ -1267,7 +1243,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame($methodInfo, $result);
     }
 
-    public function testGetMethodsTreatsCaseVariedOverrideAsOneMethod(): void
+    public function testListedMethodsTreatsCaseVariedOverrideAsOneMethod(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1292,7 +1268,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getMethods($childName, Visibility::Public);
+        $result = $resolver->getMembersOfKind($childName, MemberKind::Method, Visibility::Public);
 
         self::assertSame([$childMethod], $result);
     }
@@ -1343,7 +1319,7 @@ final class MemberResolverTest extends TestCase
         self::assertNull($resolver->findEnumCase($enumName, 'DRAFT'));
     }
 
-    public function testGetConstantsKeepsCaseVariedNamesApart(): void
+    public function testListedConstantsKeepsCaseVariedNamesApart(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1368,7 +1344,7 @@ final class MemberResolverTest extends TestCase
 
         $resolver = new MemberResolver($repo);
 
-        $result = $resolver->getConstants($childName, Visibility::Public);
+        $result = $resolver->getMembersOfKind($childName, MemberKind::Constant, Visibility::Public);
 
         self::assertCount(2, $result);
         self::assertContains($parentConstant, $result);
@@ -1480,7 +1456,7 @@ final class MemberResolverTest extends TestCase
         );
         self::assertSame(
             [],
-            $resolver->getMethods($className, Visibility::Public),
+            $resolver->getMembersOfKind($className, MemberKind::Method, Visibility::Public),
             'the missing-source alias must not appear in the enumerated methods either',
         );
     }
@@ -1526,6 +1502,81 @@ final class MemberResolverTest extends TestCase
         self::assertNull(
             $resolver->findMethod($traitName, 'exposedName', Visibility::Public),
             'only the using class declares the alias, so the trait itself has no such method',
+        );
+    }
+
+    public function testListedMethodsIncludeANamedAlias(): void
+    {
+        $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $className = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $helper = $this->createMethodInfo('helper', Visibility::Public, $traitName);
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo($traitName, ClassKind::Trait_, methods: ['helper' => $helper]),
+            $this->createClassInfo(
+                $className,
+                traits: [$traitName],
+                traitAliases: [new TraitAlias(
+                    trait: $traitName,
+                    method: 'helper',
+                    newName: 'exposedName',
+                    newVisibility: null,
+                )],
+            ),
+        ));
+
+        $listed = $resolver->getMembersOfKind($className, MemberKind::Method, Visibility::Public);
+
+        self::assertCount(2, $listed, 'the trait method is listed under its own name and its alias');
+        self::assertSame($helper, $listed[0], 'the trait method keeps its own name');
+        self::assertInstanceOf(MethodInfo::class, $listed[1]);
+        self::assertSame('exposedName', $listed[1]->getName()->name, 'the alias is listed under its new name');
+        self::assertSame(
+            $traitName->qualifiedName->fullyQualifiedName(),
+            $listed[1]->aliasedFrom?->owner->qualifiedName->fullyQualifiedName(),
+            'the listed alias points back at the trait',
+        );
+    }
+
+    public function testListedAliasReplacesAnInheritedMethodOfTheSameName(): void
+    {
+        $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $className = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $parentName,
+                methods: ['exposedName' => $this->createMethodInfo('exposedName', Visibility::Public, $parentName)],
+            ),
+            $this->createClassInfo(
+                $traitName,
+                ClassKind::Trait_,
+                methods: ['helper' => $this->createMethodInfo('helper', Visibility::Public, $traitName)],
+            ),
+            $this->createClassInfo(
+                $className,
+                parent: $parentName,
+                traits: [$traitName],
+                traitAliases: [new TraitAlias(
+                    trait: $traitName,
+                    method: 'helper',
+                    newName: 'exposedName',
+                    newVisibility: null,
+                )],
+            ),
+        ));
+
+        $listed = $resolver->getMembersOfKind($className, MemberKind::Method, Visibility::Public);
+        $exposed = array_values(array_filter(
+            $listed,
+            fn ($method) => $method->getName()->name === 'exposedName',
+        ));
+
+        self::assertCount(1, $exposed, 'the alias and the inherited method are one method');
+        self::assertInstanceOf(MethodInfo::class, $exposed[0]);
+        self::assertSame(
+            $traitName->qualifiedName->fullyQualifiedName(),
+            $exposed[0]->aliasedFrom?->owner->qualifiedName->fullyQualifiedName(),
+            'the alias, not the inherited method, is listed',
         );
     }
 
@@ -1816,6 +1867,20 @@ final class MemberResolverTest extends TestCase
         return 'Fake\\Class' . random_int(0, PHP_INT_MAX);
     }
 
+    private function sourceOf(ClassInfo ...$classes): SymbolSourceInterface
+    {
+        $byName = [];
+        foreach ($classes as $class) {
+            $byName[$class->name->qualifiedName->fullyQualifiedName()] = $class;
+        }
+        $source = self::createStub(SymbolSourceInterface::class);
+        $source->method('lookupClassLike')->willReturnCallback(
+            fn (ClasslikeName $name) => $byName[$name->qualifiedName->fullyQualifiedName()] ?? null,
+        );
+
+        return $source;
+    }
+
     /**
      * @param array<string, MethodInfo> $methods
      * @param array<string, PropertyInfo> $properties
@@ -1924,7 +1989,8 @@ final class MemberResolverTest extends TestCase
         );
     }
 
-    public function testGetMembersOfKindReturnsEmptyForUnknownClass(): void
+    #[DataProvider('allMemberKinds')]
+    public function testGetMembersOfKindReturnsEmptyForUnknownClass(MemberKind $kind): void
     {
         $repo = self::createStub(SymbolSourceInterface::class);
         $repo->method('lookupClassLike')->willReturn(null);
@@ -1935,9 +2001,10 @@ final class MemberResolverTest extends TestCase
             [],
             $resolver->getMembersOfKind(
                 ClasslikeName::fromFullyQualified(self::fakeClass()),
-                \Firehed\PhpLsp\Domain\MemberKind::Method,
+                $kind,
                 Visibility::Public,
             ),
+            'an unknown class has no members of any kind',
         );
     }
 }

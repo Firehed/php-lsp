@@ -77,50 +77,6 @@ final class MemberResolver implements MemberResolverInterface
     }
 
     /**
-     * @return list<ClasslikeConstantInfo>
-     */
-    public function getConstants(ClasslikeName $class, Visibility $minVisibility): array
-    {
-        return $this->collectMembers($class, MemberKind::Constant, $minVisibility, MemberFilter::All);
-    }
-
-    /**
-     * @return list<EnumCaseInfo>
-     */
-    public function getEnumCases(ClasslikeName $class): array
-    {
-        return $this->collectMembers($class, MemberKind::EnumCase, Visibility::Public, MemberFilter::All);
-    }
-
-    /**
-     * @return list<MethodInfo>
-     */
-    public function getMethods(
-        ClasslikeName $class,
-        Visibility $minVisibility,
-        MemberFilter $filter = MemberFilter::All,
-    ): array {
-        $origin = $this->source->lookupClassLike($class);
-        if ($origin === null) {
-            return [];
-        }
-        $methods = $this->collectMembers($class, MemberKind::Method, $minVisibility, $filter, $origin);
-
-        return $this->applyMethodAliases($methods, $origin, $minVisibility, $filter);
-    }
-
-    /**
-     * @return list<PropertyInfo>
-     */
-    public function getProperties(
-        ClasslikeName $class,
-        Visibility $minVisibility,
-        MemberFilter $filter = MemberFilter::All,
-    ): array {
-        return $this->collectMembers($class, MemberKind::Property, $minVisibility, $filter);
-    }
-
-    /**
      * Every member of the given kind visible from $class. Kind-parameterized so the
      * caller can iterate over kinds without a per-kind method for every one, which
      * is how member completion collapses to one loop over MemberKind cases.
@@ -134,13 +90,13 @@ final class MemberResolver implements MemberResolverInterface
         MemberFilter $filter = MemberFilter::All,
     ): array {
         if (!$kind->isMethod()) {
-            return array_values($this->collectMembers($class, $kind, $minVisibility, $filter));
+            return $this->collectMembers($class, $kind, $minVisibility, $filter);
         }
         $origin = $this->source->lookupClassLike($class);
         if ($origin === null) {
             return [];
         }
-        $members = array_values($this->collectMembers($class, $kind, $minVisibility, $filter, $origin));
+        $members = $this->collectMembers($class, $kind, $minVisibility, $filter, $origin);
 
         return $this->applyMethodAliases($members, $origin, $minVisibility, $filter);
     }
@@ -188,20 +144,8 @@ final class MemberResolver implements MemberResolverInterface
 
     /**
      * Every member of $kind visible from $class, nearest declaration winning.
-     * The concrete subtype ({@see MethodInfo}, {@see PropertyInfo}, …) that
-     * {@see MemberKind::membersOf()} returns for $kind is propagated back
-     * through the conditional return, so a kind-specific caller stays typed
-     * without needing a runtime instanceof at the boundary.
      *
-     * @phpstan-return (
-     *   $kind is MemberKind::Method ? list<MethodInfo> : (
-     *     $kind is MemberKind::Property ? list<PropertyInfo> : (
-     *       $kind is MemberKind::Constant ? list<ClasslikeConstantInfo> : (
-     *         $kind is MemberKind::EnumCase ? list<EnumCaseInfo> : list<MemberInfoInterface>
-     *       )
-     *     )
-     *   )
-     * )
+     * @return list<MemberInfoInterface>
      */
     private function collectMembers(
         ClasslikeName $class,
@@ -368,9 +312,8 @@ final class MemberResolver implements MemberResolverInterface
      * entries the walk produced. The alias is invisible if its resolved source
      * cannot be found or fails the visibility gate.
      *
-     * @template T of MemberInfoInterface
-     * @param list<T> $members
-     * @return list<T|MethodInfo>
+     * @param list<MemberInfoInterface> $members
+     * @return list<MemberInfoInterface>
      */
     private function applyMethodAliases(
         array $members,

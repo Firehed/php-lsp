@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Tests\ProvidesMemberKindsTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -17,6 +18,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(MemberAccessContext::class)]
 class MemberAccessContextTest extends TestCase
 {
+    use ProvidesMemberKindsTrait;
+
     private static function type(): ClasslikeType
     {
         return new ClasslikeType(ClasslikeName::fromFullyQualified(self::class));
@@ -80,16 +83,6 @@ class MemberAccessContextTest extends TestCase
         $member->method('getMemberKind')->willReturn($memberKind);
 
         self::assertSame($expected, $ctx->accepts($member), "parent accepts $memberKind->name");
-    }
-
-    /**
-     * @return iterable<string, array{MemberKind}>
-     */
-    public static function allMemberKinds(): iterable
-    {
-        foreach (MemberKind::cases() as $kind) {
-            yield $kind->name => [$kind];
-        }
     }
 
     /**
