@@ -386,6 +386,11 @@ class CursorTextSyntaxSourceTest extends TestCase
 
         $group = $attribute->getAttribute('parent');
         self::assertInstanceOf(Node\AttributeGroup::class, $group, 'an attribute belongs to an attribute group');
+        self::assertSame(
+            $attribute->getStartFilePos(),
+            $group->getStartFilePos(),
+            'the group carries the position of the attribute it holds',
+        );
         self::assertInstanceOf(
             Stmt\ClassMethod::class,
             $group->getAttribute('parent'),
@@ -399,6 +404,11 @@ class CursorTextSyntaxSourceTest extends TestCase
 
         $statement = $call->getAttribute('parent');
         self::assertInstanceOf(Stmt\Expression::class, $statement, 'a call is held by an expression statement');
+        self::assertSame(
+            $call->getStartFilePos(),
+            $statement->getStartFilePos(),
+            'the statement carries the position of the call it holds',
+        );
         self::assertInstanceOf(
             Stmt\Namespace_::class,
             $statement->getAttribute('parent'),
