@@ -354,6 +354,32 @@ class CursorTextSyntaxSourceTest extends TestCase
         self::assertSame('run', $enclosing->name->toString());
     }
 
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function incompleteNames(): array
+    {
+        return [
+            'namespace prefix alone, called' => ['relative_prefix_call'],
+            'namespace prefix alone, instantiated' => ['relative_prefix_new'],
+            'namespace prefix alone, static call' => ['relative_prefix_static'],
+            'separator alone, static call' => ['separator_static'],
+        ];
+    }
+
+    #[DataProvider('incompleteNames')]
+    public function testAnIncompleteNameSynthesizesNoCall(string $marker): void
+    {
+        $fixture = 'TopLevel/incomplete_names.php';
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $tree = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document);
+
+        $node = (new CursorTextSyntaxSource())->nodeAt($tree, $document, $this->markerOffset($content, $marker));
+
+        self::assertNull(self::resolveToCall($node), 'a name with nothing after its prefix names no callable');
+    }
+
     public function testAnAttributeSitsInAnAttributeGroupUnderItsDeclaration(): void
     {
         $attribute = $this->callAtMarker('src/Resolution/CursorTextResolution.php', 'attribute');
