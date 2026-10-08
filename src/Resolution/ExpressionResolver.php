@@ -201,7 +201,7 @@ final class ExpressionResolver
             assert($parent->types !== [], 'PHP grammar requires at least one type in a catch clause');
             $classTypes = [];
             foreach ($parent->types as $type) {
-                $name = ClasslikeName::fromFullyQualified(ScopeFinder::resolveClasslikeName($type));
+                $name = ClasslikeName::fromFullyQualified($type->toString());
                 $classTypes[] = new ClasslikeType($name);
             }
             return count($classTypes) === 1 ? $classTypes[0] : TypeFactory::union($classTypes);

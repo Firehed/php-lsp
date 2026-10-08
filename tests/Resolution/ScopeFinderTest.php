@@ -209,32 +209,6 @@ class ScopeFinderTest extends TestCase
         self::assertNull($className);
     }
 
-    public function testResolveClasslikeNameReturnsRawNameWhenNoResolvedAttribute(): void
-    {
-        $code = $this->loadFixture('src/Inheritance/ParentClass.php');
-        $ast = self::parseWithParents($code);
-        $namespace = $ast[1];
-        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $class = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
-        self::assertNotNull($class);
-        self::assertNotNull($class->extends);
-
-        self::assertSame('Fixtures\Inheritance\Grandparent', ScopeFinder::resolveClasslikeName($class->extends));
-    }
-
-    public function testResolveClasslikeNameUsesResolvedNameWhenAvailable(): void
-    {
-        $code = $this->loadFixture('src/Utility/ImportedExtends.php');
-        $ast = self::parseWithParents($code);
-        $namespace = $ast[1];
-        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $class = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
-        self::assertNotNull($class);
-        self::assertNotNull($class->extends);
-
-        self::assertSame('Fixtures\Inheritance\ParentClass', ScopeFinder::resolveClasslikeName($class->extends));
-    }
-
     public function testGetClassLikeNameReturnsNamespacedName(): void
     {
         $code = $this->loadFixture('src/Domain/User.php');

@@ -439,9 +439,7 @@ final class SymbolResolver implements CodeResolverInterface
         }
 
         // Class reference (new, instanceof, static call, type hint, etc.)
-        $classNameStr = ScopeFinder::resolveClasslikeName($node);
-
-        $classInfo = $this->symbolSource->lookupClassLike(ClasslikeName::fromFullyQualified($classNameStr));
+        $classInfo = $this->symbolSource->lookupClassLike(ClasslikeName::fromFullyQualified($node->toString()));
         if ($classInfo === null) {
             return null;
         }
