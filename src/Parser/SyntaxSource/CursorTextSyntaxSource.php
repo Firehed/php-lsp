@@ -103,16 +103,14 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
     {
         $start = $root->getStartFilePos();
         $namespace = null;
-        $scope = $tree;
         foreach ($tree as $stmt) {
             if ($stmt instanceof Stmt\Namespace_ && $stmt->getStartFilePos() <= $start) {
                 $namespace = $stmt;
-                $scope = $stmt->stmts;
             }
         }
 
         $body = [];
-        foreach ($scope as $stmt) {
+        foreach ($namespace->stmts ?? $tree as $stmt) {
             if ($stmt->getStartFilePos() > $start) {
                 break;
             }
@@ -120,13 +118,19 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
                 $body[] = self::copyImport($stmt);
             }
         }
-        // The root sits in the node that holds its kind in a parsed tree. Php-parser
-        // resolves an attribute's name only within a declaration's attribute
-        // groups, so for annotation the group is held by a stand-in declaration.
-        $holder = $root instanceof Attribute ? new AttributeGroup([$root]) : new Stmt\Expression($root);
-        $body[] = $holder instanceof AttributeGroup
-            ? new Stmt\Function_('_', ['attrGroups' => [$holder]])
-            : $holder;
+        // The root sits in the node that holds its kind in a parsed tree, at the
+        // root's position. Php-parser resolves an attribute's name only within a
+        // declaration's attribute groups, so for annotation the group is held by
+        // a stand-in declaration.
+        // Until annotation links it, the root carries only its position.
+        $position = $root->getAttributes();
+        if ($root instanceof Attribute) {
+            $holder = new AttributeGroup([$root], $position);
+            $body[] = new Stmt\Function_('_', ['attrGroups' => [$holder]]);
+        } else {
+            $holder = new Stmt\Expression($root, $position);
+            $body[] = $holder;
+        }
         $this->annotator->annotate($namespace === null ? $body : [
             new Stmt\Namespace_($namespace->name === null ? null : new Name($namespace->name->name), $body),
         ]);
