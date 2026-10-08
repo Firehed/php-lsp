@@ -269,7 +269,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         ) {
             $nameText = $m[1][0];
             $nameStart = $m[1][1];
-            $name = self::classLikeName($nameText, $nameStart, $line);
+            $name = self::writtenName($nameText, $nameStart, $line);
             $attr = new Attribute($name, [], self::posAttrs($nameStart, $lastByte, $line));
             $name->setAttribute('parent', $attr);
             return $attr;
@@ -287,7 +287,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             $classStart = $m[1][1];
             $methodText = $m[2][0];
             $methodStart = $m[2][1];
-            $class = self::classLikeName($classText, $classStart, $line);
+            $class = self::writtenName($classText, $classStart, $line);
             $method = new Identifier(
                 $methodText,
                 self::posAttrs($methodStart, $methodStart + strlen($methodText) - 1, $line),
@@ -339,7 +339,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             $nameText = $m[1][0];
             $nameStart = $m[1][1];
             $newStart = $m[0][1];
-            $name = self::classLikeName($nameText, $nameStart, $line);
+            $name = self::writtenName($nameText, $nameStart, $line);
             $new = new New_($name, [], self::posAttrs($newStart, $lastByte, $line));
             $name->setAttribute('parent', $new);
             return $new;
@@ -347,7 +347,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
 
         if (
             preg_match(
-                '/\b(\w+)\s*$/',
+                '/(\\\\?\b[A-Za-z_][A-Za-z0-9_\\\\]*)\s*$/',
                 $text,
                 $m,
                 PREG_OFFSET_CAPTURE,
@@ -358,10 +358,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             if (preg_match(self::NON_FUNCTION_KEYWORD_PATTERN, $funcName) === 1) {
                 return null;
             }
-            $name = new Name(
-                $funcName,
-                self::posAttrs($funcStart, $funcStart + strlen($funcName) - 1, $line),
-            );
+            $name = self::writtenName($funcName, $funcStart, $line);
             $call = new FuncCall($name, [], self::posAttrs($funcStart, $lastByte, $line));
             $name->setAttribute('parent', $call);
             return $call;
@@ -371,16 +368,21 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
     }
 
     /**
-     * Php-parser drops the leading `\` on a fully-qualified name; the same is
-     * done here so a downstream reader sees one shape.
+     * A name as php-parser models how it is written: a leading `\` makes it
+     * fully qualified and a leading `namespace\` makes it relative, each
+     * stored without that prefix.
      */
-    private static function classLikeName(string $short, int $startFilePos, int $line): Name
+    private static function writtenName(string $written, int $startFilePos, int $line): Name
     {
-        $normalized = ltrim($short, '\\');
-        $attrs = self::posAttrs($startFilePos, $startFilePos + strlen($short) - 1, $line);
-        return $short !== $normalized
-            ? new FullyQualified($normalized, $attrs)
-            : new Name($normalized, $attrs);
+        $attrs = self::posAttrs($startFilePos, $startFilePos + strlen($written) - 1, $line);
+        if (str_starts_with($written, '\\')) {
+            return new FullyQualified(substr($written, 1), $attrs);
+        }
+        if (str_starts_with($written, 'namespace\\')) {
+            return new Name\Relative(substr($written, strlen('namespace\\')), $attrs);
+        }
+
+        return new Name($written, $attrs);
     }
 
     /**
@@ -567,7 +569,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         $prefixEnd = $prefixStart + max(0, strlen($prefix) - 1);
         $matchEnd = $prefix === '' ? $colonsEnd : $prefixEnd;
 
-        $classNode = self::classLikeName($rawClass, $classStart, $line);
+        $classNode = self::writtenName($rawClass, $classStart, $line);
         $name = $prefix === ''
             ? new Error(self::posAttrs($colonsEnd + 1, $colonsEnd + 1, $line))
             : new VarLikeIdentifier($prefix, self::posAttrs($prefixStart, $prefixEnd, $line));
