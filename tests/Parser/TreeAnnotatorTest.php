@@ -55,6 +55,21 @@ final class TreeAnnotatorTest extends TestCase
         );
     }
 
+    public function testTolerantAnnotationContinuesPastANameResolutionError(): void
+    {
+        $tree = (new ParserFactory())->createForNewestSupportedVersion()->parse(
+            '<?php namespace A; use B\\Bar; use C\\Bar; new Bar();',
+        ) ?? [];
+
+        $annotated = (new TreeAnnotator(tolerant: true))->annotate($tree);
+
+        $namespace = $annotated[0];
+        self::assertInstanceOf(Namespace_::class, $namespace);
+        $className = self::extractNewName($namespace->stmts[2]);
+        self::assertInstanceOf(Name::class, $className);
+        self::assertSame('B\\Bar', $className->toString(), 'the first import still resolves the name');
+    }
+
     private static function extractNewName(\PhpParser\Node $node): ?Name
     {
         if (!$node instanceof \PhpParser\Node\Stmt\Expression) {
