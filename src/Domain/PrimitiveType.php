@@ -28,12 +28,8 @@ final readonly class PrimitiveType implements TypeInterface
         'false',
     ];
 
-    /**
-     * @param list<TypeInterface> $typeArguments
-     */
     public function __construct(
         private string $name,
-        private array $typeArguments = [],
     ) {
     }
 
@@ -62,20 +58,7 @@ final readonly class PrimitiveType implements TypeInterface
 
     public function equals(TypeInterface $other): bool
     {
-        if (!$other instanceof self) {
-            return false;
-        }
-        if ($this->name !== $other->name) {
-            return false;
-        }
-        if (count($this->typeArguments) !== count($other->typeArguments)) {
-            return false;
-        }
-        foreach ($this->typeArguments as $i => $arg) {
-            if (!$arg->equals($other->typeArguments[$i])) {
-                return false;
-            }
-        }
-        return true;
+        return $other instanceof self
+            && $this->name === $other->name;
     }
 }
