@@ -1502,6 +1502,81 @@ final class MemberResolverTest extends TestCase
         );
     }
 
+    public function testListedMethodsIncludeANamedAlias(): void
+    {
+        $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $className = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $helper = $this->createMethodInfo('helper', Visibility::Public, $traitName);
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo($traitName, ClassKind::Trait_, methods: ['helper' => $helper]),
+            $this->createClassInfo(
+                $className,
+                traits: [$traitName],
+                traitAliases: [new TraitAlias(
+                    trait: $traitName,
+                    method: 'helper',
+                    newName: 'exposedName',
+                    newVisibility: null,
+                )],
+            ),
+        ));
+
+        $listed = $resolver->getMembersOfKind($className, MemberKind::Method, Visibility::Public);
+
+        self::assertCount(2, $listed, 'the trait method is listed under its own name and its alias');
+        self::assertSame($helper, $listed[0], 'the trait method keeps its own name');
+        self::assertInstanceOf(MethodInfo::class, $listed[1]);
+        self::assertSame('exposedName', $listed[1]->getName()->name, 'the alias is listed under its new name');
+        self::assertSame(
+            $traitName->qualifiedName->fullyQualifiedName(),
+            $listed[1]->aliasedFrom?->owner->qualifiedName->fullyQualifiedName(),
+            'the listed alias points back at the trait',
+        );
+    }
+
+    public function testListedAliasReplacesAnInheritedMethodOfTheSameName(): void
+    {
+        $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $className = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $parentName,
+                methods: ['exposedName' => $this->createMethodInfo('exposedName', Visibility::Public, $parentName)],
+            ),
+            $this->createClassInfo(
+                $traitName,
+                ClassKind::Trait_,
+                methods: ['helper' => $this->createMethodInfo('helper', Visibility::Public, $traitName)],
+            ),
+            $this->createClassInfo(
+                $className,
+                parent: $parentName,
+                traits: [$traitName],
+                traitAliases: [new TraitAlias(
+                    trait: $traitName,
+                    method: 'helper',
+                    newName: 'exposedName',
+                    newVisibility: null,
+                )],
+            ),
+        ));
+
+        $listed = $resolver->getMembersOfKind($className, MemberKind::Method, Visibility::Public);
+        $exposed = array_values(array_filter(
+            $listed,
+            fn ($method) => $method->getName()->name === 'exposedName',
+        ));
+
+        self::assertCount(1, $exposed, 'the alias and the inherited method are one method');
+        self::assertInstanceOf(MethodInfo::class, $exposed[0]);
+        self::assertSame(
+            $traitName->qualifiedName->fullyQualifiedName(),
+            $exposed[0]->aliasedFrom?->owner->qualifiedName->fullyQualifiedName(),
+            'the alias, not the inherited method, is listed',
+        );
+    }
+
     public function testNamelessAliasResolvesThroughUsedTraits(): void
     {
         $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1787,6 +1862,20 @@ final class MemberResolverTest extends TestCase
     {
         // @phpstan-ignore return.type
         return 'Fake\\Class' . random_int(0, PHP_INT_MAX);
+    }
+
+    private function sourceOf(ClassInfo ...$classes): SymbolSourceInterface
+    {
+        $byName = [];
+        foreach ($classes as $class) {
+            $byName[$class->name->qualifiedName->fullyQualifiedName()] = $class;
+        }
+        $source = self::createStub(SymbolSourceInterface::class);
+        $source->method('lookupClassLike')->willReturnCallback(
+            fn (ClasslikeName $name) => $byName[$name->qualifiedName->fullyQualifiedName()] ?? null,
+        );
+
+        return $source;
     }
 
     /**
