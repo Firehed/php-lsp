@@ -354,6 +354,32 @@ class CursorTextSyntaxSourceTest extends TestCase
         self::assertSame('run', $enclosing->name->toString());
     }
 
+    public function testAnAttributeSitsInAnAttributeGroupUnderItsDeclaration(): void
+    {
+        $attribute = $this->callAtMarker('src/Resolution/CursorTextResolution.php', 'attribute');
+
+        $group = $attribute->getAttribute('parent');
+        self::assertInstanceOf(Node\AttributeGroup::class, $group, 'an attribute belongs to an attribute group');
+        self::assertInstanceOf(
+            Stmt\ClassMethod::class,
+            $group->getAttribute('parent'),
+            'the group belongs to the declaration it decorates',
+        );
+    }
+
+    public function testACallTypedAtNamespaceLevelHangsOffTheNamespace(): void
+    {
+        $call = $this->callAtMarker('TopLevel/trailing_call_in_namespace.php', 'trailing_call');
+
+        $statement = $call->getAttribute('parent');
+        self::assertInstanceOf(Stmt\Expression::class, $statement, 'a call is held by an expression statement');
+        self::assertInstanceOf(
+            Stmt\Namespace_::class,
+            $statement->getAttribute('parent'),
+            'with no enclosing statement, the namespace holds it',
+        );
+    }
+
     public function testTheDocumentTreeIsLeftUntouched(): void
     {
         $fixture = 'src/Resolution/CursorTextResolution.php';
