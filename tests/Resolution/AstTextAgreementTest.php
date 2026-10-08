@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\DescribesSyntaxTreesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
@@ -41,6 +42,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversNothing]
 final class AstTextAgreementTest extends TestCase
 {
+    use DescribesSyntaxTreesTrait;
     use LoadsFixturesTrait;
 
     private MemoizingSyntaxSource $parser;
@@ -81,8 +83,8 @@ final class AstTextAgreementTest extends TestCase
         self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
         self::assertNotNull($cursorNode, 'cursor-text source must synthesize a node at the cursor');
 
-        $compositeCall = self::resolveToCallNode($compositeNode);
-        $cursorCall = self::resolveToCallNode($cursorNode);
+        $compositeCall = self::enclosingCall($compositeNode);
+        $cursorCall = self::enclosingCall($cursorNode);
 
         self::assertNotNull($compositeCall, 'composite node must be inside a call expression');
         self::assertNotNull($cursorCall, 'cursor-text node must be inside a call expression');
@@ -178,8 +180,8 @@ final class AstTextAgreementTest extends TestCase
             'the enclosing function-like must agree, found through parent links',
         );
         self::assertSame(
-            self::describeNames($parsed),
-            self::describeNames($synthesized),
+            self::describeName($parsed),
+            self::describeName($synthesized),
             'names must be resolved the same way',
         );
     }
@@ -189,54 +191,9 @@ final class AstTextAgreementTest extends TestCase
      */
     private static function describeEnclosing(Node $node, string $kind): string
     {
-        $current = $node->getAttribute('parent');
-        while ($current instanceof Node && !$current instanceof $kind) {
-            $current = $current->getAttribute('parent');
-        }
-        if (!$current instanceof Node) {
-            return '(none)';
-        }
+        $enclosing = self::ancestorOf($node, $kind);
 
-        return self::shortClass($current) . '@' . $current->getStartFilePos();
-    }
-
-    /**
-     * The name the node is called or accessed through: its class, its text,
-     * and the namespaced form name resolution records for a function name.
-     */
-    private static function describeNames(Node $node): string
-    {
-        $name = match (true) {
-            $node instanceof FuncCall, $node instanceof Attribute => $node->name,
-            $node instanceof New_, $node instanceof StaticCall, $node instanceof StaticPropertyFetch => $node->class,
-            default => null,
-        };
-        if (!$name instanceof Node\Name) {
-            return '(none)';
-        }
-        $namespaced = $name->getAttribute('namespacedName');
-
-        return self::shortClass($name) . '(' . $name->toString() . ')'
-            . ($namespaced instanceof Node\Name ? ' ns:' . $namespaced->toString() : '');
-    }
-
-    private static function resolveToCallNode(Node $node): ?Node
-    {
-        while (
-            !($node instanceof FuncCall)
-            && !($node instanceof MethodCall)
-            && !($node instanceof NullsafeMethodCall)
-            && !($node instanceof StaticCall)
-            && !($node instanceof New_)
-            && !($node instanceof Attribute)
-        ) {
-            $parent = $node->getAttribute('parent');
-            if (!$parent instanceof Node) {
-                return null;
-            }
-            $node = $parent;
-        }
-        return $node;
+        return $enclosing === null ? '(none)' : self::shortClass($enclosing) . '@' . $enclosing->getStartFilePos();
     }
 
     /**
@@ -439,13 +396,6 @@ final class AstTextAgreementTest extends TestCase
             return $access->name;
         }
         return null;
-    }
-
-    private static function shortClass(Node $node): string
-    {
-        $class = $node::class;
-        $pos = strrpos($class, '\\');
-        return $pos === false ? $class : substr($class, $pos + 1);
     }
 
     /**
