@@ -224,9 +224,6 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
         $args = self::parseArgs($argsText, $parenPos + 1, $offset, $line, $memberInside);
         $callNode->args = $args;
-        foreach ($args as $arg) {
-            $arg->setAttribute('parent', $callNode);
-        }
 
         $callStart = $callNode->getStartFilePos();
         $callNode->setAttribute('endFilePos', max($callStart, $offset));
@@ -272,9 +269,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             $nameText = $m[1][0];
             $nameStart = $m[1][1];
             $name = self::writtenName($nameText, $nameStart, $line);
-            $attr = new Attribute($name, [], self::posAttrs($nameStart, $lastByte, $line));
-            $name->setAttribute('parent', $attr);
-            return $attr;
+            return new Attribute($name, [], self::posAttrs($nameStart, $lastByte, $line));
         }
 
         if (
@@ -294,10 +289,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
                 $methodText,
                 self::posAttrs($methodStart, $methodStart + strlen($methodText) - 1, $line),
             );
-            $call = new StaticCall($class, $method, [], self::posAttrs($classStart, $lastByte, $line));
-            $class->setAttribute('parent', $call);
-            $method->setAttribute('parent', $call);
-            return $call;
+            return new StaticCall($class, $method, [], self::posAttrs($classStart, $lastByte, $line));
         }
 
         if (
@@ -322,12 +314,9 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
                 $methodName,
                 self::posAttrs($methodStart, $methodStart + strlen($methodName) - 1, $line),
             );
-            $call = $isNullsafe
+            return $isNullsafe
                 ? new NullsafeMethodCall($var, $method, [], self::posAttrs($varStart, $lastByte, $line))
                 : new MethodCall($var, $method, [], self::posAttrs($varStart, $lastByte, $line));
-            $var->setAttribute('parent', $call);
-            $method->setAttribute('parent', $call);
-            return $call;
         }
 
         if (
@@ -341,10 +330,11 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             $nameText = $m[1][0];
             $nameStart = $m[1][1];
             $newStart = $m[0][1];
-            $name = self::writtenName($nameText, $nameStart, $line);
-            $new = new New_($name, [], self::posAttrs($newStart, $lastByte, $line));
-            $name->setAttribute('parent', $new);
-            return $new;
+            return new New_(
+                self::writtenName($nameText, $nameStart, $line),
+                [],
+                self::posAttrs($newStart, $lastByte, $line),
+            );
         }
 
         if (
@@ -360,10 +350,11 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             if (preg_match(self::NON_FUNCTION_KEYWORD_PATTERN, $funcName) === 1) {
                 return null;
             }
-            $name = self::writtenName($funcName, $funcStart, $line);
-            $call = new FuncCall($name, [], self::posAttrs($funcStart, $lastByte, $line));
-            $name->setAttribute('parent', $call);
-            return $call;
+            return new FuncCall(
+                self::writtenName($funcName, $funcStart, $line),
+                [],
+                self::posAttrs($funcStart, $lastByte, $line),
+            );
         }
 
         return null;
@@ -470,17 +461,13 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             ? $memberInside
             : new Variable('_', self::posAttrs($segStart, $segEnd, $line));
 
-        $arg = new Arg(
+        return new Arg(
             $value,
             false,
             false,
             self::posAttrs($segStart, $segEnd, $line),
             $named,
         );
-        $named?->setAttribute('parent', $arg);
-        $value->setAttribute('parent', $arg);
-
-        return $arg;
     }
 
     /**
@@ -517,14 +504,11 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
                 $segName,
                 self::posAttrs($segNameStart, $segNameEnd, $line),
             );
-            $inner = new PropertyFetch(
+            $currentReceiver = new PropertyFetch(
                 $currentReceiver,
                 $segIdent,
                 self::posAttrs($varStart, $segNameEnd, $line),
             );
-            $currentReceiver->setAttribute('parent', $inner);
-            $segIdent->setAttribute('parent', $inner);
-            $currentReceiver = $inner;
         }
 
         // Absolute file offsets of the arrow (`->` or `?->`) and the identifier
@@ -541,14 +525,11 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             ? new Error(self::posAttrs($arrowEnd + 1, $arrowEnd + 1, $line))
             : new Identifier($prefix, self::posAttrs($prefixStart, $prefixEnd, $line));
 
-        $fetch = new PropertyFetch(
+        return new PropertyFetch(
             $currentReceiver,
             $name,
             self::posAttrs($varStart, $matchEnd, $line),
         );
-        $currentReceiver->setAttribute('parent', $fetch);
-        $name->setAttribute('parent', $fetch);
-        return $fetch;
     }
 
     /**
@@ -576,14 +557,11 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             ? new Error(self::posAttrs($colonsEnd + 1, $colonsEnd + 1, $line))
             : new VarLikeIdentifier($prefix, self::posAttrs($prefixStart, $prefixEnd, $line));
 
-        $fetch = new StaticPropertyFetch(
+        return new StaticPropertyFetch(
             $classNode,
             $name,
             self::posAttrs($classStart, $matchEnd, $line),
         );
-        $classNode->setAttribute('parent', $fetch);
-        $name->setAttribute('parent', $fetch);
-        return $fetch;
     }
 
     /**
