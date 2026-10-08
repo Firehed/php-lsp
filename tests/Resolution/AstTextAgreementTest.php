@@ -76,7 +76,7 @@ final class AstTextAgreementTest extends TestCase
         $offset = $this->markerOffset($content, $marker);
 
         $compositeNode = $this->parser->nodeAt($ast, $document, $offset);
-        $cursorNode = $this->cursorText->nodeAt([], $document, $offset);
+        $cursorNode = $this->cursorText->nodeAt($ast, $document, $offset);
 
         self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
         self::assertNotNull($cursorNode, 'cursor-text source must synthesize a node at the cursor');
@@ -97,6 +97,7 @@ final class AstTextAgreementTest extends TestCase
             $cursorCall::class,
             'call node class must agree between composite and cursor-text source',
         );
+        self::assertTreeContractAgrees($compositeCall, $cursorCall);
     }
 
     /**
@@ -149,55 +150,6 @@ final class AstTextAgreementTest extends TestCase
      * enclosing class-like and function-like, and carries the same resolved
      * names, as the parsed node it stands in for.
      */
-    /**
-     * @return array<string, array{string, string}>
-     */
-    public static function callContextMarkers(): array
-    {
-        return array_map(fn (array $case) => [$case[0], $case[1]], self::callContextFixtures());
-    }
-
-    /**
-     * @return array<string, array{string, string}>
-     */
-    public static function memberAccessMarkers(): array
-    {
-        return array_map(fn (array $case) => [$case[0], $case[1]], self::memberAccessFixtures());
-    }
-
-    #[DataProvider('callContextMarkers')]
-    public function testCallContextCursorMeetsTheTreeContract(string $fixture, string $marker): void
-    {
-        $content = $this->loadFixture($fixture);
-        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document);
-        $offset = $this->markerOffset($content, $marker);
-
-        $compositeCall = self::resolveToCallNode($this->parser->nodeAt($ast, $document, $offset) ?? self::fail());
-        $cursorCall = self::resolveToCallNode($this->cursorText->nodeAt($ast, $document, $offset) ?? self::fail());
-
-        self::assertNotNull($compositeCall, 'composite node must be inside a call expression');
-        self::assertNotNull($cursorCall, 'cursor-text node must be inside a call expression');
-        self::assertTreeContractAgrees($compositeCall, $cursorCall);
-    }
-
-    #[DataProvider('memberAccessMarkers')]
-    public function testMemberAccessCursorMeetsTheTreeContract(string $fixture, string $marker): void
-    {
-        $content = $this->loadFixture($fixture);
-        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document);
-        ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
-        $probe = max(0, $document->offsetAt($line, $character) - 1);
-
-        $compositeAccess = self::resolveToAccessNode($this->parser->nodeAt($ast, $document, $probe) ?? self::fail());
-        $cursorAccess = self::resolveToAccessNode($this->cursorText->nodeAt($ast, $document, $probe) ?? self::fail());
-
-        self::assertNotNull($compositeAccess, 'composite node must be inside a member-access expression');
-        self::assertNotNull($cursorAccess, 'cursor-text node must be inside a member-access expression');
-        self::assertTreeContractAgrees($compositeAccess, $cursorAccess);
-    }
-
     private static function assertTreeContractAgrees(Node $parsed, Node $synthesized): void
     {
         self::assertSame(
@@ -298,7 +250,7 @@ final class AstTextAgreementTest extends TestCase
         $probe = $offset > 0 ? $offset - 1 : 0;
 
         $compositeNode = $this->parser->nodeAt($ast, $document, $probe);
-        $cursorNode = $this->cursorText->nodeAt([], $document, $probe);
+        $cursorNode = $this->cursorText->nodeAt($ast, $document, $probe);
 
         self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
         self::assertNotNull($cursorNode, 'cursor-text source must synthesize a node at the cursor');
@@ -334,6 +286,7 @@ final class AstTextAgreementTest extends TestCase
             self::prefixName($cursorAccess),
             'member name/prefix must agree between composite and cursor-text source',
         );
+        self::assertTreeContractAgrees($compositeAccess, $cursorAccess);
     }
 
     /**
@@ -423,10 +376,8 @@ final class AstTextAgreementTest extends TestCase
             return $receiver->name;
         }
         if ($receiver instanceof \PhpParser\Node\Name) {
-            // Php-parser's name resolver rewrites an imported name in place, so
-            // an alias reads as its FQN on the composite side and as the short
-            // form from the cursor-text source; compare the short tail, which
-            // agrees on both sides.
+            // The short tail, so an expectation reads as the code is written;
+            // the resolved form is compared by assertTreeContractAgrees.
             return $receiver->getLast();
         }
         return '';
