@@ -23,6 +23,7 @@ use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Tests\ProvidesMemberKindsTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -30,6 +31,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(MemberResolver::class)]
 final class MemberResolverTest extends TestCase
 {
+    use ProvidesMemberKindsTrait;
+
     public function testFindMethodReturnsNullForUnknownClass(): void
     {
         $repo = self::createStub(SymbolSourceInterface::class);
@@ -1986,21 +1989,7 @@ final class MemberResolverTest extends TestCase
         );
     }
 
-    /**
-     * @return array<string, array{MemberKind}>
-     * @codeCoverageIgnore
-     */
-    public static function memberKinds(): array
-    {
-        $kinds = [];
-        foreach (MemberKind::cases() as $kind) {
-            $kinds[$kind->name] = [$kind];
-        }
-
-        return $kinds;
-    }
-
-    #[DataProvider('memberKinds')]
+    #[DataProvider('allMemberKinds')]
     public function testGetMembersOfKindReturnsEmptyForUnknownClass(MemberKind $kind): void
     {
         $repo = self::createStub(SymbolSourceInterface::class);
