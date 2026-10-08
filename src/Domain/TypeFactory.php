@@ -46,11 +46,7 @@ final class TypeFactory
             }
 
             if ($node instanceof Name) {
-                $resolvedName = $node->getAttribute('resolvedName');
-                $fqn = $resolvedName instanceof Name
-                    ? $resolvedName->toString()
-                    : $name;
-                return new ClasslikeType(ClasslikeName::fromFullyQualified($fqn));
+                return new ClasslikeType(ClasslikeName::fromFullyQualified($name));
             }
 
             if (in_array($name, PrimitiveType::NAMES, true)) {

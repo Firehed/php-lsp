@@ -39,16 +39,6 @@ class TypeFactoryTest extends TestCase
         self::assertSame(\stdClass::class, $type->name->qualifiedName->fullyQualifiedName());
     }
 
-    public function testFromNodeWithNameUsesResolvedName(): void
-    {
-        $node = new Name('User');
-        $node->setAttribute('resolvedName', new Name('App\\Models\\User'));
-        $type = TypeFactory::fromNode($node);
-
-        self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame('App\\Models\\User', $type->name->qualifiedName->fullyQualifiedName());
-    }
-
     /**
      * @return iterable<string, array{string}>
      * @codeCoverageIgnore
