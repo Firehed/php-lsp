@@ -80,20 +80,15 @@ final class ScopeFinder
     }
 
     /**
-     * Resolve a class Name node to its fully qualified class name.
-     *
-     * Uses the resolved name attribute set by NameResolver when present;
-     * falls back to the raw name otherwise.
+     * A class Name node's fully qualified class name; every syntax source
+     * resolves names in place.
      *
      * @return class-string
      */
     public static function resolveClasslikeName(Name $name): string
     {
-        $resolvedName = $name->getAttribute('resolvedName');
         /** @var class-string */
-        return $resolvedName instanceof Name
-            ? $resolvedName->toString()
-            : $name->toString();
+        return $name->toString();
     }
 
     /**
