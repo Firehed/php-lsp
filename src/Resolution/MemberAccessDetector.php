@@ -228,24 +228,8 @@ final class MemberAccessDetector
             );
         }
 
-        $raw = $class->toString();
-        if (str_contains($raw, '\\')) {
-            // Php-parser's name resolver rewrites imported and same-namespace
-            // names in place, so a name with a backslash is already qualified.
-            $className = $raw;
-        } else {
-            // A bare short name here reaches us either because the file is in
-            // the global namespace with no import for it, or because the node
-            // was synthesized by the cursor-text source
-            // and never went through the name resolver. The name context reads
-            // the same imports either way and answers correctly for both.
-            $context = NameContextFactory::fromAst($ast, $node->getStartLine() - 1);
-            $candidates = $context->candidates($raw, \Firehed\PhpLsp\Domain\NameKind::ClassLike);
-            $className = $candidates !== [] ? $candidates[0] : $raw;
-        }
-        /** @var class-string $className */
-
-        $targetName = ClasslikeName::fromFullyQualified($className);
+        /** @var class-string $rawName */
+        $targetName = ClasslikeName::fromFullyQualified($rawName);
         return MemberAccessContext::forStatic(
             new ClasslikeType($targetName),
             $this->visibilityBetween($vantage, $targetName),
