@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Closure;
+use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -23,6 +27,7 @@ use Throwable;
 final class SymbolResolverTest extends TestCase
 {
     use BuildsSymbolInfoTrait;
+    use LoadsFixturesTrait;
 
     /**
      * @return iterable<string, array{Closure(SymbolResolver, ClasslikeName): bool, ?ClassInfo, bool}>
@@ -145,12 +150,32 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
+    public function testAClassNameIsLookedUpAsTheTreeResolvedIt(): void
+    {
+        $fixture = 'SignatureHelp.php';
+        $content = $this->loadFixture($fixture);
+        ['line' => $line, 'character' => $character] = $this->locateHoverMarker($content, 'class_instantiation');
+        $user = self::classInfo('Fixtures\Domain\User');
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupClassLike')->willReturnCallback(
+            fn (ClasslikeName $name) => $name->qualifiedName->fullyQualifiedName() === 'Fixtures\Domain\User'
+                ? $user
+                : null,
+        );
+
+        $resolved = self::resolver($symbols, syntax: new PhpParserSyntaxSource(new TreeAnnotator()))
+            ->resolveAtPosition(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
+
+        self::assertSame($user, $resolved, 'the imported name is looked up by its fully qualified form');
+    }
+
     private static function resolver(
         SymbolSourceInterface $symbols,
         ?MemberResolverInterface $members = null,
+        ?SyntaxSourceInterface $syntax = null,
     ): SymbolResolver {
         return new SymbolResolver(
-            self::createStub(SyntaxSourceInterface::class),
+            $syntax ?? self::createStub(SyntaxSourceInterface::class),
             $symbols,
             $members ?? self::createStub(MemberResolverInterface::class),
             self::createStub(TypeSourceInterface::class),
