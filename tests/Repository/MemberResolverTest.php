@@ -405,7 +405,7 @@ final class MemberResolverTest extends TestCase
         self::assertNull($result);
     }
 
-    public function testGetMethodsReturnsAllAccessibleMethods(): void
+    public function testListedMethodsReturnsAllAccessibleMethods(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -445,7 +445,7 @@ final class MemberResolverTest extends TestCase
         self::assertNotContains($parentPrivate, $result);
     }
 
-    public function testGetMethodsIncludesMethodsOfExtendedInterfaces(): void
+    public function testListedMethodsIncludesMethodsOfExtendedInterfaces(): void
     {
         $messageName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $requestName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -476,7 +476,7 @@ final class MemberResolverTest extends TestCase
         );
     }
 
-    public function testGetMethodsFiltersStatic(): void
+    public function testListedMethodsFiltersStatic(): void
     {
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
         $instanceMethod = $this->createMethodInfo('instance', Visibility::Public, $className, isStatic: false);
@@ -509,7 +509,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame([$instanceMethod], $instanceOnly);
     }
 
-    public function testGetPropertiesReturnsAllAccessibleProperties(): void
+    public function testListedPropertiesReturnsAllAccessibleProperties(): void
     {
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
         $prop1 = $this->createPropertyInfo('prop1', Visibility::Public, $className);
@@ -530,7 +530,7 @@ final class MemberResolverTest extends TestCase
         self::assertCount(2, $result);
     }
 
-    public function testGetPropertiesIncludesParentProperties(): void
+    public function testListedPropertiesIncludesParentProperties(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -570,7 +570,7 @@ final class MemberResolverTest extends TestCase
         self::assertNotContains($parentPrivate, $result);
     }
 
-    public function testGetPropertiesFiltersStatic(): void
+    public function testListedPropertiesFiltersStatic(): void
     {
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
         $instanceProp = $this->createPropertyInfo('instance', Visibility::Public, $className, isStatic: false);
@@ -603,7 +603,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame([$instanceProp], $instanceOnly);
     }
 
-    public function testGetPropertiesIncludesTraitProperties(): void
+    public function testListedPropertiesIncludesTraitProperties(): void
     {
         $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -638,7 +638,7 @@ final class MemberResolverTest extends TestCase
         self::assertContains($traitProp, $result);
     }
 
-    public function testGetConstantsReturnsAllAccessibleConstants(): void
+    public function testListedConstantsReturnsAllAccessibleConstants(): void
     {
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
         $const1 = $this->createConstantInfo('CONST1', Visibility::Public, $className);
@@ -655,7 +655,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame([$const1], $result);
     }
 
-    public function testGetConstantsIncludesParentConstants(): void
+    public function testListedConstantsIncludesParentConstants(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -686,7 +686,7 @@ final class MemberResolverTest extends TestCase
         self::assertContains($parentConst, $result);
     }
 
-    public function testGetConstantsIncludesTraitConstants(): void
+    public function testListedConstantsIncludesTraitConstants(): void
     {
         $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -721,7 +721,7 @@ final class MemberResolverTest extends TestCase
         self::assertContains($traitConst, $result);
     }
 
-    public function testGetEnumCasesReturnsAllCases(): void
+    public function testListedEnumCasesReturnsAllCases(): void
     {
         $enumName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $case1 = $this->createEnumCaseInfo('Case1', $enumName);
@@ -928,7 +928,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame($method2, $result);
     }
 
-    public function testGetConstantsFiltersInaccessibleConstants(): void
+    public function testListedConstantsFiltersInaccessibleConstants(): void
     {
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
         $publicConst = $this->createConstantInfo('PUBLIC', Visibility::Public, $className);
@@ -949,7 +949,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame([$publicConst], $result);
     }
 
-    public function testGetMethodsChildOverridesParent(): void
+    public function testListedMethodsChildOverridesParent(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -977,7 +977,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame($childMethod, $result[0]);
     }
 
-    public function testGetPropertiesChildOverridesParent(): void
+    public function testListedPropertiesChildOverridesParent(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1005,7 +1005,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame($childProp, $result[0]);
     }
 
-    public function testGetConstantsChildOverridesParent(): void
+    public function testListedConstantsChildOverridesParent(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1033,7 +1033,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame($childConst, $result[0]);
     }
 
-    public function testGetPropertiesDiamondInheritance(): void
+    public function testListedPropertiesDiamondInheritance(): void
     {
         $baseTrait = ClasslikeName::fromFullyQualified(self::fakeClass());
         $trait1 = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1067,7 +1067,7 @@ final class MemberResolverTest extends TestCase
         self::assertCount(1, $result);
     }
 
-    public function testGetConstantsDiamondInheritance(): void
+    public function testListedConstantsDiamondInheritance(): void
     {
         $baseTrait = ClasslikeName::fromFullyQualified(self::fakeClass());
         $trait1 = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1190,7 +1190,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame($interfaceConst, $result);
     }
 
-    public function testGetConstantsIncludesInterfaceConstants(): void
+    public function testListedConstantsIncludesInterfaceConstants(): void
     {
         $interfaceName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $className = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1243,7 +1243,7 @@ final class MemberResolverTest extends TestCase
         self::assertSame($methodInfo, $result);
     }
 
-    public function testGetMethodsTreatsCaseVariedOverrideAsOneMethod(): void
+    public function testListedMethodsTreatsCaseVariedOverrideAsOneMethod(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1319,7 +1319,7 @@ final class MemberResolverTest extends TestCase
         self::assertNull($resolver->findEnumCase($enumName, 'DRAFT'));
     }
 
-    public function testGetConstantsKeepsCaseVariedNamesApart(): void
+    public function testListedConstantsKeepsCaseVariedNamesApart(): void
     {
         $parentName = ClasslikeName::fromFullyQualified(self::fakeClass());
         $childName = ClasslikeName::fromFullyQualified(self::fakeClass());
