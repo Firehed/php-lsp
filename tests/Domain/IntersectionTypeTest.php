@@ -10,13 +10,10 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(IntersectionType::class)]
 class IntersectionTypeTest extends TestCase
 {
-    /**
-     * @param list<TypeInterface> $args
-     */
-    private static function classlike(string $fqn, array $args = []): ClasslikeType
+    private static function classlike(string $fqn): ClasslikeType
     {
         /** @var class-string $fqn */
-        return new ClasslikeType(ClasslikeName::fromFullyQualified($fqn), $args);
+        return new ClasslikeType(ClasslikeName::fromFullyQualified($fqn));
     }
 
     public function testFormatJoinsWithAmpersand(): void

@@ -65,40 +65,4 @@ class ClasslikeTypeTest extends TestCase
         $b = new PrimitiveType('object');
         self::assertFalse($a->equals($b), 'a class-like type is never equal to a primitive');
     }
-
-    public function testEqualsComparesTypeArguments(): void
-    {
-        $a = new ClasslikeType(
-            ClasslikeName::fromFullyQualified(\ArrayIterator::class),
-            [new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class))],
-        );
-        $b = new ClasslikeType(
-            ClasslikeName::fromFullyQualified(\ArrayIterator::class),
-            [new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class))],
-        );
-        self::assertTrue($a->equals($b), 'matching type arguments are equal');
-    }
-
-    public function testEqualsFalseWhenTypeArgumentsDiffer(): void
-    {
-        $a = new ClasslikeType(
-            ClasslikeName::fromFullyQualified(\ArrayIterator::class),
-            [new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class))],
-        );
-        $b = new ClasslikeType(
-            ClasslikeName::fromFullyQualified(\ArrayIterator::class),
-            [new ClasslikeType(ClasslikeName::fromFullyQualified(\Iterator::class))],
-        );
-        self::assertFalse($a->equals($b), 'divergent type arguments produce inequality');
-    }
-
-    public function testEqualsFalseWhenTypeArgumentCountsDiffer(): void
-    {
-        $a = new ClasslikeType(
-            ClasslikeName::fromFullyQualified(\ArrayIterator::class),
-            [new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class))],
-        );
-        $b = new ClasslikeType(ClasslikeName::fromFullyQualified(\ArrayIterator::class));
-        self::assertFalse($a->equals($b), 'arity differences produce inequality');
-    }
 }
