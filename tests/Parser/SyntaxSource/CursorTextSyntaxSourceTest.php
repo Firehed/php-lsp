@@ -367,6 +367,21 @@ class CursorTextSyntaxSourceTest extends TestCase
         );
     }
 
+    public function testAChainedAccessKeepsEachSegment(): void
+    {
+        [$document, $tree] = $this->parsedFixture('src/IncompleteCode/ChainedAccess.php');
+
+        $fetch = $this->nodeAtMarker($document, $tree, 'chained_in_if')?->getAttribute('parent');
+
+        self::assertInstanceOf(PropertyFetch::class, $fetch, 'the access being typed is a property fetch');
+        $receiver = $fetch->var;
+        self::assertInstanceOf(PropertyFetch::class, $receiver, 'its receiver is the earlier segment');
+        self::assertInstanceOf(Node\Identifier::class, $receiver->name);
+        self::assertSame('user', $receiver->name->toString(), 'the earlier segment keeps its name');
+        self::assertInstanceOf(Variable::class, $receiver->var, 'the chain starts at the variable');
+        self::assertSame('this', $receiver->var->name);
+    }
+
     public function testAnAttributeSitsInAnAttributeGroupUnderItsDeclaration(): void
     {
         $attribute = $this->callAtMarker('src/Resolution/CursorTextResolution.php', 'attribute');
