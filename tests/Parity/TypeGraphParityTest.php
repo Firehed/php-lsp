@@ -235,7 +235,7 @@ final class TypeGraphParityTest extends TestCase
             }
         }
 
-        self::assertNotNull($conflicting, 'the conflict method should appear in getMethods');
+        self::assertNotNull($conflicting, 'the conflict method should appear in the listed methods');
         self::assertSame(
             $expectedTrait,
             $conflicting->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
