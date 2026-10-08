@@ -46,25 +46,6 @@ final readonly class IntersectionType implements TypeInterface
         return new self($resolved);
     }
 
-    public function valueType(): ?TypeInterface
-    {
-        $shared = null;
-        foreach ($this->members as $member) {
-            $memberValue = $member->valueType();
-            if ($memberValue === null) {
-                return null;
-            }
-            if ($shared === null) {
-                $shared = $memberValue;
-                continue;
-            }
-            if (!$shared->equals($memberValue)) {
-                return null;
-            }
-        }
-        return $shared;
-    }
-
     public function equals(TypeInterface $other): bool
     {
         if (!$other instanceof self) {

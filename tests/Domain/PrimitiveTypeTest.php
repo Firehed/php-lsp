@@ -40,23 +40,10 @@ class PrimitiveTypeTest extends TestCase
         self::assertSame($type, $type->resolveLateBound(\ArrayIterator::class));
     }
 
-    public function testValueTypeIsNullWhenNoTypeArguments(): void
+    public function testEqualsSameName(): void
     {
-        $type = new PrimitiveType('array');
-        self::assertNull($type->valueType());
-    }
-
-    public function testValueTypeIsFirstTypeArgument(): void
-    {
-        $value = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        $type = new PrimitiveType('array', [$value]);
-        self::assertSame($value, $type->valueType());
-    }
-
-    public function testEqualsSameNameAndArgs(): void
-    {
-        $a = new PrimitiveType('array', [new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class))]);
-        $b = new PrimitiveType('array', [new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class))]);
+        $a = new PrimitiveType('array');
+        $b = new PrimitiveType('array');
         self::assertTrue($a->equals($b));
     }
 
@@ -64,20 +51,6 @@ class PrimitiveTypeTest extends TestCase
     {
         $a = new PrimitiveType('string');
         $b = new PrimitiveType('int');
-        self::assertFalse($a->equals($b));
-    }
-
-    public function testEqualsFalseWhenTypeArgumentsDiffer(): void
-    {
-        $a = new PrimitiveType('array', [new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class))]);
-        $b = new PrimitiveType('array', [new ClasslikeType(ClasslikeName::fromFullyQualified(\Iterator::class))]);
-        self::assertFalse($a->equals($b));
-    }
-
-    public function testEqualsFalseWhenTypeArgumentCountsDiffer(): void
-    {
-        $a = new PrimitiveType('array', [new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class))]);
-        $b = new PrimitiveType('array');
         self::assertFalse($a->equals($b));
     }
 
