@@ -18,7 +18,7 @@ use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
-use Firehed\PhpLsp\Parser\SyntaxSource\NodeLocatorInterface;
+use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\TreeNodeLocator;

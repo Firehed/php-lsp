@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\NodeLocatorInterface;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
