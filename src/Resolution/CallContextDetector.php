@@ -25,6 +25,7 @@ use PhpParser\Node\Stmt;
  *   1: int,
  *   2: list<string>,
  *   3: int,
+ *   4: bool,
  * }
  *
  * @internal
@@ -58,6 +59,7 @@ final class CallContextDetector
         $usedNames = [];
         $positionalCount = 0;
         $sawNamedArg = false;
+        $inNamedValue = false;
 
         foreach ($node->args as $i => $arg) {
             $argEnd = $arg->getEndFilePos();
@@ -66,6 +68,9 @@ final class CallContextDetector
             if ($arg instanceof Arg && $arg->name !== null) {
                 $usedNames[] = $arg->name->name;
                 $sawNamedArg = true;
+                // Past the colon after the name, up to the end of the value typed so far.
+                $inNamedValue = $inNamedValue
+                    || ($offset > $arg->name->getEndFilePos() + 1 && $offset <= $argEnd + 1);
             } elseif (!$sawNamedArg && $argBeforeCursor) {
                 $positionalCount++;
             }
@@ -74,7 +79,7 @@ final class CallContextDetector
             }
         }
 
-        return [$node, $activeParam, $usedNames, $positionalCount];
+        return [$node, $activeParam, $usedNames, $positionalCount, $inNamedValue];
     }
 
     /**

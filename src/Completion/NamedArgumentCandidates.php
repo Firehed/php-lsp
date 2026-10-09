@@ -32,6 +32,9 @@ final class NamedArgumentCandidates implements CompletionSourceInterface
         if ($callContext === null) {
             return null;
         }
+        if ($callContext->inNamedArgumentValue) {
+            return [];
+        }
 
         $prefix = CompletionClassifier::argumentNamePrefix($request->textBeforeCursor());
         $usedNames = $callContext->usedParameterNames;
