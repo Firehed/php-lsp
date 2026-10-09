@@ -2,10 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Parser\SyntaxSource;
+namespace Firehed\PhpLsp\Parser\NodeLocator;
 
 use Firehed\PhpLsp\Parser\NodeAtPosition;
-use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
