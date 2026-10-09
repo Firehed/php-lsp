@@ -397,11 +397,15 @@ final class SkeletonSyntaxSourceTest extends TestCase
     {
         $described = [];
         foreach ((new NodeFinder())->findInstanceOf($tree, Node\Param::class) as $param) {
-            if (!$param->type instanceof Node\NullableType || !$param->var instanceof Node\Expr\Variable) {
+            if (
+                !$param->type instanceof Node\NullableType
+                || !$param->var instanceof Node\Expr\Variable
+                || !is_string($param->var->name)
+            ) {
                 continue;
             }
             $described[] = [
-                (string) $param->var->name,
+                $param->var->name,
                 $param->type->getStartFilePos(),
                 $param->type->getEndFilePos(),
                 $param->type->type->getStartFilePos(),
