@@ -364,10 +364,12 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         array $positions,
     ): Node\Identifier|Node\Name|Node\NullableType|null {
         $text = trim($text);
+        $typeStart = max(0, $anchor);
         $nullable = str_starts_with($text, '?');
         if ($nullable) {
             $text = substr($text, 1);
         }
+        $nameStart = $nullable ? $typeStart + 1 : $typeStart;
         // Union types: A|B. Intersection is not attempted; the receiver query
         // reads the first constituent to type the variable, which is enough for
         // completion inside a broken method. `explode` on an empty string still
@@ -378,8 +380,8 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         if ($first === '') {
             return null;
         }
-        $anchor = max(0, $anchor);
-        $attrs = self::positions($positions, $anchor, $anchor + strlen($first));
+        $nameEnd = $nameStart + strlen($first);
+        $attrs = self::positions($positions, $nameStart, $nameEnd);
         // Primitive type names are compared verbatim: parameter types in PHP
         // source are conventionally lowercase, and the fallback path — treating
         // an unrecognised token as a class name — is safe when the file's
@@ -388,7 +390,9 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
             return new Node\Identifier($first, $attrs);
         }
         $node = new Node\Name($first, $attrs);
-        return $nullable ? new Node\NullableType($node, $attrs) : $node;
+        return $nullable
+            ? new Node\NullableType($node, self::positions($positions, $typeStart, $nameEnd))
+            : $node;
     }
 
     private const array PRIMITIVE_TYPES = [
