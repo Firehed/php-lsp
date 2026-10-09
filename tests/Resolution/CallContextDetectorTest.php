@@ -27,6 +27,8 @@ final class CallContextDetectorTest extends TestCase
             'a positional argument' => ['positional', false],
             'the value of a named argument' => ['named_value', true],
             'the start of the argument after a named one' => ['next_argument', false],
+            'right after a named argument\'s string value' => ['after_string_value', true],
+            'right after a named argument\'s numeric value' => ['after_numeric_value', true],
         ];
     }
 
