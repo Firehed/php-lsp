@@ -20,6 +20,23 @@ $signatureHelp = fn (
     ],
 );
 
+$typeThenSignatureHelp = fn (
+    string $file,
+    string $marker,
+    string $typed,
+    Expectation\SignatureHelpExpectationInterface ...$expect,
+): Session\Script => new Session\Script(
+    project: 'tests/Fixtures',
+    steps: [
+        new Step\Open($file),
+        new Step\Type($file, new Marker\CursorMarker($marker), $typed),
+        new Step\SignatureHelp($file, new Marker\CursorMarker($marker), expect: array_values($expect)),
+    ],
+);
+
+$inProgress = 'src/SignatureHelp/LateBindingCallInProgress.php';
+$make = new Expectation\SignatureShows('make', 'int $count');
+
 $setName = [
     new Expectation\SignatureShows('setName'),
     new Expectation\DocumentationShows("Updates the user's display name"),
@@ -39,6 +56,14 @@ return [
     ),
     'self static call' => $signatureHelp($child, 'self_sig', new Expectation\SignatureShows('staticMethod')),
     'static static call' => $signatureHelp($child, 'static_sig', new Expectation\SignatureShows('staticMethod')),
+    'self static call while typing' => $typeThenSignatureHelp($inProgress, 'typing', 'self::make(', $make),
+    'static static call while typing' => $typeThenSignatureHelp($inProgress, 'typing', 'static::make(', $make),
+    'parent static call while typing' => $typeThenSignatureHelp(
+        'src/SignatureHelp/LateBindingCallInProgressChild.php',
+        'typing',
+        'parent::make(',
+        $make,
+    ),
     'incomplete code' => $signatureHelp(
         'src/IncompleteCode/SingleIncompleteSigHelp.php',
         'sig_this_call',

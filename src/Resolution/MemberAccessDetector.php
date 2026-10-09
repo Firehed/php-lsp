@@ -93,7 +93,7 @@ final class MemberAccessDetector
 
             $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
             $type = $this->expressionResolver($document)->resolve($node->var, $ast)?->getType();
-            $vantage = self::vantageFor($node, $ast);
+            $vantage = self::vantageFor($node);
             $visibility = $this->visibilityForReceiver($vantage, $type);
             if ($type !== null && $visibility !== null) {
                 return MemberAccessContext::forInstance($type, $visibility, $prefix);
@@ -108,23 +108,18 @@ final class MemberAccessDetector
                     return null;
                 }
             }
-            return $this->resolveStaticAccessContext($node, $ast, $offset);
+            return $this->resolveStaticAccessContext($node);
         }
 
         return null;
     }
 
     /**
-     * The enclosing class-like of the access site, read from the node's file
-     * position through {@see Scope::atOffset}. One route works for both parsed
-     * and synthesized nodes.
-     *
-     * @param array<Stmt> $ast
+     * The enclosing class-like of the access site.
      */
-    private static function vantageFor(Node $node, array $ast): ?ClasslikeName
+    private static function vantageFor(Node $node): ?ClasslikeName
     {
-        $classLike = Scope::atOffset($ast, $node->getStartFilePos())->getEnclosingClassLike();
-        $enclosingName = $classLike !== null ? ScopeFinder::getClassLikeName($classLike) : null;
+        $enclosingName = ScopeFinder::findEnclosingClasslikeName($node);
         return $enclosingName !== null ? ClasslikeName::fromFullyQualified($enclosingName) : null;
     }
 
@@ -183,13 +178,8 @@ final class MemberAccessDetector
         return Visibility::Public;
     }
 
-    /**
-     * @param array<Stmt> $ast
-     */
     private function resolveStaticAccessContext(
         StaticPropertyFetch|StaticCall|ClassConstFetch $node,
-        array $ast,
-        int $offset,
     ): ?MemberAccessContext {
         $class = $node->class;
         if (!$class instanceof Name) {
@@ -199,7 +189,7 @@ final class MemberAccessDetector
         $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
         $rawName = $class->toString();
         $keyword = LateBindingKeyword::tryFromName($rawName);
-        $enclosingClassLike = Scope::atOffset($ast, $offset)->getEnclosingClassLike();
+        $enclosingClassLike = ScopeFinder::findEnclosingClassNode($node);
         $enclosingName = LateBindingKeyword::Self->resolveIn($enclosingClassLike);
         $vantage = $enclosingName !== null ? ClasslikeName::fromFullyQualified($enclosingName) : null;
 
@@ -228,24 +218,8 @@ final class MemberAccessDetector
             );
         }
 
-        $raw = $class->toString();
-        if (str_contains($raw, '\\')) {
-            // Php-parser's name resolver rewrites imported and same-namespace
-            // names in place, so a name with a backslash is already qualified.
-            $className = $raw;
-        } else {
-            // A bare short name here reaches us either because the file is in
-            // the global namespace with no import for it, or because the node
-            // was synthesized by the cursor-text source
-            // and never went through the name resolver. The name context reads
-            // the same imports either way and answers correctly for both.
-            $context = NameContextFactory::fromAst($ast, $node->getStartLine() - 1);
-            $candidates = $context->candidates($raw, \Firehed\PhpLsp\Domain\NameKind::ClassLike);
-            $className = $candidates !== [] ? $candidates[0] : $raw;
-        }
-        /** @var class-string $className */
-
-        $targetName = ClasslikeName::fromFullyQualified($className);
+        /** @var class-string $rawName */
+        $targetName = ClasslikeName::fromFullyQualified($rawName);
         return MemberAccessContext::forStatic(
             new ClasslikeType($targetName),
             $this->visibilityBetween($vantage, $targetName),

@@ -125,7 +125,7 @@ parameters:
 				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
-			count: 25
+			count: 24
 			path: tests/Domain/TypeFactoryTest.php
 
 		-

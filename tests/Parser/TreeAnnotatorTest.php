@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser;
 
 use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Namespace_;
@@ -15,6 +16,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(TreeAnnotator::class)]
 final class TreeAnnotatorTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     public function testAnnotateAddsParentAttributeToNestedNodes(): void
     {
         $tree = (new ParserFactory())->createForNewestSupportedVersion()->parse(
@@ -53,6 +56,21 @@ final class TreeAnnotatorTest extends TestCase
             $className->toString(),
             'NameResolver must have rewritten the aliased name to its imported fully qualified form',
         );
+    }
+
+    public function testTolerantAnnotationContinuesPastANameResolutionError(): void
+    {
+        $tree = (new ParserFactory())->createForNewestSupportedVersion()->parse(
+            $this->loadFixture('TopLevel/duplicate_imports.php'),
+        ) ?? [];
+
+        $annotated = (new TreeAnnotator(tolerant: true))->annotate($tree);
+
+        $namespace = $annotated[0];
+        self::assertInstanceOf(Namespace_::class, $namespace);
+        $className = self::extractNewName($namespace->stmts[2]);
+        self::assertInstanceOf(Name::class, $className);
+        self::assertSame('Fixtures\\Domain\\User', $className->toString(), 'the first import still resolves the name');
     }
 
     private static function extractNewName(\PhpParser\Node $node): ?Name

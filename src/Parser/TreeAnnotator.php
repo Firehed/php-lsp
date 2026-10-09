@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser;
 
-use PhpParser\ErrorHandler\Collecting;
+use PhpParser\Error;
+use PhpParser\ErrorHandler;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
@@ -17,8 +18,9 @@ use PhpParser\NodeVisitor\ParentConnectingVisitor;
  *
  * A skeleton tree ({@see SyntaxSource\SkeletonSyntaxSource})
  * is annotated by the same code as a parsed one, so a downstream
- * reader that expects `parent`, `resolvedName`, or `namespacedName` finds
- * them regardless of which source produced the tree.
+ * reader finds the parent links and resolved names
+ * {@see SyntaxSource\SyntaxSourceInterface} promises regardless of which
+ * source produced the tree.
  */
 final class TreeAnnotator
 {
@@ -34,12 +36,20 @@ final class TreeAnnotator
      *        the allowlist, so the mode lives here instead. The php-parser
      *        source runs in the strict default so a truly unrepresentable AST
      *        still yields no statements.
+     *
+     *        Swallowed errors are discarded, not collected: an annotator lives
+     *        for the session, and an error keeps its node, and through parent
+     *        links a whole document tree, alive.
      */
     public function __construct(bool $tolerant = false)
     {
         $this->traverser = new NodeTraverser();
         $this->traverser->addVisitor(new ParentConnectingVisitor());
-        $this->traverser->addVisitor($tolerant ? new NameResolver(new Collecting()) : new NameResolver());
+        $this->traverser->addVisitor($tolerant ? new NameResolver(new class implements ErrorHandler {
+            public function handleError(Error $error): void
+            {
+            }
+        }) : new NameResolver());
     }
 
     /**

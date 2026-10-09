@@ -24,7 +24,35 @@ $complete = fn (
     ],
 );
 
+$typeThenComplete = fn (
+    string $file,
+    string $marker,
+    string $typed,
+    Expectation\CompletionExpectationInterface ...$expect,
+): Session\Script => new Session\Script(
+    project: 'tests/Fixtures',
+    steps: [
+        new Step\Open($file),
+        new Step\Type($file, new Marker\CursorMarker($marker), $typed),
+        new Step\Complete($file, new Marker\CursorMarker($marker), expect: array_values($expect)),
+    ],
+);
+
+$relative = 'src/Completion/RelativeQualifiedStatic.php';
+
 return [
+    'a relative qualified class' => $typeThenComplete(
+        $relative,
+        'typing',
+        'Sub\Thing::',
+        new Expectation\Offers('build'),
+    ),
+    'a relative qualified class inside a call' => $typeThenComplete(
+        $relative,
+        'typing',
+        'foo(Sub\Thing::',
+        new Expectation\Offers('build'),
+    ),
     'self:: offers every static member of the class' => $complete(
         $staticAccess,
         'self_empty',

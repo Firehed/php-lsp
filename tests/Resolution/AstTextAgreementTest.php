@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\DescribesSyntaxTreesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
@@ -41,6 +42,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversNothing]
 final class AstTextAgreementTest extends TestCase
 {
+    use DescribesSyntaxTreesTrait;
     use LoadsFixturesTrait;
 
     private MemoizingSyntaxSource $parser;
@@ -76,13 +78,13 @@ final class AstTextAgreementTest extends TestCase
         $offset = $this->markerOffset($content, $marker);
 
         $compositeNode = $this->parser->nodeAt($ast, $document, $offset);
-        $cursorNode = $this->cursorText->nodeAt([], $document, $offset);
+        $cursorNode = $this->cursorText->nodeAt($ast, $document, $offset);
 
         self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
         self::assertNotNull($cursorNode, 'cursor-text source must synthesize a node at the cursor');
 
-        $compositeCall = self::resolveToCallNode($compositeNode);
-        $cursorCall = self::resolveToCallNode($cursorNode);
+        $compositeCall = self::enclosingCall($compositeNode);
+        $cursorCall = self::enclosingCall($cursorNode);
 
         self::assertNotNull($compositeCall, 'composite node must be inside a call expression');
         self::assertNotNull($cursorCall, 'cursor-text node must be inside a call expression');
@@ -97,6 +99,7 @@ final class AstTextAgreementTest extends TestCase
             $cursorCall::class,
             'call node class must agree between composite and cursor-text source',
         );
+        self::assertTreeContractAgrees($compositeCall, $cursorCall);
     }
 
     /**
@@ -138,26 +141,59 @@ final class AstTextAgreementTest extends TestCase
             'nullsafe method call' => [
                 'SignatureHelp.php', 'nullsafe_param', NullsafeMethodCall::class,
             ],
+            'attribute arguments' => [
+                'src/Completion/AttributeNamedArguments.php', 'attr_arg_empty', Attribute::class,
+            ],
+            'imported function' => [
+                'src/Resolution/CursorTextResolution.php', 'imported_function', FuncCall::class,
+            ],
+            'qualified class through an import' => [
+                'src/Resolution/CursorTextResolution.php', 'qualified_static', StaticCall::class,
+            ],
+            'qualified function through an import' => [
+                'src/Resolution/CursorTextResolution.php', 'qualified_function', FuncCall::class,
+            ],
+            'namespace-relative class' => [
+                'src/Resolution/CursorTextResolution.php', 'relative_static', StaticCall::class,
+            ],
+            'namespace-relative function' => [
+                'src/Resolution/CursorTextResolution.php', 'relative_function', FuncCall::class,
+            ],
         ];
     }
 
-    private static function resolveToCallNode(Node $node): ?Node
+    /**
+     * The syntax-source contract: a node from any source sits in the same
+     * enclosing class-like and function-like, and carries the same resolved
+     * names, as the parsed node it stands in for.
+     */
+    private static function assertTreeContractAgrees(Node $parsed, Node $synthesized): void
     {
-        while (
-            !($node instanceof FuncCall)
-            && !($node instanceof MethodCall)
-            && !($node instanceof NullsafeMethodCall)
-            && !($node instanceof StaticCall)
-            && !($node instanceof New_)
-            && !($node instanceof Attribute)
-        ) {
-            $parent = $node->getAttribute('parent');
-            if (!$parent instanceof Node) {
-                return null;
-            }
-            $node = $parent;
-        }
-        return $node;
+        self::assertSame(
+            self::describeEnclosing($parsed, Stmt\ClassLike::class),
+            self::describeEnclosing($synthesized, Stmt\ClassLike::class),
+            'the enclosing class-like must agree, found through parent links',
+        );
+        self::assertSame(
+            self::describeEnclosing($parsed, Node\FunctionLike::class),
+            self::describeEnclosing($synthesized, Node\FunctionLike::class),
+            'the enclosing function-like must agree, found through parent links',
+        );
+        self::assertSame(
+            self::describeName($parsed),
+            self::describeName($synthesized),
+            'names must be resolved the same way',
+        );
+    }
+
+    /**
+     * @param class-string<Node> $kind
+     */
+    private static function describeEnclosing(Node $node, string $kind): string
+    {
+        $enclosing = self::ancestorOf($node, $kind);
+
+        return $enclosing === null ? '(none)' : self::shortClass($enclosing) . '@' . $enclosing->getStartFilePos();
     }
 
     /**
@@ -186,7 +222,7 @@ final class AstTextAgreementTest extends TestCase
         $probe = $offset > 0 ? $offset - 1 : 0;
 
         $compositeNode = $this->parser->nodeAt($ast, $document, $probe);
-        $cursorNode = $this->cursorText->nodeAt([], $document, $probe);
+        $cursorNode = $this->cursorText->nodeAt($ast, $document, $probe);
 
         self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
         self::assertNotNull($cursorNode, 'cursor-text source must synthesize a node at the cursor');
@@ -222,6 +258,7 @@ final class AstTextAgreementTest extends TestCase
             self::prefixName($cursorAccess),
             'member name/prefix must agree between composite and cursor-text source',
         );
+        self::assertTreeContractAgrees($compositeAccess, $cursorAccess);
     }
 
     /**
@@ -311,10 +348,8 @@ final class AstTextAgreementTest extends TestCase
             return $receiver->name;
         }
         if ($receiver instanceof \PhpParser\Node\Name) {
-            // Php-parser's name resolver rewrites an imported name in place, so
-            // an alias reads as its FQN on the composite side and as the short
-            // form from the cursor-text source; compare the short tail, which
-            // agrees on both sides.
+            // The short tail, so an expectation reads as the code is written;
+            // the resolved form is compared by assertTreeContractAgrees.
             return $receiver->getLast();
         }
         return '';
@@ -361,20 +396,6 @@ final class AstTextAgreementTest extends TestCase
             return $access->name;
         }
         return null;
-    }
-
-    private static function shortClass(Node $node): string
-    {
-        $class = $node::class;
-        $pos = strrpos($class, '\\');
-        return $pos === false ? $class : substr($class, $pos + 1);
-    }
-
-    private function markerOffset(string $content, string $marker): int
-    {
-        $pos = strpos($content, '/*|' . $marker . '*/');
-        self::assertNotFalse($pos, "Marker {$marker} not found");
-        return $pos;
     }
 
     /**

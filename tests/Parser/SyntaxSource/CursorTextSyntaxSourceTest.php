@@ -6,6 +6,10 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\DescribesSyntaxTreesTrait;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
@@ -18,12 +22,17 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Name\FullyQualified;
+use PhpParser\Node\Stmt;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(CursorTextSyntaxSource::class)]
 class CursorTextSyntaxSourceTest extends TestCase
 {
+    use DescribesSyntaxTreesTrait;
+    use LoadsFixturesTrait;
+
     public function testParseYieldsAnEmptyTree(): void
     {
         $source = new CursorTextSyntaxSource();
@@ -164,7 +173,7 @@ class CursorTextSyntaxSourceTest extends TestCase
         $node = $source->nodeAt([], $document, $offset);
 
         // Member access is still synthesized on its own; there's no enclosing call.
-        $call = self::resolveToCall($node);
+        $call = self::enclosingCall($node);
         self::assertNull($call, 'the paren before the `;` is not the cursor\'s enclosing call');
     }
 
@@ -270,31 +279,194 @@ class CursorTextSyntaxSourceTest extends TestCase
         );
     }
 
+    /**
+     * @return array<string, array{string, string, string}>
+     */
+    public static function resolvedNames(): array
+    {
+        $fixture = 'src/Resolution/CursorTextResolution.php';
+        return [
+            'aliased import, static call' => [$fixture, 'aliased_static', 'FullyQualified(Fixtures\Domain\User)'],
+            'group import, static call' => [$fixture, 'group_static', 'FullyQualified(Fixtures\Enum\Priority)'],
+            'aliased import, new' => [$fixture, 'aliased_new', 'FullyQualified(Fixtures\Domain\User)'],
+            'aliased import, attribute' => [$fixture, 'attribute', 'FullyQualified(Fixtures\Domain\User)'],
+            'unqualified function in a namespace' => [
+                $fixture,
+                'namespaced_function',
+                'Name(helper) ns:Fixtures\Resolution\helper',
+            ],
+            'imported function' => [$fixture, 'imported_function', 'FullyQualified(Fixtures\Utility\formatName)'],
+            'qualified class through an import' => [
+                $fixture,
+                'qualified_static',
+                'FullyQualified(Fixtures\Domain\User)',
+            ],
+            'qualified function through an import' => [
+                $fixture,
+                'qualified_function',
+                'FullyQualified(Fixtures\Domain\helper)',
+            ],
+            'namespace-relative class' => [
+                $fixture,
+                'relative_static',
+                'FullyQualified(Fixtures\Resolution\CursorTextResolution)',
+            ],
+            'namespace-relative function' => [
+                $fixture,
+                'relative_function',
+                'FullyQualified(Fixtures\Resolution\helper)',
+            ],
+            'import outside any namespace' => [
+                'SignatureHelp.php',
+                'constructor',
+                'FullyQualified(Fixtures\Domain\User)',
+            ],
+        ];
+    }
+
+    #[DataProvider('resolvedNames')]
+    public function testNamesResolveAgainstTheImportsInEffect(string $fixture, string $marker, string $expected): void
+    {
+        self::assertSame(
+            $expected,
+            self::describeName($this->callAtMarker($fixture, $marker)),
+            'the name resolves the way the parser resolves it',
+        );
+    }
+
+    public function testTheSynthesizedNodeIsLinkedUnderItsEnclosingMethod(): void
+    {
+        $call = $this->callAtMarker('src/Resolution/CursorTextResolution.php', 'aliased_static');
+
+        $enclosing = self::ancestorOf($call, Stmt\ClassMethod::class);
+        self::assertNotNull($enclosing, 'parent links reach the enclosing method');
+        self::assertSame('run', $enclosing->name->toString());
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function incompleteNames(): array
+    {
+        return [
+            'namespace prefix alone, called' => ['relative_prefix_call'],
+            'namespace prefix alone, instantiated' => ['relative_prefix_new'],
+            'namespace prefix alone, static call' => ['relative_prefix_static'],
+            'separator alone, static call' => ['separator_static'],
+        ];
+    }
+
+    #[DataProvider('incompleteNames')]
+    public function testAnIncompleteNameSynthesizesNoCall(string $marker): void
+    {
+        [$document, $tree] = $this->parsedFixture('TopLevel/incomplete_names.php');
+
+        self::assertNull(
+            self::enclosingCall($this->nodeAtMarker($document, $tree, $marker)),
+            'a name with nothing after its prefix names no callable',
+        );
+    }
+
+    public function testAChainedAccessKeepsEachSegment(): void
+    {
+        [$document, $tree] = $this->parsedFixture('src/IncompleteCode/ChainedAccess.php');
+
+        $fetch = $this->nodeAtMarker($document, $tree, 'chained_in_if')?->getAttribute('parent');
+
+        self::assertInstanceOf(PropertyFetch::class, $fetch, 'the access being typed is a property fetch');
+        $receiver = $fetch->var;
+        self::assertInstanceOf(PropertyFetch::class, $receiver, 'its receiver is the earlier segment');
+        self::assertInstanceOf(Node\Identifier::class, $receiver->name);
+        self::assertSame('user', $receiver->name->toString(), 'the earlier segment keeps its name');
+        self::assertInstanceOf(Variable::class, $receiver->var, 'the chain starts at the variable');
+        self::assertSame('this', $receiver->var->name);
+    }
+
+    public function testAnAttributeSitsInAnAttributeGroupUnderItsDeclaration(): void
+    {
+        $attribute = $this->callAtMarker('src/Resolution/CursorTextResolution.php', 'attribute');
+
+        $group = $attribute->getAttribute('parent');
+        self::assertInstanceOf(Node\AttributeGroup::class, $group, 'an attribute belongs to an attribute group');
+        self::assertSame(
+            $attribute->getStartFilePos(),
+            $group->getStartFilePos(),
+            'the group carries the position of the attribute it holds',
+        );
+        self::assertInstanceOf(
+            Stmt\ClassMethod::class,
+            $group->getAttribute('parent'),
+            'the group belongs to the declaration it decorates',
+        );
+    }
+
+    public function testACallTypedAtNamespaceLevelHangsOffTheNamespace(): void
+    {
+        $call = $this->callAtMarker('TopLevel/trailing_call_in_namespace.php', 'trailing_call');
+
+        $statement = $call->getAttribute('parent');
+        self::assertInstanceOf(Stmt\Expression::class, $statement, 'a call is held by an expression statement');
+        self::assertSame(
+            $call->getStartFilePos(),
+            $statement->getStartFilePos(),
+            'the statement carries the position of the call it holds',
+        );
+        self::assertInstanceOf(
+            Stmt\Namespace_::class,
+            $statement->getAttribute('parent'),
+            'with no enclosing statement, the namespace holds it',
+        );
+    }
+
+    public function testTheDocumentTreeIsLeftUntouched(): void
+    {
+        [$document, $tree] = $this->parsedFixture('src/Resolution/CursorTextResolution.php');
+        $namespace = $tree[1];
+        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
+        $import = $namespace->stmts[0];
+        self::assertInstanceOf(Stmt\Use_::class, $import);
+
+        $this->nodeAtMarker($document, $tree, 'aliased_static');
+
+        self::assertSame($namespace, $import->getAttribute('parent'), 'the document\'s imports keep their own parents');
+    }
+
+    /**
+     * @return array{TextDocument, array<Stmt>}
+     */
+    private function parsedFixture(string $fixture): array
+    {
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+
+        return [$document, (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)];
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     */
+    private function nodeAtMarker(TextDocument $document, array $tree, string $marker): ?Node
+    {
+        return (new CursorTextSyntaxSource())->nodeAt(
+            $tree,
+            $document,
+            $this->markerOffset($document->getContent(), $marker),
+        );
+    }
+
+    private function callAtMarker(string $fixture, string $marker): Node
+    {
+        [$document, $tree] = $this->parsedFixture($fixture);
+        $call = self::enclosingCall($this->nodeAtMarker($document, $tree, $marker));
+        self::assertNotNull($call, 'a call is synthesized at the marker');
+
+        return $call;
+    }
+
     private static function synthesizeCallAtCursor(string $content): ?Node
     {
         $source = new CursorTextSyntaxSource();
         $document = new TextDocument('file:///call.php', 'php', 1, $content);
-        $node = $source->nodeAt([], $document, strlen($content));
-        return self::resolveToCall($node);
-    }
-
-    private static function resolveToCall(?Node $node): ?Node
-    {
-        while ($node !== null && !self::isCall($node)) {
-            $parent = $node->getAttribute('parent');
-            $node = $parent instanceof Node ? $parent : null;
-        }
-        return $node;
-    }
-
-    private static function isCall(Node $node): bool
-    {
-        return $node instanceof FuncCall
-            || $node instanceof MethodCall
-            || $node instanceof NullsafeMethodCall
-            || $node instanceof StaticCall
-            || $node instanceof New_
-            || $node instanceof Attribute;
+        return self::enclosingCall($source->nodeAt([], $document, strlen($content)));
     }
 
     private static function funcCallName(FuncCall $call): string

@@ -6,9 +6,12 @@ namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
+use PhpParser\Node\AttributeGroup;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\Error;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -18,32 +21,40 @@ use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Stmt;
+use PhpParser\Node\UseItem;
 use PhpParser\Node\VarLikeIdentifier;
 
 /**
  * Synthesizes the member-access or call node at the cursor from the document
- * text. `parse()` yields nothing; `nodeAt()` ignores the tree it is handed.
- * Placed last in the composite, so it answers only when every earlier member
- * has answered null (RFC 1 §4.11).
+ * text. `parse()` yields nothing. Placed last in the composite, so it answers
+ * only when every earlier member has answered null (RFC 1 §4.11).
  *
- * The outer node has no `parent` attribute set, so a downstream reader that
- * needs the enclosing class-like reads it from the node's position rather
- * than the parent chain.
+ * The synthesized node is resolved and linked into the tree `nodeAt()` is
+ * handed, so it meets the same contract as a parsed node.
  */
 final class CursorTextSyntaxSource implements SyntaxSourceInterface
 {
     private const string NON_FUNCTION_KEYWORD_PATTERN
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
 
+    /**
+     * A name as written: optionally fully qualified, never empty, never ending
+     * in a separator.
+     */
+    private const string NAME = '\\\\?[A-Za-z_][A-Za-z0-9_]*(?:\\\\[A-Za-z_][A-Za-z0-9_]*)*';
+
     private readonly NodeAtPosition $nodeAtPosition;
+    private readonly TreeAnnotator $annotator;
 
     public function __construct()
     {
         $this->nodeAtPosition = new NodeAtPosition();
+        $this->annotator = new TreeAnnotator(tolerant: true);
     }
 
     /**
@@ -75,7 +86,75 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         if ($root === null) {
             return null;
         }
+        $this->attach($root, $tree);
+
         return $this->nodeAtPosition->find([$root], $offset);
+    }
+
+    /**
+     * Resolves the fragment's names against the namespace and imports in
+     * effect where it starts, through the annotator every tree source uses,
+     * then links it under the innermost statement or function-like of $tree
+     * that contains it.
+     *
+     * @param array<Stmt> $tree
+     */
+    private function attach(Expr|Attribute $root, array $tree): void
+    {
+        $start = $root->getStartFilePos();
+        $namespace = null;
+        foreach ($tree as $stmt) {
+            if ($stmt instanceof Stmt\Namespace_ && $stmt->getStartFilePos() <= $start) {
+                $namespace = $stmt;
+            }
+        }
+
+        $body = [];
+        foreach ($namespace->stmts ?? $tree as $stmt) {
+            if ($stmt->getStartFilePos() > $start) {
+                break;
+            }
+            if ($stmt instanceof Stmt\Use_ || $stmt instanceof Stmt\GroupUse) {
+                $body[] = self::copyImport($stmt);
+            }
+        }
+        // The root sits in the node that holds its kind in a parsed tree, at the
+        // root's position. Php-parser resolves an attribute's name only within a
+        // declaration's attribute groups, so for annotation the group is held by
+        // a stand-in declaration.
+        // Until annotation links it, the root carries only its position.
+        $position = $root->getAttributes();
+        if ($root instanceof Attribute) {
+            $holder = new AttributeGroup([$root], $position);
+            $body[] = new Stmt\Function_('_', ['attrGroups' => [$holder]]);
+        } else {
+            $holder = new Stmt\Expression($root, $position);
+            $body[] = $holder;
+        }
+        $this->annotator->annotate($namespace === null ? $body : [
+            new Stmt\Namespace_($namespace->name === null ? null : new Name($namespace->name->name), $body),
+        ]);
+
+        $holder->setAttribute('parent', $this->nodeAtPosition->find(
+            $tree,
+            $start,
+            fn (Node $node) => $node instanceof Stmt || $node instanceof FunctionLike,
+        ));
+    }
+
+    /**
+     * A fresh copy, so annotating it leaves the document's own tree untouched.
+     */
+    private static function copyImport(Stmt\Use_|Stmt\GroupUse $import): Stmt\Use_|Stmt\GroupUse
+    {
+        $uses = array_map(
+            fn (UseItem $use) => new UseItem(new Name($use->name->name), $use->alias?->name, $use->type),
+            $import->uses,
+        );
+
+        return $import instanceof Stmt\GroupUse
+            ? new Stmt\GroupUse(new Name($import->prefix->name), $uses, $import->type)
+            : new Stmt\Use_($uses, $import->type);
     }
 
     /**
@@ -84,12 +163,16 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
      * (`$this->x->y->prefix`) reuses the instance path on the leaf `$var->`
      * segment: the source is a cursor-position primitive, not a chain typer.
      */
-    private static function synthesizeMemberAccess(string $lineText, int $lineStart, int $offset, int $line): ?Node
-    {
+    private static function synthesizeMemberAccess(
+        string $lineText,
+        int $lineStart,
+        int $offset,
+        int $line,
+    ): PropertyFetch|StaticPropertyFetch|null {
         // Static: ClasslikeName::prefix, excluding $var::.
         if (
             preg_match_all(
-                '/(?<!\$)([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)(::)(\w*)/',
+                '/(?<![\w\\\\$])(' . self::NAME . ')(::)(\w*)/',
                 $lineText,
                 $staticMatches,
                 PREG_OFFSET_CAPTURE | PREG_SET_ORDER,
@@ -129,16 +212,14 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
 
     /**
      * `$memberInside` becomes the value of the trailing {@see Arg} so a walk
-     * up from the member-access still reaches the enclosing call. Class-like
-     * receivers get no `resolvedName`: `NameContext` sits in the Resolution
-     * layer, out of reach; a downstream reader fills it in.
+     * up from the member-access still reaches the enclosing call.
      */
     private static function synthesizeCall(
         string $content,
         int $offset,
         int $line,
         ?Node $memberInside,
-    ): ?Node {
+    ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
         $parenPos = self::findUnclosedParen($content, $offset);
         if ($parenPos === null) {
             return null;
@@ -153,9 +234,6 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
         $args = self::parseArgs($argsText, $parenPos + 1, $offset, $line, $memberInside);
         $callNode->args = $args;
-        foreach ($args as $arg) {
-            $arg->setAttribute('parent', $callNode);
-        }
 
         $callStart = $callNode->getStartFilePos();
         $callNode->setAttribute('endFilePos', max($callStart, $offset));
@@ -192,7 +270,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
 
         if (
             preg_match(
-                '/#\[\s*(?:[\w\\\\]+\s*,\s*)*([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/',
+                '/#\[\s*(?:[\w\\\\]+\s*,\s*)*(' . self::NAME . ')\s*$/',
                 $text,
                 $m,
                 PREG_OFFSET_CAPTURE,
@@ -200,15 +278,13 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         ) {
             $nameText = $m[1][0];
             $nameStart = $m[1][1];
-            $name = self::classLikeName($nameText, $nameStart, $line);
-            $attr = new Attribute($name, [], self::posAttrs($nameStart, $lastByte, $line));
-            $name->setAttribute('parent', $attr);
-            return $attr;
+            $name = self::writtenName($nameText, $nameStart, $line);
+            return new Attribute($name, [], self::posAttrs($nameStart, $lastByte, $line));
         }
 
         if (
             preg_match(
-                '/([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)::(\w+)\s*$/',
+                '/(?<![\w\\\\])(' . self::NAME . ')::(\w+)\s*$/',
                 $text,
                 $m,
                 PREG_OFFSET_CAPTURE,
@@ -218,15 +294,12 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             $classStart = $m[1][1];
             $methodText = $m[2][0];
             $methodStart = $m[2][1];
-            $class = self::classLikeName($classText, $classStart, $line);
+            $class = self::writtenName($classText, $classStart, $line);
             $method = new Identifier(
                 $methodText,
                 self::posAttrs($methodStart, $methodStart + strlen($methodText) - 1, $line),
             );
-            $call = new StaticCall($class, $method, [], self::posAttrs($classStart, $lastByte, $line));
-            $class->setAttribute('parent', $call);
-            $method->setAttribute('parent', $call);
-            return $call;
+            return new StaticCall($class, $method, [], self::posAttrs($classStart, $lastByte, $line));
         }
 
         if (
@@ -251,17 +324,14 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
                 $methodName,
                 self::posAttrs($methodStart, $methodStart + strlen($methodName) - 1, $line),
             );
-            $call = $isNullsafe
+            return $isNullsafe
                 ? new NullsafeMethodCall($var, $method, [], self::posAttrs($varStart, $lastByte, $line))
                 : new MethodCall($var, $method, [], self::posAttrs($varStart, $lastByte, $line));
-            $var->setAttribute('parent', $call);
-            $method->setAttribute('parent', $call);
-            return $call;
         }
 
         if (
             preg_match(
-                '/\bnew\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*$/',
+                '/\bnew\s+(' . self::NAME . ')\s*$/',
                 $text,
                 $m,
                 PREG_OFFSET_CAPTURE,
@@ -270,15 +340,16 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             $nameText = $m[1][0];
             $nameStart = $m[1][1];
             $newStart = $m[0][1];
-            $name = self::classLikeName($nameText, $nameStart, $line);
-            $new = new New_($name, [], self::posAttrs($newStart, $lastByte, $line));
-            $name->setAttribute('parent', $new);
-            return $new;
+            return new New_(
+                self::writtenName($nameText, $nameStart, $line),
+                [],
+                self::posAttrs($newStart, $lastByte, $line),
+            );
         }
 
         if (
             preg_match(
-                '/\b(\w+)\s*$/',
+                '/(?<![\w\\\\:])(' . self::NAME . ')\s*$/',
                 $text,
                 $m,
                 PREG_OFFSET_CAPTURE,
@@ -289,29 +360,32 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             if (preg_match(self::NON_FUNCTION_KEYWORD_PATTERN, $funcName) === 1) {
                 return null;
             }
-            $name = new Name(
-                $funcName,
-                self::posAttrs($funcStart, $funcStart + strlen($funcName) - 1, $line),
+            return new FuncCall(
+                self::writtenName($funcName, $funcStart, $line),
+                [],
+                self::posAttrs($funcStart, $lastByte, $line),
             );
-            $call = new FuncCall($name, [], self::posAttrs($funcStart, $lastByte, $line));
-            $name->setAttribute('parent', $call);
-            return $call;
         }
 
         return null;
     }
 
     /**
-     * Php-parser drops the leading `\` on a fully-qualified name; the same is
-     * done here so a downstream reader sees one shape.
+     * A name as php-parser models how it is written: a leading `\` makes it
+     * fully qualified and a leading `namespace\` makes it relative, each
+     * stored without that prefix.
      */
-    private static function classLikeName(string $short, int $startFilePos, int $line): Name
+    private static function writtenName(string $written, int $startFilePos, int $line): Name
     {
-        $normalized = ltrim($short, '\\');
-        $attrs = self::posAttrs($startFilePos, $startFilePos + strlen($short) - 1, $line);
-        return $short !== $normalized
-            ? new FullyQualified($normalized, $attrs)
-            : new Name($normalized, $attrs);
+        $attrs = self::posAttrs($startFilePos, $startFilePos + strlen($written) - 1, $line);
+        if (str_starts_with($written, '\\')) {
+            return new FullyQualified(substr($written, 1), $attrs);
+        }
+        if (str_starts_with($written, 'namespace\\')) {
+            return new Name\Relative(substr($written, strlen('namespace\\')), $attrs);
+        }
+
+        return new Name($written, $attrs);
     }
 
     /**
@@ -397,17 +471,13 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             ? $memberInside
             : new Variable('_', self::posAttrs($segStart, $segEnd, $line));
 
-        $arg = new Arg(
+        return new Arg(
             $value,
             false,
             false,
             self::posAttrs($segStart, $segEnd, $line),
             $named,
         );
-        $named?->setAttribute('parent', $arg);
-        $value->setAttribute('parent', $arg);
-
-        return $arg;
     }
 
     /**
@@ -444,14 +514,11 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
                 $segName,
                 self::posAttrs($segNameStart, $segNameEnd, $line),
             );
-            $inner = new PropertyFetch(
+            $currentReceiver = new PropertyFetch(
                 $currentReceiver,
                 $segIdent,
                 self::posAttrs($varStart, $segNameEnd, $line),
             );
-            $currentReceiver->setAttribute('parent', $inner);
-            $segIdent->setAttribute('parent', $inner);
-            $currentReceiver = $inner;
         }
 
         // Absolute file offsets of the arrow (`->` or `?->`) and the identifier
@@ -468,18 +535,11 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             ? new Error(self::posAttrs($arrowEnd + 1, $arrowEnd + 1, $line))
             : new Identifier($prefix, self::posAttrs($prefixStart, $prefixEnd, $line));
 
-        $fetch = new PropertyFetch(
+        return new PropertyFetch(
             $currentReceiver,
             $name,
             self::posAttrs($varStart, $matchEnd, $line),
         );
-        // Inner children carry a parent so a downstream reader that walked the
-        // Identifier/Error → outer expression edge still finds the fetch. The
-        // outer node has no parent, so enclosing-class lookup falls onto the
-        // node's file position rather than a parent chain (RFC 1 §4.11).
-        $currentReceiver->setAttribute('parent', $fetch);
-        $name->setAttribute('parent', $fetch);
-        return $fetch;
     }
 
     /**
@@ -502,19 +562,16 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         $prefixEnd = $prefixStart + max(0, strlen($prefix) - 1);
         $matchEnd = $prefix === '' ? $colonsEnd : $prefixEnd;
 
-        $classNode = self::classLikeName($rawClass, $classStart, $line);
+        $classNode = self::writtenName($rawClass, $classStart, $line);
         $name = $prefix === ''
             ? new Error(self::posAttrs($colonsEnd + 1, $colonsEnd + 1, $line))
             : new VarLikeIdentifier($prefix, self::posAttrs($prefixStart, $prefixEnd, $line));
 
-        $fetch = new StaticPropertyFetch(
+        return new StaticPropertyFetch(
             $classNode,
             $name,
             self::posAttrs($classStart, $matchEnd, $line),
         );
-        $classNode->setAttribute('parent', $fetch);
-        $name->setAttribute('parent', $fetch);
-        return $fetch;
     }
 
     /**

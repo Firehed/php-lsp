@@ -338,40 +338,12 @@ final class SymbolResolver implements CodeResolverInterface
         }
 
         [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-        self::resolveClasslikeNameOnSynthesizedCall($callNode, $ast, $line);
         $callable = $this->resolveCallable($callNode, $ast, $document);
         if ($callable === null) {
             return null;
         }
 
         return new CallContext($callable, $activeParameter, $usedNames, $positionalCount);
-    }
-
-    /**
-     * A call node synthesized by the cursor-text source carries a class-like
-     * `Name` without `resolvedName` (the Parser layer cannot reach
-     * `NameContext`). Fill it in.
-     *
-     * @param array<Stmt> $ast
-     */
-    private static function resolveClasslikeNameOnSynthesizedCall(Node $callNode, array $ast, int $line): void
-    {
-        $classNameNode = match (true) {
-            $callNode instanceof New_ => $callNode->class,
-            $callNode instanceof StaticCall => $callNode->class,
-            $callNode instanceof Attribute => $callNode->name,
-            default => null,
-        };
-        if (
-            !$classNameNode instanceof Name
-            || $classNameNode instanceof Name\FullyQualified
-            || $classNameNode->hasAttribute('resolvedName')
-        ) {
-            return;
-        }
-        $context = NameContextFactory::fromAst($ast, $line);
-        $candidates = $context->candidates($classNameNode->toString(), \Firehed\PhpLsp\Domain\NameKind::ClassLike);
-        $classNameNode->setAttribute('resolvedName', new Name\FullyQualified($candidates[0]));
     }
 
     public function getNameContext(TextDocument $document, int $line): NameContext
@@ -467,9 +439,7 @@ final class SymbolResolver implements CodeResolverInterface
         }
 
         // Class reference (new, instanceof, static call, type hint, etc.)
-        $classNameStr = ScopeFinder::resolveClasslikeName($node);
-
-        $classInfo = $this->symbolSource->lookupClassLike(ClasslikeName::fromFullyQualified($classNameStr));
+        $classInfo = $this->symbolSource->lookupClassLike(ClasslikeName::fromFullyQualified($node->toString()));
         if ($classInfo === null) {
             return null;
         }
