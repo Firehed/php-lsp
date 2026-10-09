@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser;
 
+use Closure;
 use PhpParser\Error;
 use PhpParser\ErrorHandler;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr\CallLike;
 use PhpParser\Node\Stmt;
-use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
+use PhpParser\NodeVisitorAbstract;
 use PhpParser\Token;
 
 /**
@@ -29,7 +30,8 @@ use PhpParser\Token;
  */
 final class TreeAnnotator
 {
-    private NodeTraverser $traverser;
+    private readonly ParentConnectingVisitor $parents;
+    private readonly NameResolver $names;
 
     /**
      * @param bool $tolerant When true, a name-resolution failure (a duplicate
@@ -48,40 +50,50 @@ final class TreeAnnotator
      */
     public function __construct(bool $tolerant = false)
     {
-        $this->traverser = new NodeTraverser();
-        $this->traverser->addVisitor(new ParentConnectingVisitor());
-        $this->traverser->addVisitor($tolerant ? new NameResolver(new class implements ErrorHandler {
+        $this->parents = new ParentConnectingVisitor();
+        $this->names = $tolerant ? new NameResolver(new class implements ErrorHandler {
             public function handleError(Error $error): void
             {
             }
-        }) : new NameResolver());
+        }) : new NameResolver();
     }
 
     /**
      * @param array<Node> $tree
-     * @param array<Token> $tokens The tokens the tree was parsed from, when a
-     *        lexer produced it; a source that builds nodes itself sets
+     * @param array<Token> $tokens The tokens the tree was parsed from, or none
+     *        when no lexer produced it; a source that builds nodes itself sets
      *        {@see SyntaxSource\SyntaxSourceInterface::ARGUMENT_SEPARATORS} on them.
      * @return array<Stmt>
      */
     public function annotate(array $tree, array $tokens = []): array
     {
+        $traverser = new NodeTraverser($this->parents, $this->names);
         if ($tokens !== []) {
-            $finder = new NodeFinder();
-            $calls = [
-                ...$finder->findInstanceOf($tree, CallLike::class),
-                ...$finder->findInstanceOf($tree, Attribute::class),
-            ];
-            foreach ($calls as $call) {
-                $call->setAttribute(
-                    SyntaxSource\SyntaxSourceInterface::ARGUMENT_SEPARATORS,
-                    self::argumentSeparators($call, $tokens),
-                );
-            }
+            $traverser->addVisitor(new class (
+                static fn (CallLike|Attribute $call): array => self::argumentSeparators($call, $tokens),
+            ) extends NodeVisitorAbstract {
+                /**
+                 * @param Closure(CallLike|Attribute): list<int> $separatorsOf
+                 */
+                public function __construct(private readonly Closure $separatorsOf)
+                {
+                }
+
+                public function enterNode(Node $node): null
+                {
+                    if ($node instanceof CallLike || $node instanceof Attribute) {
+                        $node->setAttribute(
+                            SyntaxSource\SyntaxSourceInterface::ARGUMENT_SEPARATORS,
+                            ($this->separatorsOf)($node),
+                        );
+                    }
+                    return null;
+                }
+            });
         }
 
         /** @var array<Stmt> */
-        return $this->traverser->traverse($tree);
+        return $traverser->traverse($tree);
     }
 
     /**
