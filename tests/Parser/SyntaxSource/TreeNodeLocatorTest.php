@@ -39,13 +39,25 @@ final class TreeNodeLocatorTest extends TestCase
         self::assertSame('parentMethod', $node->toString());
     }
 
-    public function testAStatementIsNoAnswer(): void
+    #[DataProvider('treeSources')]
+    public function testAStatementIsNoAnswer(SyntaxSourceInterface $source): void
     {
-        $parsed = $this->parse(new PhpParserSyntaxSource(new TreeAnnotator()));
+        $parsed = $this->parse($source);
 
         self::assertNull(
             (new TreeNodeLocator())->nodeAt($parsed, self::offsetOf($parsed, 'class ChildClass')),
             'a statement holds nothing the cursor names',
+        );
+    }
+
+    #[DataProvider('treeSources')]
+    public function testTheLineBeforeADeclarationIsNoAnswer(SyntaxSourceInterface $source): void
+    {
+        $parsed = $this->parse($source);
+
+        self::assertNull(
+            (new TreeNodeLocator())->nodeAt($parsed, self::offsetOf($parsed, 'class ChildClass') - 1),
+            'the blank line before a declaration names nothing',
         );
     }
 
@@ -58,10 +70,10 @@ final class TreeNodeLocatorTest extends TestCase
     {
         $parsed = $this->parse($source);
 
-        $node = (new TreeNodeLocator())->nodeAt($parsed, self::offsetOf($parsed, 'ParentClass'));
+        $node = (new TreeNodeLocator())->nodeAt($parsed, self::offsetOf($parsed, 'ChildClass'));
 
-        self::assertInstanceOf(Name::class, $node, 'the parent class name is the innermost node');
-        self::assertSame('Fixtures\\Inheritance\\ParentClass', $node->toString(), 'the name is resolved');
+        self::assertInstanceOf(Identifier::class, $node, 'the declared class name is the innermost node');
+        self::assertSame('ChildClass', $node->toString());
     }
 
     /**
