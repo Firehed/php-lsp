@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Parser\SyntaxSource\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PhpParser\Node\Identifier;
-use PhpParser\Node\Name;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
