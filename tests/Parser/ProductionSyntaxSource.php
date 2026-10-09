@@ -42,7 +42,6 @@ final readonly class ProductionSyntaxSource
             new CompositeSyntaxSource(
                 new PhpParserSyntaxSource(new TreeAnnotator()),
                 new SkeletonSyntaxSource(),
-                new CursorTextSyntaxSource(),
             ),
         );
         $this->source = new MemoizingSyntaxSource($this->counter);

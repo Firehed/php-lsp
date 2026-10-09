@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use PhpParser\Node;
 
 /**
  * Content-keyed memo around one {@see SyntaxSourceInterface}, discarded at the LSP
@@ -45,10 +44,5 @@ final class MemoizingSyntaxSource implements SyntaxSourceInterface, MessageScope
         }
 
         return new ParsedDocument($document, $this->memo[$content]);
-    }
-
-    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
-    {
-        return $this->inner->nodeAt($parsed, $offset);
     }
 }

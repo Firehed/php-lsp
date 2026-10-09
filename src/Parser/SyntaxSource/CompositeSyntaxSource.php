@@ -6,14 +6,13 @@ namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use PhpParser\Node;
 
 /**
  * The one-route composite for {@see SyntaxSourceInterface}. Members are asked
- * in order — primary parse, skeleton fallback, cursor-local fragment — and the
- * first non-empty result wins; the empty list is returned only when every
- * member returned it, so a fallback reaches consumers exactly when the earlier
- * members had nothing to say (RFC 1 §4.11).
+ * in order — primary parse, then skeleton fallback — and the first non-empty
+ * result wins; the empty tree is returned only when every member returned it,
+ * so a fallback reaches consumers exactly when the earlier members had nothing
+ * to say (RFC 1 §4.11).
  */
 final class CompositeSyntaxSource implements SyntaxSourceInterface
 {
@@ -23,9 +22,8 @@ final class CompositeSyntaxSource implements SyntaxSourceInterface
     public function __construct(
         PhpParserSyntaxSource $primary,
         SkeletonSyntaxSource $skeleton,
-        CursorTextSyntaxSource $cursor,
     ) {
-        $this->sources = [$primary, $skeleton, $cursor];
+        $this->sources = [$primary, $skeleton];
     }
 
     public function parse(TextDocument $document): ParsedDocument
@@ -37,16 +35,5 @@ final class CompositeSyntaxSource implements SyntaxSourceInterface
             }
         }
         return new ParsedDocument($document, []);
-    }
-
-    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
-    {
-        foreach ($this->sources as $source) {
-            $node = $source->nodeAt($parsed, $offset);
-            if ($node !== null) {
-                return $node;
-            }
-        }
-        return null;
     }
 }

@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
-use PhpParser\Node;
 use PhpParser\Node\Stmt;
 
 /**
@@ -29,10 +28,5 @@ final class CountingSyntaxSource implements SyntaxSourceInterface
     {
         $this->parseCount++;
         return new ParsedDocument($document, $this->tree);
-    }
-
-    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
-    {
-        return null;
     }
 }

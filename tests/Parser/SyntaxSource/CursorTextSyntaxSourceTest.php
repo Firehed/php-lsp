@@ -34,18 +34,6 @@ class CursorTextSyntaxSourceTest extends TestCase
     use DescribesSyntaxTreesTrait;
     use LoadsFixturesTrait;
 
-    public function testParseYieldsAnEmptyTree(): void
-    {
-        $source = new CursorTextSyntaxSource();
-        $document = new TextDocument('file:///empty.php', 'php', 1, '<?php $x = 1;');
-
-        self::assertSame(
-            [],
-            $source->parse($document)->tree,
-            'parse() carries no tree; the cursor-text source is nodeAt-only',
-        );
-    }
-
     public function testNodeAtRejectsAnOffsetOutsideTheDocument(): void
     {
         $source = new CursorTextSyntaxSource();

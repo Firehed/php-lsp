@@ -85,16 +85,6 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     }
 
     /**
-     * The skeleton describes structure, not expressions; the cursor lives inside
-     * expressions php-parser recovers on its own, so this source has nothing to
-     * add and lets the composite fall through to the next member (RFC 1 §4.11).
-     */
-    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
-    {
-        return null;
-    }
-
-    /**
      * @param PositionMap $positions
      * @return array<Stmt>
      */

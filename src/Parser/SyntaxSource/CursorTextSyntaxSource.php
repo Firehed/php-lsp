@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -32,13 +31,12 @@ use PhpParser\Node\VarLikeIdentifier;
 
 /**
  * Synthesizes the member-access or call node at the cursor from the document
- * text. `parse()` yields nothing. Placed last in the composite, so it answers
- * only when every earlier member has answered null (RFC 1 §4.11).
+ * text (RFC 1 §4.11).
  *
- * The synthesized node is resolved and linked into the tree `nodeAt()` is
- * handed, so it meets the same contract as a parsed node.
+ * The synthesized node is resolved and linked into the parsed document's tree,
+ * so it meets the same contract as a parsed node.
  */
-final class CursorTextSyntaxSource implements SyntaxSourceInterface, NodeLocatorInterface
+final class CursorTextSyntaxSource implements NodeLocatorInterface
 {
     private const string NON_FUNCTION_KEYWORD_PATTERN
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
@@ -56,11 +54,6 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface, NodeLocator
     {
         $this->nodeAtPosition = new NodeAtPosition();
         $this->annotator = new TreeAnnotator(tolerant: true);
-    }
-
-    public function parse(TextDocument $document): ParsedDocument
-    {
-        return new ParsedDocument($document, []);
     }
 
     public function nodeAt(ParsedDocument $parsed, int $offset): ?Node

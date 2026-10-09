@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\DescribesSyntaxTreesTrait;
@@ -46,12 +47,14 @@ final class AstTextAgreementTest extends TestCase
     use LoadsFixturesTrait;
 
     private MemoizingSyntaxSource $parser;
+    private NodeLocatorInterface $locator;
     private CursorTextSyntaxSource $cursorText;
 
     protected function setUp(): void
     {
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
+        $this->locator = $production->locator;
         $this->cursorText = new CursorTextSyntaxSource();
     }
 
@@ -77,7 +80,7 @@ final class AstTextAgreementTest extends TestCase
 
         $offset = $this->markerOffset($content, $marker);
 
-        $compositeNode = $this->parser->nodeAt($parsed, $offset);
+        $compositeNode = $this->locator->nodeAt($parsed, $offset);
         $cursorNode = $this->cursorText->nodeAt($parsed, $offset);
 
         self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
@@ -221,7 +224,7 @@ final class AstTextAgreementTest extends TestCase
         // before the cursor, so we land on the arrow rather than on the marker.
         $probe = $offset > 0 ? $offset - 1 : 0;
 
-        $compositeNode = $this->parser->nodeAt($parsed, $probe);
+        $compositeNode = $this->locator->nodeAt($parsed, $probe);
         $cursorNode = $this->cursorText->nodeAt($parsed, $probe);
 
         self::assertNotNull($compositeNode, 'composite must find a node at the cursor');

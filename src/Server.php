@@ -91,7 +91,6 @@ final class Server
             new CompositeSyntaxSource(
                 new PhpParserSyntaxSource(new TreeAnnotator()),
                 new SkeletonSyntaxSource(),
-                new CursorTextSyntaxSource(),
             ),
         ),
     ): self {
