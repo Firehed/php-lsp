@@ -160,26 +160,46 @@ class ContextDetectorTest extends TestCase
     }
 
     /**
-     * @return array<string, array{string}>
+     * Each case places the cursor right after the given text.
+     *
+     * @return array<string, array{string, CompletionContext}>
      */
-    public static function commentLineEnds(): array
+    public static function commentPlacements(): array
     {
         return [
-            'slash comment' => ['// a slash comment ending mid-file'],
-            'hash comment' => ['# a hash comment ending mid-file'],
+            'middle of a // comment' => ['// slash', CompletionContext::None],
+            'end of a // line' => ['// slash comment', CompletionContext::None],
+            'middle of a # comment' => ['# hash', CompletionContext::None],
+            'end of a # line' => ['# hash comment', CompletionContext::None],
+            'middle of a block comment' => ['/* block', CompletionContext::None],
+            'before a block comment closes' => ['/* block comment', CompletionContext::None],
+            'right after a block comment closes' => ['/* block comment */', CompletionContext::Full],
+            'inside a block comment spanning lines' => ["/* block\n   spanning", CompletionContext::None],
+            'before a spanning block comment closes' => ['spanning lines', CompletionContext::None],
+            'middle of a docblock' => ['/** doc', CompletionContext::None],
+            'before a docblock closes' => ['/** doc block', CompletionContext::None],
+            'code before a trailing // comment' => ['$a = 1;', CompletionContext::Full],
+            'end of a trailing // comment' => ['// trailing slash comment', CompletionContext::None],
+            'code before a trailing # comment' => ['$b = 2;', CompletionContext::Full],
+            'end of a trailing # comment' => ['# trailing hash comment', CompletionContext::None],
+            'code before an inline block comment' => ['$c =', CompletionContext::Full],
+            'inside an inline block comment' => ['/* inline', CompletionContext::None],
+            'code after an inline block comment' => ['/* inline block */ 3', CompletionContext::Full],
+            'an attribute, which is not a comment' => ['#[Attr', CompletionContext::Full],
         ];
     }
 
-    #[DataProvider('commentLineEnds')]
-    public function testNoneContextAtTheEndOfACommentLine(string $commentLine): void
+    #[DataProvider('commentPlacements')]
+    public function testCommentPlacements(string $before, CompletionContext $expected): void
     {
-        $code = $this->loadFixture('ContextDetector/comment_line_end.php');
-        $lineStart = strpos($code, $commentLine . "\n");
-        self::assertIsInt($lineStart);
+        $code = $this->loadFixture('ContextDetector/comment_placements.php');
+        $at = strpos($code, $before);
+        self::assertIsInt($at, "the fixture contains {$before}");
+
         self::assertSame(
-            CompletionContext::None,
-            ContextDetector::getContext($code, $lineStart + strlen($commentLine)),
-            'the end of a comment line is still inside the comment',
+            $expected,
+            ContextDetector::getContext($code, $at + strlen($before)),
+            'completion is withheld inside a comment and offered in code around it',
         );
     }
 
