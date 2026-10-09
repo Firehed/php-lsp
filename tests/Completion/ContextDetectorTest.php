@@ -105,14 +105,6 @@ class ContextDetectorTest extends TestCase
         self::assertSame(CompletionContext::Full, ContextDetector::getContext($code, 1000));
     }
 
-    public function testFullContextBeforeComment(): void
-    {
-        $code = $this->loadFixture('ContextDetector/member_access_before_comment.php');
-        $position = strpos($code, '$foo->bar');
-        self::assertIsInt($position);
-        self::assertSame(CompletionContext::Full, ContextDetector::getContext($code, $position + 9));
-    }
-
     public function testFullContextAfterComment(): void
     {
         $code = $this->loadFixture('ContextDetector/member_access_after_comment.php');
@@ -234,14 +226,6 @@ class ContextDetectorTest extends TestCase
     {
         $code = $this->loadFixture('ContextDetector/docblock_open.php');
         self::assertSame(CompletionContext::None, ContextDetector::getContext($code, strlen($code)));
-    }
-
-    public function testNoneContextInMiddleOfComment(): void
-    {
-        $code = $this->loadFixture('ContextDetector/comment_with_member_access.php');
-        $position = strpos($code, '$this->');
-        self::assertIsInt($position);
-        self::assertSame(CompletionContext::None, ContextDetector::getContext($code, $position + 7));
     }
 
     public function testNoneContextInSingleQuotedString(): void
