@@ -17,6 +17,9 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @phpstan-import-type RawDetection from CallContextDetector
+ */
 #[CoversClass(CallContextDetector::class)]
 final class CallContextDetectorTest extends TestCase
 {
@@ -40,18 +43,7 @@ final class CallContextDetectorTest extends TestCase
 
     public function testReportsNothingOutsideACall(): void
     {
-        $fixture = 'src/Resolution/ArgumentBoundaries.php';
-        $content = $this->loadFixture($fixture);
-        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $syntax = new PhpParserSyntaxSource(new TreeAnnotator());
-
-        $detection = (new CallContextDetector($syntax))->detect(
-            $syntax->parse($document),
-            $document,
-            $this->markerOffset($content, 'outside_call'),
-        );
-
-        self::assertNull($detection, 'a cursor between statements is in no call');
+        self::assertNull($this->detectAt('outside_call'), 'a cursor between statements is in no call');
     }
 
     #[DataProvider('boundaries')]
@@ -60,16 +52,7 @@ final class CallContextDetectorTest extends TestCase
         int $activeParameter,
         int $positionalCount,
     ): void {
-        $fixture = 'src/Resolution/ArgumentBoundaries.php';
-        $content = $this->loadFixture($fixture);
-        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $syntax = new PhpParserSyntaxSource(new TreeAnnotator());
-
-        $detection = (new CallContextDetector($syntax))->detect(
-            $syntax->parse($document),
-            $document,
-            $this->markerOffset($content, $marker),
-        );
+        $detection = $this->detectAt($marker);
 
         self::assertNotNull($detection, 'the cursor is inside a call');
         self::assertSame($activeParameter, $detection[1], 'the argument being typed is the active parameter');
@@ -84,5 +67,22 @@ final class CallContextDetectorTest extends TestCase
         $this->expectException(LogicException::class);
 
         (new CallContextDetector($syntax))->detect([], new TextDocument('file:///f.php', 'php', 1, ''), 0);
+    }
+
+    /**
+     * @return RawDetection|null
+     */
+    private function detectAt(string $marker): ?array
+    {
+        $fixture = 'src/Resolution/ArgumentBoundaries.php';
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $syntax = new PhpParserSyntaxSource(new TreeAnnotator());
+
+        return (new CallContextDetector($syntax))->detect(
+            $syntax->parse($document),
+            $document,
+            $this->markerOffset($content, $marker),
+        );
     }
 }
