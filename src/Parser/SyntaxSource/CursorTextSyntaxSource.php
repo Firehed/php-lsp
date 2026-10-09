@@ -232,8 +232,9 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         }
 
         $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
-        $args = self::parseArgs($argsText, $parenPos + 1, $offset, $line, $memberInside);
+        [$args, $separators] = self::parseArgs($argsText, $parenPos + 1, $offset, $line, $memberInside);
         $callNode->args = $args;
+        $callNode->setAttribute(SyntaxSourceInterface::ARGUMENT_SEPARATORS, $separators);
 
         $callStart = $callNode->getStartFilePos();
         $callNode->setAttribute('endFilePos', max($callStart, $offset));
@@ -389,7 +390,8 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
     }
 
     /**
-     * @return list<Arg>
+     * @return array{list<Arg>, list<int>} The arguments and the positions of
+     *         the commas between them
      */
     private static function parseArgs(
         string $argsText,
@@ -399,6 +401,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         ?Node $memberInside,
     ): array {
         $args = [];
+        $separators = [];
         $depth = 0;
         $currentStart = 0;
         $length = strlen($argsText);
@@ -409,6 +412,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             } elseif ($char === ')' || $char === ']' || $char === '}') {
                 $depth--;
             } elseif ($char === ',' && $depth === 0) {
+                $separators[] = $argsStart + $i;
                 $segment = substr($argsText, $currentStart, $i - $currentStart);
                 $segStart = $argsStart + $currentStart;
                 $segEnd = $argsStart + $i - 1;
@@ -438,7 +442,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             }
         }
 
-        return $args;
+        return [$args, $separators];
     }
 
     /**
