@@ -6,15 +6,21 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Function_;
+use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(PhpParserSyntaxSource::class)]
 final class PhpParserSyntaxSourceTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     /**
      * Recoverable by the parser, but fatal to NameResolver, which runs with the
      * default throwing error handler.
@@ -79,6 +85,22 @@ final class PhpParserSyntaxSourceTest extends TestCase
         $result = $this->source->parse($doc);
 
         self::assertCount(0, $result);
+    }
+
+    public function testParsedCallsCarryTheirArgumentSeparators(): void
+    {
+        $fixture = 'src/ParseHealth/ArgumentSeparators.php';
+        $content = $this->loadFixture($fixture);
+        $doc = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+
+        $call = (new NodeFinder())->findFirstInstanceOf($this->source->parse($doc), StaticCall::class);
+
+        self::assertNotNull($call, 'the fixture holds a static call');
+        self::assertSame(
+            [$this->markerOffset($content, 'static_1') - 1],
+            $call->getAttribute(SyntaxSourceInterface::ARGUMENT_SEPARATORS),
+            'the parser\'s tokens reach the annotator, so parsed calls record their commas',
+        );
     }
 
     public function testParseReturnTypeIsNonNullable(): void
