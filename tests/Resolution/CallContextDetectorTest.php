@@ -33,7 +33,25 @@ final class CallContextDetectorTest extends TestCase
             'after a comma' => ['after_comma', 1, 1],
             'after a comma with no space' => ['after_comma_no_space', 1, 1],
             'typing the second argument' => ['typing_second', 1, 1],
+            'after a named argument' => ['after_named', 1, 0],
+            'inside the second argument\'s value' => ['inside_second_value', 1, 1],
         ];
+    }
+
+    public function testReportsNothingOutsideACall(): void
+    {
+        $fixture = 'src/Resolution/ArgumentBoundaries.php';
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $syntax = new PhpParserSyntaxSource(new TreeAnnotator());
+
+        $detection = (new CallContextDetector($syntax))->detect(
+            $syntax->parse($document),
+            $document,
+            $this->markerOffset($content, 'outside_call'),
+        );
+
+        self::assertNull($detection, 'a cursor between statements is in no call');
     }
 
     #[DataProvider('boundaries')]
