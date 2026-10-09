@@ -65,7 +65,7 @@ final class TreeAnnotator
      *        {@see SyntaxSource\SyntaxSourceInterface::ARGUMENT_SEPARATORS} on them.
      * @return array<Stmt>
      */
-    public function annotate(array $tree, array $tokens = []): array
+    public function annotate(array $tree, array $tokens): array
     {
         $traverser = new NodeTraverser($this->parents, $this->names);
         if ($tokens !== []) {

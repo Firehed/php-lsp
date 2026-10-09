@@ -29,7 +29,7 @@ final class TreeAnnotatorTest extends TestCase
             '<?php namespace A; class Foo {}',
         ) ?? [];
 
-        $annotated = (new TreeAnnotator())->annotate($tree);
+        $annotated = (new TreeAnnotator())->annotate($tree, []);
 
         $namespace = $annotated[0];
         self::assertInstanceOf(Namespace_::class, $namespace);
@@ -48,7 +48,7 @@ final class TreeAnnotatorTest extends TestCase
             '<?php namespace A; use B\\Bar; new Bar();',
         ) ?? [];
 
-        $annotated = (new TreeAnnotator())->annotate($tree);
+        $annotated = (new TreeAnnotator())->annotate($tree, []);
 
         $namespace = $annotated[0];
         self::assertInstanceOf(Namespace_::class, $namespace);
@@ -69,7 +69,7 @@ final class TreeAnnotatorTest extends TestCase
             $this->loadFixture('TopLevel/duplicate_imports.php'),
         ) ?? [];
 
-        $annotated = (new TreeAnnotator(tolerant: true))->annotate($tree);
+        $annotated = (new TreeAnnotator(tolerant: true))->annotate($tree, []);
 
         $namespace = $annotated[0];
         self::assertInstanceOf(Namespace_::class, $namespace);

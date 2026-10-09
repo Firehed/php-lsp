@@ -133,7 +133,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         }
         $this->annotator->annotate($namespace === null ? $body : [
             new Stmt\Namespace_($namespace->name === null ? null : new Name($namespace->name->name), $body),
-        ]);
+        ], []);
 
         $holder->setAttribute('parent', $this->nodeAtPosition->find(
             $tree,

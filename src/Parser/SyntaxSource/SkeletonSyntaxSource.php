@@ -79,7 +79,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         if ($tree === []) {
             return [];
         }
-        return $this->annotator->annotate($tree);
+        return $this->annotator->annotate($tree, []);
     }
 
     /**
