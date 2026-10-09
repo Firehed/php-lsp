@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Parser;
 
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use PhpParser\Node;
+use PhpParser\Node\Attribute;
+use PhpParser\Node\Expr\CallLike;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Namespace_;
+use PhpParser\NodeFinder;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -71,6 +76,37 @@ final class TreeAnnotatorTest extends TestCase
         $className = self::extractNewName($namespace->stmts[2]);
         self::assertInstanceOf(Name::class, $className);
         self::assertSame('Fixtures\\Domain\\User', $className->toString(), 'the first import still resolves the name');
+    }
+
+    public function testAnnotateRecordsTheCommasSeparatingEachCallsArguments(): void
+    {
+        $content = $this->loadFixture('src/ParseHealth/ArgumentSeparators.php');
+        $parser = (new ParserFactory())->createForNewestSupportedVersion();
+        $tree = $parser->parse($content) ?? [];
+
+        $annotated = (new TreeAnnotator())->annotate($tree, $parser->getTokens());
+
+        $calls = (new NodeFinder())->find($annotated, static fn (Node $node): bool => $node instanceof CallLike
+            || $node instanceof Attribute);
+        $recorded = [];
+        foreach ($calls as $call) {
+            $separators = $call->getAttribute(SyntaxSourceInterface::ARGUMENT_SEPARATORS);
+            self::assertIsArray($separators, 'every call carries its argument separators, even when it has none');
+            array_push($recorded, ...$separators);
+        }
+        sort($recorded);
+        $expected = array_map(
+            fn (string $marker): int => $this->markerOffset($content, $marker) - 1,
+            ['method_1', 'method_2', 'static_1', 'new_1', 'new_2', 'nullsafe_1', 'attribute_1'],
+        );
+        sort($expected);
+
+        self::assertSame(
+            $expected,
+            $recorded,
+            'only the commas between a call\'s own arguments are recorded, never ones inside strings, comments, '
+                . 'nested calls, arrays, or closures',
+        );
     }
 
     private static function extractNewName(\PhpParser\Node $node): ?Name
