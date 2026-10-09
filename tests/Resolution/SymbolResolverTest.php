@@ -9,11 +9,13 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
+use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
@@ -167,6 +169,28 @@ final class SymbolResolverTest extends TestCase
             ->resolveAtPosition(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
 
         self::assertSame($user, $resolved, 'the imported name is looked up by its fully qualified form');
+    }
+
+    public function testCallContextCarriesTheArgumentAtTheCursor(): void
+    {
+        $fixture = 'src/Completion/ArgumentSlots.php';
+        $content = $this->loadFixture($fixture);
+        ['line' => $line, 'character' => $character] = $this->locateCursor($content, 'function_named_value');
+        $function = self::functionInfo(
+            QualifiedName::fromFullyQualified('argumentSlotsTarget'),
+            parameters: [self::parameterInfo('name'), self::parameterInfo('count', position: 1)],
+        );
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupFunction')->willReturn($function);
+
+        $context = self::resolver($symbols, syntax: new PhpParserSyntaxSource(new TreeAnnotator()))
+            ->getCallContext(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
+
+        self::assertEquals(
+            new CallContext($function, 1, ['count'], 1, inNamedArgumentValue: true),
+            $context,
+            'the call context reports the callable, the arguments supplied, and that a value is being typed',
+        );
     }
 
     private static function resolver(

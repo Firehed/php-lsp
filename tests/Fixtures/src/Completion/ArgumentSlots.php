@@ -17,5 +17,6 @@ class ArgumentSlots
         $this->target(name: 'a', /*|next_argument*/count: 1);
         $this->target(name: 'a'/*|after_string_value*/);
         $this->target(name: 'a', count: 1/*|after_numeric_value*/);
+        argumentSlotsTarget('a', count: /*|function_named_value*/1);
     }
 }
