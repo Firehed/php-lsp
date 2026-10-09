@@ -17,6 +17,11 @@ class ContextFiltering
         // $this->/*|member_in_comment*/
     }
 
+    public function beforeTrailingComment(): void
+    {
+        $mapped = /*|before_trailing_comment*/; // the code before this comment completes
+    }
+
     public function inHeredoc(): void
     {
         $localVar = 'test';
