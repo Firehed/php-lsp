@@ -38,7 +38,7 @@ use PhpParser\Node\VarLikeIdentifier;
  * The synthesized node is resolved and linked into the tree `nodeAt()` is
  * handed, so it meets the same contract as a parsed node.
  */
-final class CursorTextSyntaxSource implements SyntaxSourceInterface
+final class CursorTextSyntaxSource implements SyntaxSourceInterface, NodeLocatorInterface
 {
     private const string NON_FUNCTION_KEYWORD_PATTERN
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
