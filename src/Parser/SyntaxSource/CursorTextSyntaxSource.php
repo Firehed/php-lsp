@@ -42,6 +42,9 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
     private const string NON_FUNCTION_KEYWORD_PATTERN
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
 
+    /** Text ending here makes the name that follows a declaration, not a call. */
+    private const string DECLARES_NEXT_NAME_PATTERN = '/\bfunction\s*&?\s*\z/i';
+
     /**
      * A name as written: optionally fully qualified, never empty, never ending
      * in a separator.
@@ -357,7 +360,10 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         ) {
             $funcName = $m[1][0];
             $funcStart = $m[1][1];
-            if (preg_match(self::NON_FUNCTION_KEYWORD_PATTERN, $funcName) === 1) {
+            if (
+                preg_match(self::NON_FUNCTION_KEYWORD_PATTERN, $funcName) === 1
+                || preg_match(self::DECLARES_NEXT_NAME_PATTERN, substr($text, 0, $funcStart)) === 1
+            ) {
                 return null;
             }
             return new FuncCall(
