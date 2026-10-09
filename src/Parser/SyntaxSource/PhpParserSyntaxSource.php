@@ -41,7 +41,7 @@ final class PhpParserSyntaxSource implements SyntaxSourceInterface
             if ($ast === null) {
                 return [];
             }
-            $tree = $this->annotator->annotate($ast);
+            $tree = $this->annotator->annotate($ast, $this->parser->getTokens());
             foreach ($tree as $stmt) {
                 $stmt->setAttribute(self::PRODUCER_ATTRIBUTE, true);
             }
