@@ -26,9 +26,14 @@ use PhpParser\Node\Stmt;
  *   `parent`, and `static`, and an unqualified function or constant name in
  *   a namespace, which PHP resolves at runtime: it keeps its written form and
  *   carries its `namespacedName`.
+ * - On every call and attribute, an {@see self::ARGUMENT_SEPARATORS} attribute:
+ *   the file positions, in order, of the commas between its own arguments,
+ *   a trailing comma included.
  */
 interface SyntaxSourceInterface
 {
+    public const string ARGUMENT_SEPARATORS = 'argumentSeparators';
+
     /**
      * @return array<Stmt>
      */

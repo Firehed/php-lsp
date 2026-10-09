@@ -7,14 +7,19 @@ namespace Firehed\PhpLsp\Parser;
 use PhpParser\Error;
 use PhpParser\ErrorHandler;
 use PhpParser\Node;
+use PhpParser\Node\Attribute;
+use PhpParser\Node\Expr\CallLike;
 use PhpParser\Node\Stmt;
+use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
+use PhpParser\Token;
 
 /**
  * The parent-connecting and name-resolving pass every tree-producing
- * {@see SyntaxSource\SyntaxSourceInterface} runs on its own result.
+ * {@see SyntaxSource\SyntaxSourceInterface} runs on its own result, which
+ * also records argument separators when given the tree's tokens.
  *
  * A skeleton tree ({@see SyntaxSource\SkeletonSyntaxSource})
  * is annotated by the same code as a parsed one, so a downstream
@@ -54,11 +59,60 @@ final class TreeAnnotator
 
     /**
      * @param array<Node> $tree
+     * @param array<Token> $tokens The tokens the tree was parsed from, when a
+     *        lexer produced it; a source that builds nodes itself sets
+     *        {@see SyntaxSource\SyntaxSourceInterface::ARGUMENT_SEPARATORS} on them.
      * @return array<Stmt>
      */
-    public function annotate(array $tree): array
+    public function annotate(array $tree, array $tokens = []): array
     {
+        if ($tokens !== []) {
+            $finder = new NodeFinder();
+            $calls = [
+                ...$finder->findInstanceOf($tree, CallLike::class),
+                ...$finder->findInstanceOf($tree, Attribute::class),
+            ];
+            foreach ($calls as $call) {
+                $call->setAttribute(
+                    SyntaxSource\SyntaxSourceInterface::ARGUMENT_SEPARATORS,
+                    self::argumentSeparators($call, $tokens),
+                );
+            }
+        }
+
         /** @var array<Stmt> */
         return $this->traverser->traverse($tree);
+    }
+
+    /**
+     * Scans from the first argument to the bracket that closes the list (or
+     * the call's last token, when recovery left it unclosed), keeping commas
+     * at the list's own depth.
+     *
+     * @param array<Token> $tokens
+     * @return list<int>
+     */
+    private static function argumentSeparators(CallLike|Attribute $call, array $tokens): array
+    {
+        $args = $call instanceof Attribute ? $call->args : $call->getRawArgs();
+        if ($args === []) {
+            return [];
+        }
+        $separators = [];
+        $depth = 0;
+        for ($i = $args[0]->getStartTokenPos(); $i <= $call->getEndTokenPos(); $i++) {
+            $token = $tokens[$i];
+            if ($token->is(['(', '[', '{', T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES, T_ATTRIBUTE])) {
+                $depth++;
+            } elseif ($token->is([')', ']', '}'])) {
+                if ($depth === 0) {
+                    break;
+                }
+                $depth--;
+            } elseif ($depth === 0 && $token->is(',')) {
+                $separators[] = $token->pos;
+            }
+        }
+        return $separators;
     }
 }
