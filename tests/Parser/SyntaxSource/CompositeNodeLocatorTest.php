@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeNodeLocator;
-use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -57,7 +57,7 @@ final class CompositeNodeLocatorTest extends TestCase
 
     private static function composite(): CompositeNodeLocator
     {
-        return new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextSyntaxSource());
+        return new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator());
     }
 
     private function document(): TextDocument

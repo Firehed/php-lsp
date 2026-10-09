@@ -29,7 +29,7 @@ use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MessageScopedInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
@@ -126,7 +126,7 @@ final class Server
 
         $symbolResolver = new SymbolResolver(
             $parser,
-            new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextSyntaxSource()),
+            new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator()),
             $symbolSource,
             $memberResolver,
             $typeSource,

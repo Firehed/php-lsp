@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -28,15 +28,15 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(CursorTextSyntaxSource::class)]
-class CursorTextSyntaxSourceTest extends TestCase
+#[CoversClass(CursorTextNodeLocator::class)]
+class CursorTextNodeLocatorTest extends TestCase
 {
     use DescribesSyntaxTreesTrait;
     use LoadsFixturesTrait;
 
     public function testNodeAtRejectsAnOffsetOutsideTheDocument(): void
     {
-        $source = new CursorTextSyntaxSource();
+        $source = new CursorTextNodeLocator();
         $document = new TextDocument('file:///doc.php', 'php', 1, '<?php $this->');
         $parsed = new ParsedDocument($document, []);
 
@@ -49,7 +49,7 @@ class CursorTextSyntaxSourceTest extends TestCase
 
     public function testAFullyQualifiedStaticAccessBecomesAFullyQualifiedReceiver(): void
     {
-        $source = new CursorTextSyntaxSource();
+        $source = new CursorTextNodeLocator();
         $content = "<?php\n\\Foo::";
         $document = new TextDocument('file:///fq.php', 'php', 1, $content);
         $fooOffset = strpos($content, 'Foo');
@@ -142,7 +142,7 @@ class CursorTextSyntaxSourceTest extends TestCase
     {
         // `if (` is a control structure, not a call. `nodeAt` returns null,
         // so no consumer walks up to a FuncCall it wasn't invoking.
-        $source = new CursorTextSyntaxSource();
+        $source = new CursorTextNodeLocator();
         $content = '<?php if (';
         $document = new TextDocument('file:///kw.php', 'php', 1, $content);
 
@@ -155,7 +155,7 @@ class CursorTextSyntaxSourceTest extends TestCase
     {
         // The `;` between `foo(` and the cursor ends the scan: the paren
         // belongs to a prior statement, so nothing is unclosed at the cursor.
-        $source = new CursorTextSyntaxSource();
+        $source = new CursorTextNodeLocator();
         $content = "<?php\nfoo(); \$this->";
         $document = new TextDocument('file:///stmt.php', 'php', 1, $content);
         $offset = strlen($content);
@@ -169,7 +169,7 @@ class CursorTextSyntaxSourceTest extends TestCase
 
     public function testUnclosedParenScanStopsAtOpenBrace(): void
     {
-        $source = new CursorTextSyntaxSource();
+        $source = new CursorTextNodeLocator();
         $content = "<?php\nclass X { public function m() { foo";
         $document = new TextDocument('file:///brace.php', 'php', 1, $content);
 
@@ -430,7 +430,7 @@ class CursorTextSyntaxSourceTest extends TestCase
 
     private function nodeAtMarker(ParsedDocument $parsed, string $marker): ?Node
     {
-        return (new CursorTextSyntaxSource())->nodeAt(
+        return (new CursorTextNodeLocator())->nodeAt(
             $parsed,
             $this->markerOffset($parsed->document->getContent(), $marker),
         );
@@ -446,7 +446,7 @@ class CursorTextSyntaxSourceTest extends TestCase
 
     private static function synthesizeCallAtCursor(string $content): ?Node
     {
-        $source = new CursorTextSyntaxSource();
+        $source = new CursorTextNodeLocator();
         $document = new TextDocument('file:///call.php', 'php', 1, $content);
         return self::enclosingCall($source->nodeAt(new ParsedDocument($document, []), strlen($content)));
     }

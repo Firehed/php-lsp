@@ -24,7 +24,7 @@ use PHPUnit\Framework\TestCase;
  *
  * Freezes the load-bearing recovery paths: first-open of
  * a broken file (no last-good registration to preserve) still offers members
- * through the `SkeletonSyntaxSource` and `CursorTextSyntaxSource` composite
+ * through the `SkeletonSyntaxSource` and `CursorTextNodeLocator` composite
  * members, and a good open followed by a broken change offers them through the
  * `OpenDocumentBackend` preserved AST. A step that removes any of these paths
  * must first land a replacement that keeps this golden green.

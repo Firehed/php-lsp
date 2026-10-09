@@ -19,7 +19,7 @@ final class CompositeNodeLocator implements NodeLocatorInterface
 
     public function __construct(
         TreeNodeLocator $tree,
-        CursorTextSyntaxSource $cursorText,
+        CursorTextNodeLocator $cursorText,
     ) {
         $this->locators = [$tree, $cursorText];
     }

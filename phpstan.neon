@@ -112,11 +112,11 @@ parameters:
                 - 'mb_ereg_replace_callback()'
                 - 'mb_ereg_search()'
                 - 'mb_split()'
-            message: 'text-pattern analysis is the mid-edit resilience rim: CompletionClassifier, DocblockParser, and the cursor-text and skeleton syntax sources'
+            message: 'text-pattern analysis is the mid-edit resilience rim: CompletionClassifier, DocblockParser, the cursor-text node locator, and the skeleton syntax source'
             allowIn:
                 - src/Completion/CompletionClassifier.php
                 - src/Domain/DocblockParser.php
-                - src/Parser/SyntaxSource/CursorTextSyntaxSource.php
+                - src/Parser/SyntaxSource/CursorTextNodeLocator.php
                 - src/Parser/SyntaxSource/SkeletonSyntaxSource.php
                 - tests/*
         -

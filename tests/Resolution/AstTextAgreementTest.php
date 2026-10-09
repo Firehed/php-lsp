@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
-use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
@@ -48,14 +48,14 @@ final class AstTextAgreementTest extends TestCase
 
     private MemoizingSyntaxSource $parser;
     private NodeLocatorInterface $locator;
-    private CursorTextSyntaxSource $cursorText;
+    private CursorTextNodeLocator $cursorText;
 
     protected function setUp(): void
     {
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
         $this->locator = $production->locator;
-        $this->cursorText = new CursorTextSyntaxSource();
+        $this->cursorText = new CursorTextNodeLocator();
     }
 
     /**
