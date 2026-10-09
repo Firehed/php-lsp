@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\DescribesSyntaxTreesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -98,6 +99,13 @@ final class AstTextAgreementTest extends TestCase
             $compositeCall::class,
             $cursorCall::class,
             'call node class must agree between composite and cursor-text source',
+        );
+        $parsedSeparators = $compositeCall->getAttribute(SyntaxSourceInterface::ARGUMENT_SEPARATORS);
+        self::assertIsArray($parsedSeparators, 'a parsed call records its argument separators');
+        self::assertSame(
+            array_values(array_filter($parsedSeparators, static fn (int $pos): bool => $pos < $offset)),
+            $cursorCall->getAttribute(SyntaxSourceInterface::ARGUMENT_SEPARATORS),
+            'the commas before the cursor must agree, so both paths count the same finished arguments',
         );
         self::assertTreeContractAgrees($compositeCall, $cursorCall);
     }
