@@ -159,6 +159,30 @@ class ContextDetectorTest extends TestCase
         self::assertSame(CompletionContext::None, ContextDetector::getContext($code, strlen($code)));
     }
 
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function commentLineEnds(): array
+    {
+        return [
+            'slash comment' => ['// a slash comment ending mid-file'],
+            'hash comment' => ['# a hash comment ending mid-file'],
+        ];
+    }
+
+    #[DataProvider('commentLineEnds')]
+    public function testNoneContextAtTheEndOfACommentLine(string $commentLine): void
+    {
+        $code = $this->loadFixture('ContextDetector/comment_line_end.php');
+        $lineStart = strpos($code, $commentLine . "\n");
+        self::assertIsInt($lineStart);
+        self::assertSame(
+            CompletionContext::None,
+            ContextDetector::getContext($code, $lineStart + strlen($commentLine)),
+            'the end of a comment line is still inside the comment',
+        );
+    }
+
     public function testNoneContextInHashComment(): void
     {
         $code = $this->loadFixture('ContextDetector/hash_comment.php');
