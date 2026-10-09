@@ -1,0 +1,105 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
+
+use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\ParsedDocument;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\TreeNodeLocator;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Name;
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\TestCase;
+
+#[CoversClass(TreeNodeLocator::class)]
+final class TreeNodeLocatorTest extends TestCase
+{
+    use LoadsFixturesTrait;
+
+    private const string FIXTURE = 'src/Inheritance/ChildClass.php';
+
+    public function testFindsTheInnermostNodeAtTheOffset(): void
+    {
+        $parsed = $this->parse(new PhpParserSyntaxSource(new TreeAnnotator()));
+        $position = $this->locateHoverMarker($parsed->document->getContent(), 'inherited_method');
+
+        $node = (new TreeNodeLocator())->nodeAt(
+            $parsed,
+            $parsed->document->offsetAt($position['line'], $position['character']),
+        );
+
+        self::assertInstanceOf(Identifier::class, $node, 'the method name is the innermost node');
+        self::assertSame('parentMethod', $node->toString());
+    }
+
+    public function testAStatementIsNoAnswer(): void
+    {
+        $parsed = $this->parse(new PhpParserSyntaxSource(new TreeAnnotator()));
+
+        self::assertNull(
+            (new TreeNodeLocator())->nodeAt($parsed, self::offsetOf($parsed, 'class ChildClass')),
+            'a statement holds nothing the cursor names',
+        );
+    }
+
+    /**
+     * The locator reads any tree that meets the ParsedDocument guarantees,
+     * whichever source produced it.
+     */
+    #[DataProvider('treeSources')]
+    public function testFindsANodeInATreeFromAnySource(SyntaxSourceInterface $source): void
+    {
+        $parsed = $this->parse($source);
+
+        $node = (new TreeNodeLocator())->nodeAt($parsed, self::offsetOf($parsed, 'ParentClass'));
+
+        self::assertInstanceOf(Name::class, $node, 'the parent class name is the innermost node');
+        self::assertSame('Fixtures\\Inheritance\\ParentClass', $node->toString(), 'the name is resolved');
+    }
+
+    /**
+     * @return array<string, array{SyntaxSourceInterface}>
+     */
+    public static function treeSources(): array
+    {
+        return [
+            'php-parser' => [new PhpParserSyntaxSource(new TreeAnnotator())],
+            'skeleton' => [new SkeletonSyntaxSource()],
+        ];
+    }
+
+    public function testAnEmptyTreeHasNoNode(): void
+    {
+        $document = new TextDocument('file:///empty.php', 'php', 1, '');
+
+        self::assertNull(
+            (new TreeNodeLocator())->nodeAt(new ParsedDocument($document, []), 0),
+            'nothing is at any offset of an empty tree',
+        );
+    }
+
+    private function parse(SyntaxSourceInterface $source): ParsedDocument
+    {
+        return $source->parse(new TextDocument(
+            'file:///' . self::FIXTURE,
+            'php',
+            1,
+            $this->loadFixture(self::FIXTURE),
+        ));
+    }
+
+    private static function offsetOf(ParsedDocument $parsed, string $needle): int
+    {
+        $offset = strpos($parsed->document->getContent(), $needle);
+        self::assertNotFalse($offset, "the fixture must contain `{$needle}`");
+
+        return $offset;
+    }
+}
