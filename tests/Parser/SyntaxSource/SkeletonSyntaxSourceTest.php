@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -15,6 +18,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SkeletonSyntaxSource::class)]
 final class SkeletonSyntaxSourceTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     private SkeletonSyntaxSource $source;
 
     protected function setUp(): void
@@ -339,6 +344,59 @@ final class SkeletonSyntaxSourceTest extends TestCase
             static fn ($s) => $s instanceof Stmt\Use_ || $s instanceof Stmt\GroupUse,
         ));
         self::assertCount(4, $uses, 'each import statement becomes one Use node');
+    }
+
+    /**
+     * Each extended or implemented name sits where it is written, as php-parser
+     * places it, so a positional query finds it only under the cursor.
+     */
+    #[DataProvider('parentNameFixtures')]
+    public function testParentNamesCarryTheirWrittenPositions(string $fixture): void
+    {
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+
+        self::assertSame(
+            self::describeParentNames($parsed),
+            self::describeParentNames($this->tree($document)),
+            'the skeleton must name and place each parent as php-parser does',
+        );
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function parentNameFixtures(): array
+    {
+        return [
+            'class extends' => ['src/Inheritance/ChildClass.php'],
+            'class extends and implements' => ['src/Exception/AppException.php'],
+            'interface extends a list' => ['src/Hierarchy/LeafInterface.php'],
+        ];
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     * @return list<array{string, int, int}>
+     */
+    private static function describeParentNames(array $tree): array
+    {
+        $described = [];
+        foreach ((new NodeFinder())->findInstanceOf($tree, Stmt\ClassLike::class) as $classLike) {
+            $names = match (true) {
+                $classLike instanceof Stmt\Class_ => [
+                    ...($classLike->extends === null ? [] : [$classLike->extends]),
+                    ...$classLike->implements,
+                ],
+                $classLike instanceof Stmt\Interface_ => $classLike->extends,
+                $classLike instanceof Stmt\Enum_ => $classLike->implements,
+                default => [],
+            };
+            foreach ($names as $name) {
+                $described[] = [$name->toString(), $name->getStartFilePos(), $name->getEndFilePos()];
+            }
+        }
+        return $described;
     }
 
     /**
