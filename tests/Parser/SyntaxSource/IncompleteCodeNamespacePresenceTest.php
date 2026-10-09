@@ -70,7 +70,7 @@ final class IncompleteCodeNamespacePresenceTest extends TestCase
         self::assertNotFalse($content);
         $document = new TextDocument('file://' . $path, 'php', 1, $content);
 
-        $tree = $this->composite->parse($document);
+        $tree = $this->composite->parse($document)->tree;
         $namespaces = (new NodeFinder())->findInstanceOf($tree, Stmt\Namespace_::class);
 
         self::assertNotSame(

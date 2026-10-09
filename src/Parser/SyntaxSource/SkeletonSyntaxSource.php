@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Modifiers;
 use PhpParser\Node;
@@ -68,18 +69,15 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         $this->annotator = new TreeAnnotator(tolerant: true);
     }
 
-    /**
-     * @return array<Stmt>
-     */
-    public function parse(TextDocument $document): array
+    public function parse(TextDocument $document): ParsedDocument
     {
         $content = $document->getContent();
         $positions = self::indexContent($content);
         $tree = $this->buildTree($content, $positions);
         if ($tree === []) {
-            return [];
+            return new ParsedDocument($document, []);
         }
-        return $this->annotator->annotate($tree);
+        return new ParsedDocument($document, $this->annotator->annotate($tree));
     }
 
     /**

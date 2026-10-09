@@ -98,7 +98,7 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): ?ResolvedSymbolInterface {
-        $ast = $this->parser->parse($document);
+        $ast = $this->parser->parse($document)->tree;
 
         $offset = $document->offsetAt($line, $character);
         $node = $this->parser->nodeAt($ast, $document, $offset);
@@ -278,7 +278,7 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): ?MemberAccessContext {
-        $ast = $this->parser->parse($document);
+        $ast = $this->parser->parse($document)->tree;
 
         return $this->memberAccessDetector->detect($document, $ast, $line, $character);
     }
@@ -294,7 +294,7 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): array {
-        $ast = $this->parser->parse($document);
+        $ast = $this->parser->parse($document)->tree;
 
         $offset = $document->offsetAt($line, $character);
         $scope = Scope::atOffset($ast, $offset);
@@ -328,7 +328,7 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): ?CallContext {
-        $ast = $this->parser->parse($document);
+        $ast = $this->parser->parse($document)->tree;
 
         $offset = $document->offsetAt($line, $character);
 
@@ -348,7 +348,7 @@ final class SymbolResolver implements CodeResolverInterface
 
     public function getNameContext(TextDocument $document, int $line): NameContext
     {
-        $ast = $this->parser->parse($document);
+        $ast = $this->parser->parse($document)->tree;
 
         return NameContextFactory::fromAst($ast, $line);
     }

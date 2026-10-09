@@ -24,14 +24,14 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testEmptyContentYieldsNoStatements(): void
     {
-        $ast = $this->source->parse(new TextDocument('file:///empty.php', 'php', 1, '<?php'));
+        $ast = $this->tree(new TextDocument('file:///empty.php', 'php', 1, '<?php'));
 
         self::assertSame([], $ast, 'nothing declared yields no statements');
     }
 
     public function testABareNamespaceYieldsANamespaceNode(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -51,7 +51,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testABracedNamespaceCarriesTheBracedKind(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -79,7 +79,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
         }
         PHP;
 
-        $ast = $this->source->parse(new TextDocument('file:///Widget.php', 'php', 1, $content));
+        $ast = $this->tree(new TextDocument('file:///Widget.php', 'php', 1, $content));
 
         $classes = (new NodeFinder())->findInstanceOf($ast, Stmt\Class_::class);
         self::assertCount(1, $classes);
@@ -128,7 +128,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
         }
         PHP;
 
-        $ast = $this->source->parse(new TextDocument('file:///Widget.php', 'php', 1, $content));
+        $ast = $this->tree(new TextDocument('file:///Widget.php', 'php', 1, $content));
 
         $classes = (new NodeFinder())->findInstanceOf($ast, Stmt\Class_::class);
         self::assertCount(1, $classes);
@@ -147,7 +147,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     #[DataProvider('classLikeKinds')]
     public function testEachClassLikeKeywordMapsToItsStmt(string $keyword, string $name, string $expected): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -171,7 +171,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testTopLevelClassesAreEmittedWithoutANamespace(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -185,7 +185,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     public function testAnEmptyBracedNamespaceEmitsANamespaceNodeWithoutAName(): void
     {
         // `namespace {}` is PHP for a braced global namespace: no name, braced body.
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -198,7 +198,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testAProtectedMemberModifierIsRecovered(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -212,7 +212,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testAConstImportIsTaggedAsAConstantUse(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -230,7 +230,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
         // namespace-scope imports; the depth check keeps it out of the
         // namespace's imports and stretches braceDepthAt through the class
         // body's closing brace.
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -250,7 +250,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     {
         // The braced-namespace slice runs to end-of-file when the brace is
         // unclosed, so a member declared inside it is still visible.
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -269,7 +269,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     {
         // A truncated declaration with no `{` anywhere after it still yields the
         // class-like; the body slice runs to end-of-file.
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -283,7 +283,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testAGroupUseWithATrailingCommaSkipsTheEmptyItem(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -307,7 +307,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
         }
         PHP;
 
-        $ast = $this->source->parse(new TextDocument('file:///w.php', 'php', 1, $content));
+        $ast = $this->tree(new TextDocument('file:///w.php', 'php', 1, $content));
 
         $methods = (new NodeFinder())->findInstanceOf($ast, Stmt\ClassMethod::class);
         self::assertCount(1, $methods);
@@ -330,7 +330,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
         use Vendor\{A, B as Renamed};
         PHP;
 
-        $ast = $this->source->parse(new TextDocument('file:///a.php', 'php', 1, $content));
+        $ast = $this->tree(new TextDocument('file:///a.php', 'php', 1, $content));
 
         $ns = $ast[0];
         self::assertInstanceOf(Stmt\Namespace_::class, $ns);
@@ -339,5 +339,15 @@ final class SkeletonSyntaxSourceTest extends TestCase
             static fn ($s) => $s instanceof Stmt\Use_ || $s instanceof Stmt\GroupUse,
         ));
         self::assertCount(4, $uses, 'each import statement becomes one Use node');
+    }
+
+    /**
+     * @return array<Stmt>
+     */
+    private function tree(TextDocument $document): array
+    {
+        $parsed = $this->source->parse($document);
+        self::assertSame($document, $parsed->document, 'the tree is paired with the document it was parsed from');
+        return $parsed->tree;
     }
 }

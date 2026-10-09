@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\ErrorHandler;
 use PhpParser\Node;
@@ -29,25 +30,22 @@ final class PhpParserSyntaxSource implements SyntaxSourceInterface
         $this->parser = (new ParserFactory())->createForNewestSupportedVersion();
     }
 
-    /**
-     * @return array<\PhpParser\Node\Stmt>
-     */
-    public function parse(TextDocument $document): array
+    public function parse(TextDocument $document): ParsedDocument
     {
         $errorHandler = new ErrorHandler\Collecting();
 
         try {
             $ast = $this->parser->parse($document->getContent(), $errorHandler);
             if ($ast === null) {
-                return [];
+                return new ParsedDocument($document, []);
             }
             $tree = $this->annotator->annotate($ast);
             foreach ($tree as $stmt) {
                 $stmt->setAttribute(self::PRODUCER_ATTRIBUTE, true);
             }
-            return $tree;
+            return new ParsedDocument($document, $tree);
         } catch (\PhpParser\Error) {
-            return [];
+            return new ParsedDocument($document, []);
         }
     }
 

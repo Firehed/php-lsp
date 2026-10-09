@@ -40,7 +40,7 @@ class CursorTextSyntaxSourceTest extends TestCase
 
         self::assertSame(
             [],
-            $source->parse($document),
+            $source->parse($document)->tree,
             'parse() carries no tree; the cursor-text source is nodeAt-only',
         );
     }
@@ -438,7 +438,7 @@ class CursorTextSyntaxSourceTest extends TestCase
     {
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
 
-        return [$document, (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)];
+        return [$document, (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree];
     }
 
     /**

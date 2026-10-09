@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
@@ -24,13 +25,10 @@ final class CountingSyntaxSource implements SyntaxSourceInterface
     {
     }
 
-    /**
-     * @return array<Stmt>
-     */
-    public function parse(TextDocument $document): array
+    public function parse(TextDocument $document): ParsedDocument
     {
         $this->parseCount++;
-        return $this->tree;
+        return new ParsedDocument($document, $this->tree);
     }
 
     /**

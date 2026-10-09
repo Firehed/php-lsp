@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use PhpParser\Node;
 
 /**
@@ -27,18 +28,15 @@ final class CompositeSyntaxSource implements SyntaxSourceInterface
         $this->sources = [$primary, $skeleton, $cursor];
     }
 
-    /**
-     * @return array<\PhpParser\Node\Stmt>
-     */
-    public function parse(TextDocument $document): array
+    public function parse(TextDocument $document): ParsedDocument
     {
         foreach ($this->sources as $source) {
-            $tree = $source->parse($document);
-            if ($tree !== []) {
-                return $tree;
+            $parsed = $source->parse($document);
+            if ($parsed->tree !== []) {
+                return $parsed;
             }
         }
-        return [];
+        return new ParsedDocument($document, []);
     }
 
     /**

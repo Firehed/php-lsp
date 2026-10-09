@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
@@ -57,12 +58,9 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         $this->annotator = new TreeAnnotator(tolerant: true);
     }
 
-    /**
-     * @return array<Stmt>
-     */
-    public function parse(TextDocument $document): array
+    public function parse(TextDocument $document): ParsedDocument
     {
-        return [];
+        return new ParsedDocument($document, []);
     }
 
     /**

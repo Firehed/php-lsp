@@ -73,7 +73,7 @@ final class AstTextAgreementTest extends TestCase
     ): void {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document);
+        $ast = $this->parser->parse($document)->tree;
 
         $offset = $this->markerOffset($content, $marker);
 
@@ -213,7 +213,7 @@ final class AstTextAgreementTest extends TestCase
     ): void {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document);
+        $ast = $this->parser->parse($document)->tree;
 
         ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
         $offset = $document->offsetAt($line, $character);
@@ -411,8 +411,8 @@ final class AstTextAgreementTest extends TestCase
     {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $parsed = $this->parser->parse($document);
-        $skeleton = (new SkeletonSyntaxSource())->parse($document);
+        $parsed = $this->parser->parse($document)->tree;
+        $skeleton = (new SkeletonSyntaxSource())->parse($document)->tree;
 
         $parsedShape = self::describe($parsed);
         $skeletonShape = self::describe($skeleton);
