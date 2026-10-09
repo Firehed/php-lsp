@@ -6,9 +6,13 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use LogicException;
+use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Name;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -52,5 +56,15 @@ final class CallContextDetectorTest extends TestCase
         self::assertNotNull($detection, 'the cursor is inside a call');
         self::assertSame($activeParameter, $detection[1], 'the argument being typed is the active parameter');
         self::assertSame($positionalCount, $detection[3], 'only arguments before the cursor\'s argument are filled');
+    }
+
+    public function testRejectsACallWithoutItsArgumentSeparators(): void
+    {
+        $syntax = self::createStub(SyntaxSourceInterface::class);
+        $syntax->method('nodeAt')->willReturn(new FuncCall(new Name('f')));
+
+        $this->expectException(LogicException::class);
+
+        (new CallContextDetector($syntax))->detect([], new TextDocument('file:///f.php', 'php', 1, ''), 0);
     }
 }
