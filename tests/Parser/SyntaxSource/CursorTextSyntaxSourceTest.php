@@ -367,6 +367,29 @@ class CursorTextSyntaxSourceTest extends TestCase
         );
     }
 
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function declarationsBeingTyped(): array
+    {
+        return [
+            'function' => ['function_declaration'],
+            'method' => ['method_declaration'],
+            'by-reference method' => ['by_reference_declaration'],
+        ];
+    }
+
+    #[DataProvider('declarationsBeingTyped')]
+    public function testADeclarationBeingTypedIsNotACall(string $marker): void
+    {
+        [$document, $tree] = $this->parsedFixture('TopLevel/declarations_being_typed.php');
+
+        self::assertNull(
+            self::enclosingCall($this->nodeAtMarker($document, $tree, $marker)),
+            'the name a declaration introduces is not a call',
+        );
+    }
+
     public function testAChainedAccessKeepsEachSegment(): void
     {
         [$document, $tree] = $this->parsedFixture('src/IncompleteCode/ChainedAccess.php');
