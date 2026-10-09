@@ -9,6 +9,8 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
@@ -16,6 +18,9 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
+use Firehed\PhpLsp\Resolution\CallContext;
+use Firehed\PhpLsp\Resolution\NameContext;
+use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
@@ -173,6 +178,78 @@ final class SymbolResolverTest extends TestCase
             ->resolveAtPosition(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
 
         self::assertSame($user, $resolved, 'the imported name is looked up by its fully qualified form');
+    }
+
+    public function testCallContextNamesTheCallableAndActiveParameter(): void
+    {
+        $add = self::functionInfo(QualifiedName::fromFullyQualified('signatureHelpAdd'));
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupFunction')->willReturnCallback(
+            fn (FunctionName $name) => $name->qualifiedName->fullyQualifiedName() === 'signatureHelpAdd' ? $add : null,
+        );
+        [$document, $line, $character] = $this->signatureHelpCursor('second_param');
+
+        self::assertEquals(
+            new CallContext($add, 1, [], 1),
+            self::parsingResolver($symbols)->getCallContext($document, $line, $character),
+            'the call at the cursor resolves to its function, past the one argument already written',
+        );
+    }
+
+    public function testNoCallContextOutsideACall(): void
+    {
+        [$document, $line, $character] = $this->signatureHelpCursor('outside_call');
+
+        self::assertNull(
+            self::parsingResolver(self::createStub(SymbolSourceInterface::class))
+                ->getCallContext($document, $line, $character),
+            'no call encloses the cursor',
+        );
+    }
+
+    public function testVariablesInScopeAreThoseBoundBeforeTheCursor(): void
+    {
+        [$document, $line, $character] = $this->signatureHelpCursor('assigned_var');
+
+        $variables = self::parsingResolver(self::createStub(SymbolSourceInterface::class))
+            ->getVariablesInScope($document, $line, $character);
+
+        self::assertSame(
+            ['user'],
+            array_map(fn (ResolvedVariable $variable) => $variable->getName(), $variables),
+            'the function\'s one assignment before the cursor is in scope',
+        );
+    }
+
+    public function testNameContextCarriesTheImportsInEffect(): void
+    {
+        [$document, $line] = $this->signatureHelpCursor('first_param');
+
+        self::assertEquals(
+            new NameContext('', ['User' => 'Fixtures\Domain\User', 'Priority' => 'Fixtures\Enum\Priority']),
+            self::parsingResolver(self::createStub(SymbolSourceInterface::class))->getNameContext($document, $line),
+            'a file without a namespace carries its class imports',
+        );
+    }
+
+    /**
+     * @return array{TextDocument, int, int}
+     */
+    private function signatureHelpCursor(string $marker): array
+    {
+        $content = $this->loadFixture('SignatureHelp.php');
+        ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
+
+        return [new TextDocument('file:///SignatureHelp.php', 'php', 1, $content), $line, $character];
+    }
+
+    private static function parsingResolver(SymbolSourceInterface $symbols): SymbolResolver
+    {
+        return self::resolver(
+            $symbols,
+            syntax: new PhpParserSyntaxSource(new TreeAnnotator()),
+            locator: new TreeNodeLocator(),
+        );
     }
 
     private static function resolver(
