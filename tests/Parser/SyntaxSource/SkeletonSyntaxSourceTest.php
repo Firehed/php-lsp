@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -373,6 +374,41 @@ final class SkeletonSyntaxSourceTest extends TestCase
             'class extends and implements' => ['src/Exception/AppException.php'],
             'interface extends a list' => ['src/Hierarchy/LeafInterface.php'],
         ];
+    }
+
+    public function testNullableParameterTypesCarryTheirWrittenPositions(): void
+    {
+        $fixture = 'src/TypeInference/BuiltinTypes.php';
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+
+        self::assertSame(
+            self::describeNullableParameterTypes($parsed),
+            self::describeNullableParameterTypes($this->tree($document)),
+            'the `?` belongs to the nullable type, and the name after it sits where it is written',
+        );
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     * @return list<array{string, int, int, int, int}>
+     */
+    private static function describeNullableParameterTypes(array $tree): array
+    {
+        $described = [];
+        foreach ((new NodeFinder())->findInstanceOf($tree, Node\Param::class) as $param) {
+            if (!$param->type instanceof Node\NullableType || !$param->var instanceof Node\Expr\Variable) {
+                continue;
+            }
+            $described[] = [
+                (string) $param->var->name,
+                $param->type->getStartFilePos(),
+                $param->type->getEndFilePos(),
+                $param->type->type->getStartFilePos(),
+                $param->type->type->getEndFilePos(),
+            ];
+        }
+        return $described;
     }
 
     /**
