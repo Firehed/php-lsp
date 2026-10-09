@@ -98,16 +98,16 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): ?ResolvedSymbolInterface {
-        $ast = $this->parser->parse($document)->tree;
+        $parsed = $this->parser->parse($document);
 
         $offset = $document->offsetAt($line, $character);
-        $node = $this->parser->nodeAt($ast, $document, $offset);
+        $node = $this->parser->nodeAt($parsed, $offset);
 
         if ($node === null) {
             return null;
         }
 
-        return $this->resolveNode($node, $ast, $document);
+        return $this->resolveNode($node, $parsed->tree, $document);
     }
 
     /**
@@ -278,9 +278,7 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): ?MemberAccessContext {
-        $ast = $this->parser->parse($document)->tree;
-
-        return $this->memberAccessDetector->detect($document, $ast, $line, $character);
+        return $this->memberAccessDetector->detect($this->parser->parse($document), $line, $character);
     }
 
     /**
@@ -328,17 +326,17 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): ?CallContext {
-        $ast = $this->parser->parse($document)->tree;
+        $parsed = $this->parser->parse($document);
 
         $offset = $document->offsetAt($line, $character);
 
-        $callInfo = $this->callDetector->detect($ast, $document, $offset);
+        $callInfo = $this->callDetector->detect($parsed, $offset);
         if ($callInfo === null) {
             return null;
         }
 
         [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-        $callable = $this->resolveCallable($callNode, $ast, $document);
+        $callable = $this->resolveCallable($callNode, $parsed->tree, $document);
         if ($callable === null) {
             return null;
         }

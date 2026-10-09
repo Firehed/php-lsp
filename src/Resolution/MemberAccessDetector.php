@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
@@ -26,7 +27,6 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
-use PhpParser\Node\Stmt;
 
 /**
  * Detects member-access context at a cursor position.
@@ -51,18 +51,16 @@ final class MemberAccessDetector
     ) {
     }
 
-    /**
-     * @param array<Stmt> $ast
-     */
     public function detect(
-        TextDocument $document,
-        array $ast,
+        ParsedDocument $parsed,
         int $line,
         int $character,
     ): ?MemberAccessContext {
+        $document = $parsed->document;
+        $ast = $parsed->tree;
         $offset = $document->offsetAt($line, $character);
 
-        $node = $this->parser->nodeAt($ast, $document, $offset > 0 ? $offset - 1 : 0);
+        $node = $this->parser->nodeAt($parsed, $offset > 0 ? $offset - 1 : 0);
 
         if ($node === null) {
             return null;

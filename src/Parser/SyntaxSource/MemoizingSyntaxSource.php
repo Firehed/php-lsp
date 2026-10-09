@@ -47,11 +47,8 @@ final class MemoizingSyntaxSource implements SyntaxSourceInterface, MessageScope
         return new ParsedDocument($document, $this->memo[$content]);
     }
 
-    /**
-     * @param array<\PhpParser\Node\Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
+    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
     {
-        return $this->inner->nodeAt($tree, $document, $offset);
+        return $this->inner->nodeAt($parsed, $offset);
     }
 }

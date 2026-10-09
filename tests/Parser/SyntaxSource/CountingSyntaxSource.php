@@ -31,10 +31,7 @@ final class CountingSyntaxSource implements SyntaxSourceInterface
         return new ParsedDocument($document, $this->tree);
     }
 
-    /**
-     * @param array<Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
+    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
     {
         return null;
     }

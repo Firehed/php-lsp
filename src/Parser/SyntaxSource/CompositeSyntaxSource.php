@@ -39,13 +39,10 @@ final class CompositeSyntaxSource implements SyntaxSourceInterface
         return new ParsedDocument($document, []);
     }
 
-    /**
-     * @param array<\PhpParser\Node\Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
+    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
     {
         foreach ($this->sources as $source) {
-            $node = $source->nodeAt($tree, $document, $offset);
+            $node = $source->nodeAt($parsed, $offset);
             if ($node !== null) {
                 return $node;
             }

@@ -63,11 +63,9 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         return new ParsedDocument($document, []);
     }
 
-    /**
-     * @param array<Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
+    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
     {
+        $document = $parsed->document;
         if ($offset < 0 || $offset > strlen($document->getContent())) {
             return null;
         }
@@ -84,7 +82,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         if ($root === null) {
             return null;
         }
-        $this->attach($root, $tree);
+        $this->attach($root, $parsed->tree);
 
         return $this->nodeAtPosition->find([$root], $offset);
     }

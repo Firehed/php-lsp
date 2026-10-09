@@ -28,11 +28,8 @@ final class CountingSyntaxSource implements SyntaxSourceInterface
         return $this->inner->parse($document);
     }
 
-    /**
-     * @param array<\PhpParser\Node\Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
+    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
     {
-        return $this->inner->nodeAt($tree, $document, $offset);
+        return $this->inner->nodeAt($parsed, $offset);
     }
 }

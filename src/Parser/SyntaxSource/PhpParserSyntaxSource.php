@@ -58,11 +58,10 @@ final class PhpParserSyntaxSource implements SyntaxSourceInterface
      * expression, php-parser has nothing cursor-shaped to offer at this offset;
      * yielding null lets the cursor-text source synthesize one from the source
      * text.
-     *
-     * @param array<\PhpParser\Node\Stmt> $tree
      */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
+    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
     {
+        $tree = $parsed->tree;
         if ($tree === [] || $tree[0]->getAttribute(self::PRODUCER_ATTRIBUTE) !== true) {
             return null;
         }

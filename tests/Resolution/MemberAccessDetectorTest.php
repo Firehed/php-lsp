@@ -89,10 +89,10 @@ class MemberAccessDetectorTest extends TestCase
             1,
             "<?php\nfunction test(string \$s): void {\n    \$s->foo;\n}\n",
         );
-        $ast = $this->parser->parse($document)->tree;
+        $parsed = $this->parser->parse($document);
         // Cursor sits on `foo`.
         self::assertNull(
-            $this->detector->detect($document, $ast, 2, 9),
+            $this->detector->detect($parsed, 2, 9),
             'A primitive-typed variable has no members and must yield no context',
         );
     }
@@ -345,7 +345,7 @@ class MemberAccessDetectorTest extends TestCase
 
         self::assertEquals(
             $expected,
-            $detector->detect($document, $parser->parse($document)->tree, $line, $character),
+            $detector->detect($parser->parse($document), $line, $character),
             'the receiver type comes from the expression before the operator; visibility from where the access is',
         );
     }
@@ -474,7 +474,6 @@ class MemberAccessDetectorTest extends TestCase
     {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document)->tree;
-        return $this->detector->detect($document, $ast, $line, $character);
+        return $this->detector->detect($this->parser->parse($document), $line, $character);
     }
 }

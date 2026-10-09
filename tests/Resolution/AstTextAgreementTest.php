@@ -73,12 +73,12 @@ final class AstTextAgreementTest extends TestCase
     ): void {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document)->tree;
+        $parsed = $this->parser->parse($document);
 
         $offset = $this->markerOffset($content, $marker);
 
-        $compositeNode = $this->parser->nodeAt($ast, $document, $offset);
-        $cursorNode = $this->cursorText->nodeAt($ast, $document, $offset);
+        $compositeNode = $this->parser->nodeAt($parsed, $offset);
+        $cursorNode = $this->cursorText->nodeAt($parsed, $offset);
 
         self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
         self::assertNotNull($cursorNode, 'cursor-text source must synthesize a node at the cursor');
@@ -213,7 +213,7 @@ final class AstTextAgreementTest extends TestCase
     ): void {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document)->tree;
+        $parsed = $this->parser->parse($document);
 
         ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
         $offset = $document->offsetAt($line, $character);
@@ -221,8 +221,8 @@ final class AstTextAgreementTest extends TestCase
         // before the cursor, so we land on the arrow rather than on the marker.
         $probe = $offset > 0 ? $offset - 1 : 0;
 
-        $compositeNode = $this->parser->nodeAt($ast, $document, $probe);
-        $cursorNode = $this->cursorText->nodeAt($ast, $document, $probe);
+        $compositeNode = $this->parser->nodeAt($parsed, $probe);
+        $cursorNode = $this->cursorText->nodeAt($parsed, $probe);
 
         self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
         self::assertNotNull($cursorNode, 'cursor-text source must synthesize a node at the cursor');
