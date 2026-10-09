@@ -95,6 +95,13 @@ return [
         new Expectation\Offers('new', 'null'),
         new Expectation\Withholds('true', 'if', 'name:'),
     ),
+    // A prefix no function shares keeps the list short enough to be complete,
+    // so it can show the remaining argument names are withheld.
+    'value position offers no argument names' => $complete(
+        $named,
+        'after_colon_unmatched_prefix',
+        new Expectation\Withholds('count:', 'active:'),
+    ),
     'argument position offers names before expression keywords' => $complete(
         $named,
         'expression_in_bare_arg',
