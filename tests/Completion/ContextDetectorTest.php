@@ -185,8 +185,23 @@ class ContextDetectorTest extends TestCase
             'code before an inline block comment' => ['$c =', CompletionContext::Full],
             'inside an inline block comment' => ['/* inline', CompletionContext::None],
             'code after an inline block comment' => ['/* inline block */ 3', CompletionContext::Full],
-            'an attribute, which is not a comment' => ['#[Attr', CompletionContext::Full],
+            'end of an attribute line, which is not a comment' => ['#[Attribute]', CompletionContext::Full],
+            'end of a // comment the close tag ends' => ['// a comment the close tag ends ', CompletionContext::None],
         ];
+    }
+
+    public function testNoneContextAtTheEndOfACrlfCommentLine(): void
+    {
+        $code = $this->loadFixture('ContextDetector/comment_crlf.php');
+        $comment = '// a comment ending in a CRLF';
+        $at = strpos($code, $comment);
+        self::assertIsInt($at);
+
+        self::assertSame(
+            CompletionContext::None,
+            ContextDetector::getContext($code, $at + strlen($comment)),
+            'a comment ending in a CRLF contains the position before the CR',
+        );
     }
 
     #[DataProvider('commentPlacements')]

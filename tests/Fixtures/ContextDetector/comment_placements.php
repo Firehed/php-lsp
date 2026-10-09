@@ -10,3 +10,4 @@ $b = 2; # trailing hash comment
 $c = /* inline block */ 3;
 #[Attribute]
 function f() {}
+// a comment the close tag ends ?>
