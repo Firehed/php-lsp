@@ -50,9 +50,13 @@ final class ContextDetector
 
                 $tokenEnd = $currentPosition + $tokenLength;
                 // Cursor is inside if: after token start AND before token end
-                // Exception: at EOF, cursor at token end is considered inside (unclosed construct)
+                // Exceptions where the cursor at token end is considered inside: at EOF
+                // (unclosed construct), and a `//` or `#` comment, whose token stops
+                // before the line break or close tag that actually ends it.
+                $isSingleLineComment = $tokenType === T_COMMENT && !str_starts_with($tokenText, '/*');
                 $isInside = $offset > $currentPosition
-                    && ($offset < $tokenEnd || ($offset === $tokenEnd && $offset === $codeLength));
+                    && ($offset < $tokenEnd
+                        || ($offset === $tokenEnd && ($offset === $codeLength || $isSingleLineComment)));
 
                 if ($isInside) {
                     return self::contextForToken($tokenType, $tokenText, $inNowdoc);
