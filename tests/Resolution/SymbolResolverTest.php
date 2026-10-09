@@ -10,8 +10,10 @@ use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
@@ -163,7 +165,11 @@ final class SymbolResolverTest extends TestCase
                 : null,
         );
 
-        $resolved = self::resolver($symbols, syntax: new PhpParserSyntaxSource(new TreeAnnotator()))
+        $resolved = self::resolver(
+            $symbols,
+            syntax: new PhpParserSyntaxSource(new TreeAnnotator()),
+            locator: new TreeNodeLocator(),
+        )
             ->resolveAtPosition(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
 
         self::assertSame($user, $resolved, 'the imported name is looked up by its fully qualified form');
@@ -173,9 +179,11 @@ final class SymbolResolverTest extends TestCase
         SymbolSourceInterface $symbols,
         ?MemberResolverInterface $members = null,
         ?SyntaxSourceInterface $syntax = null,
+        ?NodeLocatorInterface $locator = null,
     ): SymbolResolver {
         return new SymbolResolver(
             $syntax ?? self::createStub(SyntaxSourceInterface::class),
+            $locator ?? self::createStub(NodeLocatorInterface::class),
             $symbols,
             $members ?? self::createStub(MemberResolverInterface::class),
             self::createStub(TypeSourceInterface::class),

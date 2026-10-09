@@ -18,8 +18,10 @@ use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
@@ -53,7 +55,8 @@ class MemberAccessDetectorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->parser = ProductionSyntaxSource::create()->source;
+        $production = ProductionSyntaxSource::create();
+        $this->parser = $production->source;
 
         $emptySource = self::createStub(SymbolSourceInterface::class);
         $emptySource->method('lookupClassLike')->willReturn(null);
@@ -62,7 +65,7 @@ class MemberAccessDetectorTest extends TestCase
             $emptySource,
             $emptyMemberResolver,
             new NativeTypeSource($emptySource, $emptyMemberResolver),
-            $this->parser,
+            $production->locator,
         );
     }
 
@@ -341,7 +344,7 @@ class MemberAccessDetectorTest extends TestCase
         ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $parser = new PhpParserSyntaxSource(new TreeAnnotator());
-        $detector = self::detectorKnowingFixtureMembers($parser);
+        $detector = self::detectorKnowingFixtureMembers(new TreeNodeLocator());
 
         self::assertEquals(
             $expected,
@@ -354,7 +357,7 @@ class MemberAccessDetectorTest extends TestCase
      * Members the fixtures declare, so chains and static calls resolve; every
      * other lookup finds nothing.
      */
-    private static function detectorKnowingFixtureMembers(SyntaxSourceInterface $parser): MemberAccessDetector
+    private static function detectorKnowingFixtureMembers(NodeLocatorInterface $locator): MemberAccessDetector
     {
         $user = self::type('Fixtures\Domain\User');
         $methods = [
@@ -444,7 +447,7 @@ class MemberAccessDetectorTest extends TestCase
             },
         );
 
-        return new MemberAccessDetector($symbols, $memberResolver, $types, $parser);
+        return new MemberAccessDetector($symbols, $memberResolver, $types, $locator);
     }
 
     private static function instance(TypeInterface $type, Visibility $visibility): MemberAccessContext

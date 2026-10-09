@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
@@ -66,16 +67,17 @@ final class SymbolResolver implements CodeResolverInterface
 
     public function __construct(
         private readonly SyntaxSourceInterface $parser,
+        private readonly NodeLocatorInterface $locator,
         private readonly SymbolSourceInterface $symbolSource,
         private readonly MemberResolverInterface $memberResolver,
         private readonly TypeSourceInterface $typeSource,
     ) {
-        $this->callDetector = new CallContextDetector($parser);
+        $this->callDetector = new CallContextDetector($locator);
         $this->memberAccessDetector = new MemberAccessDetector(
             $symbolSource,
             $memberResolver,
             $typeSource,
-            $parser,
+            $locator,
         );
     }
 
@@ -101,7 +103,7 @@ final class SymbolResolver implements CodeResolverInterface
         $parsed = $this->parser->parse($document);
 
         $offset = $document->offsetAt($line, $character);
-        $node = $this->parser->nodeAt($parsed, $offset);
+        $node = $this->locator->nodeAt($parsed, $offset);
 
         if ($node === null) {
             return null;

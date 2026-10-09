@@ -90,6 +90,7 @@ final class FeatureMatrixTest extends TestCase
 
         $symbolResolver = new SymbolResolver(
             $parser,
+            $production->locator,
             $knowledge->source,
             $memberResolver,
             $typeSource,

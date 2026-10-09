@@ -200,7 +200,7 @@ final class CompletionParityTest extends TestCase
         $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
-        $resolver = new SymbolResolver($parser, $knowledge->source, $memberResolver, $typeSource);
+        $resolver = new SymbolResolver($parser, $production->locator, $knowledge->source, $memberResolver, $typeSource);
 
         $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')

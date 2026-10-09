@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\NodeLocatorInterface;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
@@ -31,7 +31,7 @@ use PhpParser\Node\Expr\StaticCall;
 final class CallContextDetector
 {
     public function __construct(
-        private readonly SyntaxSourceInterface $parser,
+        private readonly NodeLocatorInterface $locator,
     ) {
     }
 
@@ -40,7 +40,7 @@ final class CallContextDetector
      */
     public function detect(ParsedDocument $parsed, int $offset): ?array
     {
-        $node = $this->parser->nodeAt($parsed, $offset);
+        $node = $this->locator->nodeAt($parsed, $offset);
         // Walk parents until an enclosing call is found. The tree annotator sets
         // the parent attribute, so this is a pointer walk, not a traversal.
         while ($node !== null && !self::isCallLike($node)) {

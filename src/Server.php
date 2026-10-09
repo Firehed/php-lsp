@@ -27,6 +27,7 @@ use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
+use Firehed\PhpLsp\Parser\SyntaxSource\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
@@ -34,6 +35,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\MessageScopedInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\SyntaxSource\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\RequestMessage;
@@ -125,6 +127,7 @@ final class Server
 
         $symbolResolver = new SymbolResolver(
             $parser,
+            new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextSyntaxSource()),
             $symbolSource,
             $memberResolver,
             $typeSource,
