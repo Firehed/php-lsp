@@ -19,7 +19,7 @@ class ContextFiltering
 
     public function beforeTrailingComment(): void
     {
-        $mapped = /*|before_trailing_comment*/; // the code before this comment completes
+        $mapped = arra/*|before_trailing_comment*/; // the code before this comment completes
     }
 
     public function inHeredoc(): void

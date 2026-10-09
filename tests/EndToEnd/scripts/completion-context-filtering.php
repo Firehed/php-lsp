@@ -34,17 +34,10 @@ return [
     'the end of a comment line' => $commentLineEnd('// arra'),
     'the end of a comment line with words before' => $commentLineEnd('// then call arra'),
     'the end of a hash comment line' => $commentLineEnd('# arra'),
-    'the code before a trailing comment' => new Session\Script(
-        project: 'tests/Fixtures',
-        steps: [
-            new Step\Open($filtering),
-            new Step\Type($filtering, new Marker\CursorMarker('before_trailing_comment'), 'arra'),
-            new Step\Complete(
-                $filtering,
-                new Marker\CursorMarker('before_trailing_comment'),
-                expect: new Expectation\Offers('array_map'),
-            ),
-        ],
+    'the code before a trailing comment' => $complete(
+        $filtering,
+        'before_trailing_comment',
+        new Expectation\Offers('array_map'),
     ),
     'a heredoc offers variables' => $complete($filtering, 'in_heredoc', new Expectation\Offers('$localVar')),
     'after a finished statement' => new Session\Script(
