@@ -84,6 +84,12 @@ class EditingNamedArg
         localHelper(name: 123/*|after_named_value*/
     }
 
+    public function testAfterSingleQuotedString(): void
+    {
+        // Cursor after single-quoted string value
+        localHelper(name: 'value'/*|after_string_value*/
+    }
+
     private function instanceMethod(string $name, int $count = 0): void
     {
     }
