@@ -415,9 +415,11 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
                 | ($m[3][0] !== '' ? Modifiers::READONLY : 0);
             $matchStart = $baseOffset + $m[0][1];
             $matchEnd = $matchStart + strlen($m[0][0]);
+            // The name as written includes the `$` before the captured group.
+            $nameAttributes = self::positions($positions, $baseOffset + $m[4][1] - 1, $matchEnd);
             $out[] = new Stmt\Property(
                 $flags,
-                [new Node\PropertyItem($m[4][0])],
+                [new Node\PropertyItem(new Node\VarLikeIdentifier($m[4][0], $nameAttributes), null, $nameAttributes)],
                 self::positions($positions, $matchStart, $matchEnd),
             );
         }
@@ -436,8 +438,12 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
             $visibility = $m[1][0] === '' ? 'public' : $m[1][0];
             $matchStart = $baseOffset + $m[0][1];
             $matchEnd = $matchStart + strlen($m[0][0]);
+            $nameStart = $baseOffset + $m[2][1];
+            $name = new Identifier($m[2][0], self::positions($positions, $nameStart, $nameStart + strlen($m[2][0])));
+            // The value is not read; its placeholder sits just past the `=`.
+            $value = new Node\Scalar\String_('', self::positions($positions, $matchEnd, $matchEnd));
             $out[] = new Stmt\ClassConst(
-                [new Const_($m[2][0], new Node\Scalar\String_(''))],
+                [new Const_($name, $value, self::positions($positions, $nameStart, $matchEnd))],
                 self::visibilityFlag($visibility),
                 self::positions($positions, $matchStart, $matchEnd),
             );
@@ -477,17 +483,12 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
             // Groups 4-6 belong to the group-use alternative; when one is set,
             // the other alternative did not match, so groups 1-3 are absent.
             if (isset($m[5])) {
-                $out[] = $this->buildGroupUse($m, $positions, $matchStart, $matchEnd);
+                $out[] = $this->buildGroupUse($m, $positions, $rangeStart, $matchStart, $matchEnd);
                 continue;
             }
 
-            $alias = $m[3][0] ?? '';
-            $useItem = new UseItem(
-                new Name($m[2][0]),
-                $alias === '' ? null : new Identifier($alias),
-            );
             $out[] = new Stmt\Use_(
-                [$useItem],
+                [self::useItem($m[2], $m[3] ?? ['', -1], $rangeStart, $positions)],
                 self::useType($m[1][0] ?? ''),
                 self::positions($positions, $matchStart, $matchEnd),
             );
@@ -496,32 +497,70 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     }
 
     /**
-     * @param array<int, array{0: string, 1: int}> $m
+     * @param array<int, array{0: string, 1: int}> $m Offsets relative to $base.
      * @param PositionMap $positions
      */
-    private function buildGroupUse(array $m, array $positions, int $matchStart, int $matchEnd): Stmt\GroupUse
-    {
+    private function buildGroupUse(
+        array $m,
+        array $positions,
+        int $base,
+        int $matchStart,
+        int $matchEnd,
+    ): Stmt\GroupUse {
         // Called only when the group-use alternative matched, so groups 4-6 are
         // present; coalesce their reads because PHPStan cannot follow the caller
         // narrowing.
+        $list = $m[6] ?? ['', -1];
         $items = [];
-        foreach (explode(',', $m[6][0] ?? '') as $rawItem) {
-            $item = trim($rawItem);
+        foreach (self::matchAll('/[^,]+/', $list[0]) as $piece) {
+            $item = trim($piece[0][0]);
             if ($item === '') {
                 continue;
             }
-            if (preg_match(self::GROUP_USE_ITEM_ALIAS_PATTERN, $item, $im) === 1) {
-                $items[] = new UseItem(new Name($im[1]), new Identifier($im[2]));
+            $itemStart = $list[1] + $piece[0][1] + strlen($piece[0][0]) - strlen(ltrim($piece[0][0]));
+            if (preg_match(self::GROUP_USE_ITEM_ALIAS_PATTERN, $item, $im, PREG_OFFSET_CAPTURE) === 1) {
+                $items[] = self::useItem(
+                    [$im[1][0], $itemStart + $im[1][1]],
+                    [$im[2][0], $itemStart + $im[2][1]],
+                    $base,
+                    $positions,
+                );
             } else {
-                $items[] = new UseItem(new Name($item), null);
+                $items[] = self::useItem([$item, $itemStart], ['', -1], $base, $positions);
             }
         }
+        $prefix = $m[5] ?? ['', -1];
+        $prefixName = rtrim($prefix[0], '\\');
+        $prefixStart = $base + $prefix[1];
         return new Stmt\GroupUse(
-            new Name(rtrim($m[5][0] ?? '', '\\')),
+            new Name($prefixName, self::positions($positions, $prefixStart, $prefixStart + strlen($prefixName))),
             $items,
             self::useType($m[4][0] ?? ''),
             self::positions($positions, $matchStart, $matchEnd),
         );
+    }
+
+    /**
+     * An import of $name, renamed to $alias unless the alias is empty, spanning
+     * both as written.
+     *
+     * @param array{0: string, 1: int} $name Offset relative to $base.
+     * @param array{0: string, 1: int} $alias Offset relative to $base.
+     * @param PositionMap $positions
+     */
+    private static function useItem(array $name, array $alias, int $base, array $positions): UseItem
+    {
+        $nameStart = $base + $name[1];
+        $itemEnd = $nameStart + strlen($name[0]);
+        $nameNode = new Name($name[0], self::positions($positions, $nameStart, $itemEnd));
+        $aliasNode = null;
+        if ($alias[0] !== '') {
+            $aliasStart = $base + $alias[1];
+            $itemEnd = $aliasStart + strlen($alias[0]);
+            $aliasNode = new Identifier($alias[0], self::positions($positions, $aliasStart, $itemEnd));
+        }
+
+        return new UseItem($nameNode, $aliasNode, attributes: self::positions($positions, $nameStart, $itemEnd));
     }
 
     /**
