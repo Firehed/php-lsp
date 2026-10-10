@@ -373,16 +373,24 @@ final class SkeletonSyntaxSourceTest extends TestCase
     {
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
         $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
-        $starts = fn (array $tree) => array_map(
-            fn (Stmt\ClassLike $classLike) => [(string) $classLike->name, $classLike->getStartFilePos()],
-            (new NodeFinder())->findInstanceOf($tree, Stmt\ClassLike::class),
-        );
 
         self::assertSame(
-            $starts($parsed),
-            $starts($this->tree($document)),
+            self::describeClassLikeStarts($parsed),
+            self::describeClassLikeStarts($this->tree($document)),
             'the skeleton must start each class-like where php-parser does',
         );
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     * @return list<array{string, int}>
+     */
+    private static function describeClassLikeStarts(array $tree): array
+    {
+        return array_values(array_map(
+            fn (Stmt\ClassLike $classLike) => [(string) $classLike->name, $classLike->getStartFilePos()],
+            (new NodeFinder())->findInstanceOf($tree, Stmt\ClassLike::class),
+        ));
     }
 
     /**
