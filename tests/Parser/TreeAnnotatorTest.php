@@ -91,8 +91,8 @@ final class TreeAnnotatorTest extends TestCase
             || $node instanceof Attribute);
         $recorded = [];
         foreach ($calls as $call) {
-            $separators = $call->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS);
-            self::assertIsArray($separators, 'every call carries its argument separators, even when it has none');
+            $separators = ParsedDocument::argumentSeparatorsOf($call);
+            self::assertNotNull($separators, 'every call carries its argument separators, even when it has none');
             foreach ($separators as $position) {
                 self::assertSame(
                     $call,

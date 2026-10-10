@@ -140,9 +140,9 @@ trait AssertsTreeContractTrait
         if (!$node instanceof CallLike && !$node instanceof Node\Attribute) {
             return;
         }
-        $separators = $node->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS);
-        $where = "{$context}: {$node->getType()} at {$node->getStartFilePos()}";
-        self::assertIsList($separators, "{$where} must record its argument separators");
-        self::assertContainsOnlyInt($separators, "{$where} must record separators as file positions");
+        self::assertNotNull(
+            ParsedDocument::argumentSeparatorsOf($node),
+            "{$context}: {$node->getType()} at {$node->getStartFilePos()} must record its argument separators",
+        );
     }
 }
