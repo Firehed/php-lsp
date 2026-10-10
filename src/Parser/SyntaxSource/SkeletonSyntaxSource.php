@@ -386,10 +386,9 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         // source are conventionally lowercase, and the fallback path — treating
         // an unrecognised token as a class name — is safe when the file's
         // actual type resolution rejects it downstream.
-        if (in_array($first, self::PRIMITIVE_TYPES, true)) {
-            return new Node\Identifier($first, $attrs);
-        }
-        $node = self::referenceName($first, $attrs);
+        $node = in_array($first, self::PRIMITIVE_TYPES, true)
+            ? new Node\Identifier($first, $attrs)
+            : self::referenceName($first, $attrs);
         return $nullable
             ? new Node\NullableType($node, self::positions($positions, $typeStart, $nameEnd))
             : $node;
