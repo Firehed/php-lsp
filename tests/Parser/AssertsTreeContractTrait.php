@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Parser;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use PhpParser\Node;
+use PhpParser\Node\Expr\CallLike;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeTraverser;
@@ -76,6 +77,7 @@ trait AssertsTreeContractTrait
                 );
             }
             self::assertNameResolved($node, $context);
+            self::assertArgumentSeparatorsRecorded($node, $context);
         };
 
         (new NodeTraverser(new class ($check) extends NodeVisitorAbstract {
@@ -131,5 +133,16 @@ trait AssertsTreeContractTrait
             return;
         }
         self::fail("{$context}: `{$node->toString()}` at {$node->getStartFilePos()} must be fully qualified");
+    }
+
+    private static function assertArgumentSeparatorsRecorded(Node $node, string $context): void
+    {
+        if (!$node instanceof CallLike && !$node instanceof Node\Attribute) {
+            return;
+        }
+        $separators = $node->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS);
+        $where = "{$context}: {$node->getType()} at {$node->getStartFilePos()}";
+        self::assertIsList($separators, "{$where} must record its argument separators");
+        self::assertContainsOnlyInt($separators, "{$where} must record separators as file positions");
     }
 }
