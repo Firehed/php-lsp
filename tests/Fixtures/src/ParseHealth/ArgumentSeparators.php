@@ -19,6 +19,17 @@ class ArgumentSeparators
         new self(/* , */ 1,/*|new_1*/ 2,/*|new_2*/);
         $this?->target("{$x}, y",/*|nullsafe_1*/ 2);
         strlen($x);
+        self::make(max(1,/*|inner_1*/ 2),/*|outer_1*/ function ($a, $b) {
+            return [$a, $b];
+        },/*|outer_2*/ match ($x) {
+            'a', 'b' => 1,
+            default => 2,
+        },/*|outer_3*/ "${x}, y",/*|outer_4*/ #[Route('/x',/*|attribute_2*/ methods: ['GET'])] fn ($c, $d) => $c);
+        new class (1,/*|anonymous_1*/ 2) {
+            public function inner(int $a, int $b): void
+            {
+            }
+        };
     }
 
     #[Route('/a',/*|attribute_1*/ methods: ['GET', 'POST'])]
