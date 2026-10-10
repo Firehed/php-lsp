@@ -192,7 +192,8 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     {
         // Anchor at the start of a line so a "class" or "interface" word that
         // appears inside a docblock or a string does not read as a declaration.
-        $pattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(class|interface|trait|enum)\s+(\w+)'
+        // `\K` starts the match at the declaration, not on blank lines before it.
+        $pattern = '/^\s*\K(?:(?:abstract|final|readonly)\s+)*(class|interface|trait|enum)\s+(\w+)'
             . '(?:\s+extends\s+((?:' . self::NAME_PATTERN . ')(?:\s*,\s*' . self::NAME_PATTERN . ')*))?'
             . '(?:\s+implements\s+(' . self::NAME_PATTERN . '(?:\s*,\s*' . self::NAME_PATTERN . ')*))?/m';
         $matches = self::matchAll($pattern, $content);
@@ -200,7 +201,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         $out = [];
         foreach ($matches as $m) {
             $start = $m[0][1];
-            $body = self::sliceClassBody($content, $start);
+            $body = self::sliceClassBody($content, $start, $m[2][1] + strlen($m[2][0]));
             // A trailing optional group that did not participate in the match
             // may be omitted from `$m` (older PHP) rather than returned as
             // ["", -1]; the coalesce covers both.
@@ -395,10 +396,9 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         // source are conventionally lowercase, and the fallback path — treating
         // an unrecognised token as a class name — is safe when the file's
         // actual type resolution rejects it downstream.
-        if (in_array($first, self::PRIMITIVE_TYPES, true)) {
-            return new Node\Identifier($first, $attrs);
-        }
-        $node = self::nameAsWritten($first, $attrs);
+        $node = in_array($first, self::PRIMITIVE_TYPES, true)
+            ? new Node\Identifier($first, $attrs)
+            : self::nameAsWritten($first, $attrs);
         return $nullable
             ? new Node\NullableType($node, self::positions($positions, $typeStart, $nameEnd))
             : $node;
@@ -690,10 +690,10 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
      * In that case the slice runs to the next class-like declaration or to
      * end-of-file, so the truncated class still holds its members.
      */
-    private static function sliceClassBody(string $content, int $declOffset): string
+    private static function sliceClassBody(string $content, int $declOffset, int $nameEnd): string
     {
         $bracePos = strpos($content, '{', $declOffset);
-        $nextDeclPos = self::nextClassLikeDeclPos($content, $declOffset);
+        $nextDeclPos = self::nextClassLikeDeclPos($content, $nameEnd);
         if (
             $bracePos !== false
             && $bracePos < $nextDeclPos
@@ -720,23 +720,16 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     }
 
     /**
-     * The offset of the next class-like declaration at line start after
-     * `$fromOffset`, or the file length when none follows. `$fromOffset` sits
-     * on the current class's own declaration, so scan for the same pattern
-     * twice — the first match is this class, the second is the one that bounds
-     * its body.
+     * The offset of the next class-like declaration after the one whose name
+     * ends at `$nameEnd`, or the file length when none follows. Every line of
+     * that declaration up to its name starts before `$nameEnd`, so the scan
+     * cannot find it again, even with a modifier on a line of its own.
      */
-    private static function nextClassLikeDeclPos(string $content, int $fromOffset): int
+    private static function nextClassLikeDeclPos(string $content, int $nameEnd): int
     {
-        $pattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|interface|trait|enum)\s+\w/m';
-        if (preg_match($pattern, $content, $first, PREG_OFFSET_CAPTURE, $fromOffset) !== 1) {
-            // @codeCoverageIgnoreStart
-            return strlen($content);
-            // @codeCoverageIgnoreEnd
-        }
-        $skipTo = $first[0][1] + strlen($first[0][0]);
-        if (preg_match($pattern, $content, $second, PREG_OFFSET_CAPTURE, $skipTo) === 1) {
-            return $second[0][1];
+        $pattern = '/^\s*\K(?:(?:abstract|final|readonly)\s+)*(?:class|interface|trait|enum)\s+\w/m';
+        if (preg_match($pattern, $content, $next, PREG_OFFSET_CAPTURE, $nameEnd) === 1) {
+            return $next[0][1];
         }
         return strlen($content);
     }
