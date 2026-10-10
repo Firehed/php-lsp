@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Fixtures\Resolution;
 
+use const Fixtures\Resolution\Elsewhere\COU;
+
 class ArgumentBoundaries
 {
     public function target(string $name, int $count = 0): void
@@ -21,6 +23,8 @@ class ArgumentBoundaries
         $this->target('a', $count + /*|inside_second_value*/1);
         $this->target(/*|positional*/'a');
         $this->target($count/*|positional_variable*/);
+        $this->target(COU/*|imported_constant*/);
+        $this->target(.../*|after_spread*/$count);
         $this->target(name: /*|named_value*/'a');
         $this->target(name: 'a', /*|next_argument*/count: 1);
         $this->target(name: 'a'/*|after_string_value*/);

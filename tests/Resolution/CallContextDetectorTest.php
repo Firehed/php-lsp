@@ -113,6 +113,8 @@ final class CallContextDetectorTest extends TestCase
             'before a positional argument' => ['positional', false],
             'a bare word, which may become a name' => ['typing_first', false],
             'a positional variable' => ['positional_variable', true],
+            'an imported constant, written as a bare word' => ['imported_constant', false],
+            'right after a spread' => ['after_spread', true],
             'after a positional string and a space' => ['after_first_with_space', true],
             'the value of a named argument' => ['named_value', true],
             'the start of the argument after a named one' => ['next_argument', false],
@@ -130,6 +132,18 @@ final class CallContextDetectorTest extends TestCase
 
         self::assertNotNull($detection, 'the cursor is inside a call');
         self::assertSame($expected, $detection[4], 'whether a value, where no argument name fits, is being typed');
+    }
+
+    /**
+     * Outside a namespace a bare word resolves to a fully qualified name, which
+     * must not hide that it was written bare.
+     */
+    public function testABareWordOutsideANamespaceMayStillBecomeAName(): void
+    {
+        $detection = $this->detectAt('TopLevel/positional_bare_word.php', 'global_bare_word');
+
+        self::assertNotNull($detection, 'the cursor is inside a call');
+        self::assertFalse($detection[4], 'a bare word may yet become an argument name');
     }
 
     /**
