@@ -182,11 +182,11 @@ final class SymbolResolverTest extends TestCase
 
     public function testCallContextCarriesTheArgumentAtTheCursor(): void
     {
-        $fixture = 'src/Completion/ArgumentSlots.php';
+        $fixture = 'src/Resolution/ArgumentBoundaries.php';
         $content = $this->loadFixture($fixture);
         ['line' => $line, 'character' => $character] = $this->locateCursor($content, 'function_named_value');
         $function = self::functionInfo(
-            QualifiedName::fromFullyQualified('argumentSlotsTarget'),
+            QualifiedName::fromFullyQualified('boundaryTarget'),
             parameters: [self::parameterInfo('name'), self::parameterInfo('count', position: 1)],
         );
         $symbols = self::createStub(SymbolSourceInterface::class);

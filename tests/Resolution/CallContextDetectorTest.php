@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
+use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\ParsedDocument;
@@ -113,13 +115,44 @@ final class CallContextDetectorTest extends TestCase
             'the start of the argument after a named one' => ['next_argument', false],
             'right after a named argument\'s string value' => ['after_string_value', true],
             'right after a named argument\'s numeric value' => ['after_numeric_value', true],
+            'right after an argument\'s name' => ['after_name', false],
+            'right after an argument\'s colon' => ['after_colon', true],
         ];
     }
 
     #[DataProvider('argumentSlots')]
     public function testReportsWhetherTheCursorIsInANamedArgumentsValue(string $marker, bool $expected): void
     {
-        $detection = $this->detectAt('src/Completion/ArgumentSlots.php', $marker);
+        $detection = $this->detectAt('src/Resolution/ArgumentBoundaries.php', $marker);
+
+        self::assertNotNull($detection, 'the cursor is inside a call');
+        self::assertSame($expected, $detection[4], 'whether a named argument\'s value is being typed');
+    }
+
+    /**
+     * @return array<string, array{string, bool}>
+     */
+    public static function unclosedSlots(): array
+    {
+        return [
+            'right after a numeric value' => ['after_named_value', true],
+            'right after a string value' => ['after_string_value', true],
+            'an empty argument list' => ['function_empty', false],
+        ];
+    }
+
+    /**
+     * While a call is being typed, its node can come from the cursor text
+     * rather than the parsed tree; the rule is the same.
+     */
+    #[DataProvider('unclosedSlots')]
+    public function testReportsANamedValueInAnUnclosedCall(string $marker, bool $expected): void
+    {
+        $detection = $this->detectAt(
+            'src/Completion/EditingNamedArg.php',
+            $marker,
+            new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator()),
+        );
 
         self::assertNotNull($detection, 'the cursor is inside a call');
         self::assertSame($expected, $detection[4], 'whether a named argument\'s value is being typed');
@@ -141,14 +174,14 @@ final class CallContextDetectorTest extends TestCase
     /**
      * @return RawDetection|null
      */
-    private function detectAt(string $fixture, string $marker): ?array
+    private function detectAt(string $fixture, string $marker, ?NodeLocatorInterface $locator = null): ?array
     {
         $content = $this->loadFixture($fixture);
         $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse(
             new TextDocument('file:///' . $fixture, 'php', 1, $content),
         );
 
-        $detector = new CallContextDetector(new TreeNodeLocator());
+        $detector = new CallContextDetector($locator ?? new TreeNodeLocator());
 
         return $detector->detect($parsed, $this->markerOffset($content, $marker));
     }
