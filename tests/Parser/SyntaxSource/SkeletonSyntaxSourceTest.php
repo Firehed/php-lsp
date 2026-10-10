@@ -373,12 +373,13 @@ final class SkeletonSyntaxSourceTest extends TestCase
             'class extends' => ['src/Inheritance/ChildClass.php'],
             'class extends and implements' => ['src/Exception/AppException.php'],
             'interface extends a list' => ['src/Hierarchy/LeafInterface.php'],
+            'fully qualified parents' => ['src/Inheritance/GlobalParent.php'],
         ];
     }
 
-    public function testNullableParameterTypesCarryTheirWrittenPositions(): void
+    #[DataProvider('nullableParameterFixtures')]
+    public function testNullableParameterTypesCarryTheirWrittenPositions(string $fixture): void
     {
-        $fixture = 'src/TypeInference/BuiltinTypes.php';
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
         $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
 
@@ -390,8 +391,19 @@ final class SkeletonSyntaxSourceTest extends TestCase
     }
 
     /**
+     * @return array<string, array{string}>
+     */
+    public static function nullableParameterFixtures(): array
+    {
+        return [
+            'imported class types' => ['src/TypeInference/BuiltinTypes.php'],
+            'fully qualified type' => ['src/Inheritance/GlobalParent.php'],
+        ];
+    }
+
+    /**
      * @param array<Stmt> $tree
-     * @return list<array{string, int, int, int, int}>
+     * @return list<array{string, string, int, int, int, int}>
      */
     private static function describeNullableParameterTypes(array $tree): array
     {
@@ -406,6 +418,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
             }
             $described[] = [
                 $param->var->name,
+                $param->type->type->toString(),
                 $param->type->getStartFilePos(),
                 $param->type->getEndFilePos(),
                 $param->type->type->getStartFilePos(),
