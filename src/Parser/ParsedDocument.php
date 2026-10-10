@@ -18,7 +18,8 @@ use PhpParser\Node\Stmt;
  * - Names rewritten in place to their fully qualified form, except `self`,
  *   `parent`, and `static`, and an unqualified function or constant name in
  *   a namespace, which PHP resolves at runtime: it keeps its written form and
- *   carries its `namespacedName`.
+ *   carries its `namespacedName`. A namespace or import declaration's own
+ *   name is what it declares, so it too keeps its written form.
  */
 final readonly class ParsedDocument
 {
