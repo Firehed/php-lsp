@@ -385,30 +385,35 @@ final class SkeletonSyntaxSourceTest extends TestCase
     }
 
     /**
-     * A class-like starts at its declaration, as php-parser places it, not on
-     * the blank lines before it.
+     * A class-like spans from its declaration to its closing brace, as
+     * php-parser places it: not from the blank lines before it, and not past
+     * its body when a modifier opens the declaration.
      */
     #[DataProvider('parentNameFixtures')]
-    public function testClassLikesStartWhereTheyAreWritten(string $fixture): void
+    public function testClassLikesSpanWhereTheyAreWritten(string $fixture): void
     {
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
         $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
 
         self::assertSame(
-            self::describeClassLikeStarts($parsed),
-            self::describeClassLikeStarts($this->tree($document)),
-            'the skeleton must start each class-like where php-parser does',
+            self::describeClassLikeSpans($parsed),
+            self::describeClassLikeSpans($this->tree($document)),
+            'the skeleton must span each class-like as php-parser does',
         );
     }
 
     /**
      * @param array<Stmt> $tree
-     * @return list<array{string, int}>
+     * @return list<array{string, int, int}>
      */
-    private static function describeClassLikeStarts(array $tree): array
+    private static function describeClassLikeSpans(array $tree): array
     {
         return array_values(array_map(
-            fn (Stmt\ClassLike $classLike) => [(string) $classLike->name, $classLike->getStartFilePos()],
+            fn (Stmt\ClassLike $classLike) => [
+                (string) $classLike->name,
+                $classLike->getStartFilePos(),
+                $classLike->getEndFilePos(),
+            ],
             (new NodeFinder())->findInstanceOf($tree, Stmt\ClassLike::class),
         ));
     }
@@ -422,6 +427,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
             'class extends' => ['src/Inheritance/ChildClass.php'],
             'class extends and implements' => ['src/Exception/AppException.php'],
             'interface extends a list' => ['src/Hierarchy/LeafInterface.php'],
+            'final class after a blank line' => ['src/Inheritance/FinalDescendant.php'],
         ];
     }
 
