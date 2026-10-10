@@ -8,15 +8,19 @@ use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\ParsedDeclarationSource;
+use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
+use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
+use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
+use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 
 /**
- * The test-facing wiring for the production SyntaxSourceInterface stack. Mirrors what
+ * The test-facing wiring for the production SyntaxSourceInterface and
+ * NodeLocatorInterface stacks. Mirrors what
  * {@see \Firehed\PhpLsp\Server::forProject} assembles, so a test that needs
  * production wiring does not name any implementation directly.
  *
@@ -27,6 +31,7 @@ use Firehed\PhpLsp\Parser\TreeAnnotator;
 final readonly class ProductionSyntaxSource
 {
     public MemoizingSyntaxSource $source;
+    public NodeLocatorInterface $locator;
     public CountingSyntaxSource $counter;
     public SourceFileReader $reader;
     public ParsedDeclarationSource $declarations;
@@ -37,10 +42,10 @@ final readonly class ProductionSyntaxSource
             new CompositeSyntaxSource(
                 new PhpParserSyntaxSource(new TreeAnnotator()),
                 new SkeletonSyntaxSource(),
-                new CursorTextSyntaxSource(),
             ),
         );
         $this->source = new MemoizingSyntaxSource($this->counter);
+        $this->locator = new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator());
         $this->reader = new SourceFileReader();
         $this->declarations = new ParsedDeclarationSource(
             $this->source,

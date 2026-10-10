@@ -9,7 +9,9 @@ use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
-use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
+use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
+use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -46,13 +48,15 @@ final class AstTextAgreementTest extends TestCase
     use LoadsFixturesTrait;
 
     private MemoizingSyntaxSource $parser;
-    private CursorTextSyntaxSource $cursorText;
+    private NodeLocatorInterface $locator;
+    private CursorTextNodeLocator $cursorText;
 
     protected function setUp(): void
     {
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
-        $this->cursorText = new CursorTextSyntaxSource();
+        $this->locator = $production->locator;
+        $this->cursorText = new CursorTextNodeLocator();
     }
 
     /**
@@ -73,12 +77,12 @@ final class AstTextAgreementTest extends TestCase
     ): void {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document);
+        $parsed = $this->parser->parse($document);
 
         $offset = $this->markerOffset($content, $marker);
 
-        $compositeNode = $this->parser->nodeAt($ast, $document, $offset);
-        $cursorNode = $this->cursorText->nodeAt($ast, $document, $offset);
+        $compositeNode = $this->locator->nodeAt($parsed, $offset);
+        $cursorNode = $this->cursorText->nodeAt($parsed, $offset);
 
         self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
         self::assertNotNull($cursorNode, 'cursor-text source must synthesize a node at the cursor');
@@ -98,6 +102,13 @@ final class AstTextAgreementTest extends TestCase
             $compositeCall::class,
             $cursorCall::class,
             'call node class must agree between composite and cursor-text source',
+        );
+        $parsedSeparators = $compositeCall->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS);
+        self::assertIsArray($parsedSeparators, 'a parsed call records its argument separators');
+        self::assertSame(
+            array_values(array_filter($parsedSeparators, static fn (mixed $pos): bool => $pos < $offset)),
+            $cursorCall->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS),
+            'the commas before the cursor must agree, so both paths count the same finished arguments',
         );
         self::assertTreeContractAgrees($compositeCall, $cursorCall);
     }
@@ -213,7 +224,7 @@ final class AstTextAgreementTest extends TestCase
     ): void {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document);
+        $parsed = $this->parser->parse($document);
 
         ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
         $offset = $document->offsetAt($line, $character);
@@ -221,8 +232,8 @@ final class AstTextAgreementTest extends TestCase
         // before the cursor, so we land on the arrow rather than on the marker.
         $probe = $offset > 0 ? $offset - 1 : 0;
 
-        $compositeNode = $this->parser->nodeAt($ast, $document, $probe);
-        $cursorNode = $this->cursorText->nodeAt($ast, $document, $probe);
+        $compositeNode = $this->locator->nodeAt($parsed, $probe);
+        $cursorNode = $this->cursorText->nodeAt($parsed, $probe);
 
         self::assertNotNull($compositeNode, 'composite must find a node at the cursor');
         self::assertNotNull($cursorNode, 'cursor-text source must synthesize a node at the cursor');
@@ -411,8 +422,8 @@ final class AstTextAgreementTest extends TestCase
     {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $parsed = $this->parser->parse($document);
-        $skeleton = (new SkeletonSyntaxSource())->parse($document);
+        $parsed = $this->parser->parse($document)->tree;
+        $skeleton = (new SkeletonSyntaxSource())->parse($document)->tree;
 
         $parsedShape = self::describe($parsed);
         $skeletonShape = self::describe($skeleton);

@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
-use PhpParser\Node;
 
 /**
  * Test-only decorator that counts {@see SyntaxSourceInterface::parse} calls on
@@ -21,17 +21,9 @@ final class CountingSyntaxSource implements SyntaxSourceInterface
     {
     }
 
-    public function parse(TextDocument $document): array
+    public function parse(TextDocument $document): ParsedDocument
     {
         $this->parseCount++;
         return $this->inner->parse($document);
-    }
-
-    /**
-     * @param array<\PhpParser\Node\Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
-    {
-        return $this->inner->nodeAt($tree, $document, $offset);
     }
 }

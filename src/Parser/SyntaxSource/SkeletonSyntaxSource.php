@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\BuildsWrittenNamesTrait;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Modifiers;
 use PhpParser\Node;
@@ -35,13 +37,17 @@ use PhpParser\Node\UseItem;
  *   kind: int,
  *   bodyStart: int,
  * }
+ * @phpstan-type WrittenName array{
+ *   name: string,
+ *   start: int,
+ * }
  * @phpstan-type ClassLikeMatch array{
  *   start: int,
  *   kind: string,
  *   name: string,
  *   nameStart: int,
- *   extends: ?string,
- *   implements: list<string>,
+ *   extends: list<WrittenName>,
+ *   implements: list<WrittenName>,
  *   body: string,
  *   end: int,
  * }
@@ -50,9 +56,17 @@ use PhpParser\Node\UseItem;
  *   bracePositions: list<int>,
  *   braceDepths: list<int>,
  * }
+ * @phpstan-type Positions array{
+ *   startFilePos: int,
+ *   endFilePos: int,
+ *   startLine: int,
+ *   endLine: int,
+ * }
  */
 final class SkeletonSyntaxSource implements SyntaxSourceInterface
 {
+    use BuildsWrittenNamesTrait;
+
     private const string NAME_PATTERN = '[A-Za-z_\\\\][A-Za-z0-9_\\\\]*';
     private const string SIMPLE_NAME_PATTERN = '[A-Za-z_][A-Za-z0-9_]*';
     private const string GROUP_USE_ITEM_ALIAS_PATTERN
@@ -68,30 +82,15 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         $this->annotator = new TreeAnnotator(tolerant: true);
     }
 
-    /**
-     * @return array<Stmt>
-     */
-    public function parse(TextDocument $document): array
+    public function parse(TextDocument $document): ParsedDocument
     {
         $content = $document->getContent();
         $positions = self::indexContent($content);
         $tree = $this->buildTree($content, $positions);
         if ($tree === []) {
-            return [];
+            return new ParsedDocument($document, []);
         }
-        return $this->annotator->annotate($tree);
-    }
-
-    /**
-     * The skeleton describes structure, not expressions; the cursor lives inside
-     * expressions php-parser recovers on its own, so this source has nothing to
-     * add and lets the composite fall through to the next member (RFC 1 §4.11).
-     *
-     * @param array<Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
-    {
-        return null;
+        return new ParsedDocument($document, $this->annotator->annotate($tree, []));
     }
 
     /**
@@ -193,7 +192,8 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     {
         // Anchor at the start of a line so a "class" or "interface" word that
         // appears inside a docblock or a string does not read as a declaration.
-        $pattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(class|interface|trait|enum)\s+(\w+)'
+        // `\K` starts the match at the declaration, not on blank lines before it.
+        $pattern = '/^\s*\K(?:(?:abstract|final|readonly)\s+)*(class|interface|trait|enum)\s+(\w+)'
             . '(?:\s+extends\s+((?:' . self::NAME_PATTERN . ')(?:\s*,\s*' . self::NAME_PATTERN . ')*))?'
             . '(?:\s+implements\s+(' . self::NAME_PATTERN . '(?:\s*,\s*' . self::NAME_PATTERN . ')*))?/m';
         $matches = self::matchAll($pattern, $content);
@@ -201,26 +201,37 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         $out = [];
         foreach ($matches as $m) {
             $start = $m[0][1];
+            $body = self::sliceClassBody($content, $start, $m[2][1] + strlen($m[2][0]));
             // A trailing optional group that did not participate in the match
             // may be omitted from `$m` (older PHP) rather than returned as
             // ["", -1]; the coalesce covers both.
-            $extends = $m[3][0] ?? '';
-            $implements = $m[4][0] ?? '';
-            $body = self::sliceClassBody($content, $start);
             $out[] = [
                 'start' => $start,
                 'kind' => $m[1][0],
                 'name' => $m[2][0],
                 'nameStart' => $m[2][1],
-                'extends' => $extends === '' ? null : $extends,
-                'implements' => $implements === ''
-                    ? []
-                    : array_map(trim(...), explode(',', $implements)),
+                'extends' => self::writtenNames($m[3] ?? ['', -1]),
+                'implements' => self::writtenNames($m[4] ?? ['', -1]),
                 'body' => $body,
                 'end' => $start + strlen($body),
             ];
         }
         return $out;
+    }
+
+    /**
+     * Each name in a captured comma-separated list, at the offset it is written.
+     *
+     * @param array{0: string, 1: int} $list
+     * @return list<WrittenName>
+     */
+    private static function writtenNames(array $list): array
+    {
+        $names = [];
+        foreach (self::matchAll('/' . self::NAME_PATTERN . '/', $list[0]) as $m) {
+            $names[] = ['name' => $m[0][0], 'start' => $list[1] + $m[0][1]];
+        }
+        return $names;
     }
 
     /**
@@ -250,13 +261,12 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
             self::positions($positions, $c['nameStart'], $c['nameStart'] + strlen($c['name'])),
         );
         $attributes = self::positions($positions, $c['start'], $c['end']);
-        $mkName = fn (string $n): Name => self::name($n, $c['start'], $positions);
 
         return match ($c['kind']) {
             'interface' => new Stmt\Interface_(
                 $nameNode,
                 [
-                    'extends' => $c['extends'] === null ? [] : [$mkName($c['extends'])],
+                    'extends' => self::names($c['extends'], $positions),
                     'stmts' => $members,
                 ],
                 $attributes,
@@ -266,7 +276,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
                 $nameNode,
                 [
                     'scalarType' => null,
-                    'implements' => array_map($mkName, $c['implements']),
+                    'implements' => self::names($c['implements'], $positions),
                     'stmts' => $members,
                 ],
                 $attributes,
@@ -275,8 +285,8 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
                 $nameNode,
                 [
                     'flags' => 0,
-                    'extends' => $c['extends'] === null ? null : $mkName($c['extends']),
-                    'implements' => array_map($mkName, $c['implements']),
+                    'extends' => self::names($c['extends'], $positions)[0] ?? null,
+                    'implements' => self::names($c['implements'], $positions),
                     'stmts' => $members,
                 ],
                 $attributes,
@@ -364,10 +374,12 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         array $positions,
     ): Node\Identifier|Node\Name|Node\NullableType|null {
         $text = trim($text);
+        $typeStart = max(0, $anchor);
         $nullable = str_starts_with($text, '?');
         if ($nullable) {
             $text = substr($text, 1);
         }
+        $nameStart = $nullable ? $typeStart + 1 : $typeStart;
         // Union types: A|B. Intersection is not attempted; the receiver query
         // reads the first constituent to type the variable, which is enough for
         // completion inside a broken method. `explode` on an empty string still
@@ -378,17 +390,18 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         if ($first === '') {
             return null;
         }
-        $anchor = max(0, $anchor);
-        $attrs = self::positions($positions, $anchor, $anchor + strlen($first));
+        $nameEnd = $nameStart + strlen($first);
+        $attrs = self::positions($positions, $nameStart, $nameEnd);
         // Primitive type names are compared verbatim: parameter types in PHP
         // source are conventionally lowercase, and the fallback path — treating
         // an unrecognised token as a class name — is safe when the file's
         // actual type resolution rejects it downstream.
-        if (in_array($first, self::PRIMITIVE_TYPES, true)) {
-            return new Node\Identifier($first, $attrs);
-        }
-        $node = new Node\Name($first, $attrs);
-        return $nullable ? new Node\NullableType($node, $attrs) : $node;
+        $node = in_array($first, self::PRIMITIVE_TYPES, true)
+            ? new Node\Identifier($first, $attrs)
+            : self::nameAsWritten($first, $attrs);
+        return $nullable
+            ? new Node\NullableType($node, self::positions($positions, $typeStart, $nameEnd))
+            : $node;
     }
 
     private const array PRIMITIVE_TYPES = [
@@ -411,9 +424,11 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
                 | ($m[3][0] !== '' ? Modifiers::READONLY : 0);
             $matchStart = $baseOffset + $m[0][1];
             $matchEnd = $matchStart + strlen($m[0][0]);
+            // The name as written includes the `$` before the captured group.
+            $nameAttributes = self::positions($positions, $baseOffset + $m[4][1] - 1, $matchEnd);
             $out[] = new Stmt\Property(
                 $flags,
-                [new Node\PropertyItem($m[4][0])],
+                [new Node\PropertyItem(new Node\VarLikeIdentifier($m[4][0], $nameAttributes), null, $nameAttributes)],
                 self::positions($positions, $matchStart, $matchEnd),
             );
         }
@@ -432,8 +447,16 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
             $visibility = $m[1][0] === '' ? 'public' : $m[1][0];
             $matchStart = $baseOffset + $m[0][1];
             $matchEnd = $matchStart + strlen($m[0][0]);
+            $nameStart = $baseOffset + $m[2][1];
+            $name = new Identifier($m[2][0], self::positions($positions, $nameStart, $nameStart + strlen($m[2][0])));
+            // The value is not read. Its placeholder ends before it starts, so it
+            // carries positions but no offset falls inside it.
+            $value = new Node\Scalar\String_('', [
+                ...self::positions($positions, $matchEnd, $matchEnd),
+                'endFilePos' => $matchEnd - 1,
+            ]);
             $out[] = new Stmt\ClassConst(
-                [new Const_($m[2][0], new Node\Scalar\String_(''))],
+                [new Const_($name, $value, self::positions($positions, $nameStart, $matchEnd))],
                 self::visibilityFlag($visibility),
                 self::positions($positions, $matchStart, $matchEnd),
             );
@@ -473,17 +496,12 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
             // Groups 4-6 belong to the group-use alternative; when one is set,
             // the other alternative did not match, so groups 1-3 are absent.
             if (isset($m[5])) {
-                $out[] = $this->buildGroupUse($m, $positions, $matchStart, $matchEnd);
+                $out[] = $this->buildGroupUse($m, $positions, $rangeStart, $matchStart, $matchEnd);
                 continue;
             }
 
-            $alias = $m[3][0] ?? '';
-            $useItem = new UseItem(
-                new Name($m[2][0]),
-                $alias === '' ? null : new Identifier($alias),
-            );
             $out[] = new Stmt\Use_(
-                [$useItem],
+                [self::useItem($m[2], $m[3] ?? ['', -1], $rangeStart, $positions)],
                 self::useType($m[1][0] ?? ''),
                 self::positions($positions, $matchStart, $matchEnd),
             );
@@ -492,32 +510,69 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     }
 
     /**
-     * @param array<int, array{0: string, 1: int}> $m
+     * @param array<int, array{0: string, 1: int}> $m Offsets relative to $base.
      * @param PositionMap $positions
      */
-    private function buildGroupUse(array $m, array $positions, int $matchStart, int $matchEnd): Stmt\GroupUse
-    {
+    private function buildGroupUse(
+        array $m,
+        array $positions,
+        int $base,
+        int $matchStart,
+        int $matchEnd,
+    ): Stmt\GroupUse {
         // Called only when the group-use alternative matched, so groups 4-6 are
         // present; coalesce their reads because PHPStan cannot follow the caller
         // narrowing.
+        $list = $m[6] ?? ['', -1];
         $items = [];
-        foreach (explode(',', $m[6][0] ?? '') as $rawItem) {
-            $item = trim($rawItem);
-            if ($item === '') {
-                continue;
-            }
-            if (preg_match(self::GROUP_USE_ITEM_ALIAS_PATTERN, $item, $im) === 1) {
-                $items[] = new UseItem(new Name($im[1]), new Identifier($im[2]));
+        // Each item starts at its first non-space character, so the empty item
+        // a trailing comma leaves is never matched.
+        foreach (self::matchAll('/[^,\s][^,]*/', $list[0]) as $piece) {
+            $item = rtrim($piece[0][0]);
+            $itemStart = $list[1] + $piece[0][1];
+            if (preg_match(self::GROUP_USE_ITEM_ALIAS_PATTERN, $item, $im, PREG_OFFSET_CAPTURE) === 1) {
+                $items[] = self::useItem(
+                    [$im[1][0], $itemStart + $im[1][1]],
+                    [$im[2][0], $itemStart + $im[2][1]],
+                    $base,
+                    $positions,
+                );
             } else {
-                $items[] = new UseItem(new Name($item), null);
+                $items[] = self::useItem([$item, $itemStart], ['', -1], $base, $positions);
             }
         }
+        $prefix = $m[5] ?? ['', -1];
+        $prefixName = rtrim($prefix[0], '\\');
+        $prefixStart = $base + $prefix[1];
         return new Stmt\GroupUse(
-            new Name(rtrim($m[5][0] ?? '', '\\')),
+            new Name($prefixName, self::positions($positions, $prefixStart, $prefixStart + strlen($prefixName))),
             $items,
             self::useType($m[4][0] ?? ''),
             self::positions($positions, $matchStart, $matchEnd),
         );
+    }
+
+    /**
+     * An import of $name, renamed to $alias unless the alias is empty, spanning
+     * both as written.
+     *
+     * @param array{0: string, 1: int} $name Offset relative to $base.
+     * @param array{0: string, 1: int} $alias Offset relative to $base.
+     * @param PositionMap $positions
+     */
+    private static function useItem(array $name, array $alias, int $base, array $positions): UseItem
+    {
+        $nameStart = $base + $name[1];
+        $itemEnd = $nameStart + strlen($name[0]);
+        $nameNode = new Name($name[0], self::positions($positions, $nameStart, $itemEnd));
+        $aliasNode = null;
+        if ($alias[0] !== '') {
+            $aliasStart = $base + $alias[1];
+            $itemEnd = $aliasStart + strlen($alias[0]);
+            $aliasNode = new Identifier($alias[0], self::positions($positions, $aliasStart, $itemEnd));
+        }
+
+        return new UseItem($nameNode, $aliasNode, attributes: self::positions($positions, $nameStart, $itemEnd));
     }
 
     /**
@@ -635,10 +690,10 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
      * In that case the slice runs to the next class-like declaration or to
      * end-of-file, so the truncated class still holds its members.
      */
-    private static function sliceClassBody(string $content, int $declOffset): string
+    private static function sliceClassBody(string $content, int $declOffset, int $nameEnd): string
     {
         $bracePos = strpos($content, '{', $declOffset);
-        $nextDeclPos = self::nextClassLikeDeclPos($content, $declOffset);
+        $nextDeclPos = self::nextClassLikeDeclPos($content, $nameEnd);
         if (
             $bracePos !== false
             && $bracePos < $nextDeclPos
@@ -665,23 +720,16 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     }
 
     /**
-     * The offset of the next class-like declaration at line start after
-     * `$fromOffset`, or the file length when none follows. `$fromOffset` sits
-     * on the current class's own declaration, so scan for the same pattern
-     * twice — the first match is this class, the second is the one that bounds
-     * its body.
+     * The offset of the next class-like declaration after the one whose name
+     * ends at `$nameEnd`, or the file length when none follows. Every line of
+     * that declaration up to its name starts before `$nameEnd`, so the scan
+     * cannot find it again, even with a modifier on a line of its own.
      */
-    private static function nextClassLikeDeclPos(string $content, int $fromOffset): int
+    private static function nextClassLikeDeclPos(string $content, int $nameEnd): int
     {
-        $pattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|interface|trait|enum)\s+\w/m';
-        if (preg_match($pattern, $content, $first, PREG_OFFSET_CAPTURE, $fromOffset) !== 1) {
-            // @codeCoverageIgnoreStart
-            return strlen($content);
-            // @codeCoverageIgnoreEnd
-        }
-        $skipTo = $first[0][1] + strlen($first[0][0]);
-        if (preg_match($pattern, $content, $second, PREG_OFFSET_CAPTURE, $skipTo) === 1) {
-            return $second[0][1];
+        $pattern = '/^\s*\K(?:(?:abstract|final|readonly)\s+)*(?:class|interface|trait|enum)\s+\w/m';
+        if (preg_match($pattern, $content, $next, PREG_OFFSET_CAPTURE, $nameEnd) === 1) {
+            return $next[0][1];
         }
         return strlen($content);
     }
@@ -708,16 +756,25 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     }
 
     /**
+     * @param list<WrittenName> $written
      * @param PositionMap $positions
+     * @return list<Name>
      */
-    private static function name(string $short, int $anchor, array $positions): Name
+    private static function names(array $written, array $positions): array
     {
-        return new Name(ltrim($short, '\\'), self::positions($positions, $anchor, $anchor));
+        $names = [];
+        foreach ($written as $name) {
+            $names[] = self::nameAsWritten(
+                $name['name'],
+                self::positions($positions, $name['start'], $name['start'] + strlen($name['name'])),
+            );
+        }
+        return $names;
     }
 
     /**
      * @param PositionMap $positions
-     * @return array{startFilePos: int, endFilePos: int, startLine: int, endLine: int}
+     * @return Positions
      */
     private static function positions(array $positions, int $start, int $end): array
     {

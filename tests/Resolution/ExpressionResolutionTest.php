@@ -218,8 +218,10 @@ final class ExpressionResolutionTest extends TestCase
 
     private static function resolverOver(SymbolSourceInterface $symbols, TypeSourceInterface $types): SymbolResolver
     {
+        $production = ProductionSyntaxSource::create();
         return new SymbolResolver(
-            ProductionSyntaxSource::create()->source,
+            $production->source,
+            $production->locator,
             $symbols,
             self::createStub(MemberResolverInterface::class),
             $types,

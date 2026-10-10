@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
+use Firehed\PhpLsp\Parser\ParsedDocument;
+use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
@@ -14,7 +15,6 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Stmt;
 
 /**
  * Detects call context (function/method/constructor calls) at a cursor
@@ -33,17 +33,16 @@ use PhpParser\Node\Stmt;
 final class CallContextDetector
 {
     public function __construct(
-        private readonly SyntaxSourceInterface $parser,
+        private readonly NodeLocatorInterface $locator,
     ) {
     }
 
     /**
-     * @param array<Stmt> $ast
      * @return RawDetection|null
      */
-    public function detect(array $ast, TextDocument $document, int $offset): ?array
+    public function detect(ParsedDocument $parsed, int $offset): ?array
     {
-        $node = $this->parser->nodeAt($ast, $document, $offset);
+        $node = $this->locator->nodeAt($parsed, $offset);
         // Walk parents until an enclosing call is found. The tree annotator sets
         // the parent attribute, so this is a pointer walk, not a traversal.
         while ($node !== null && !self::isCallLike($node)) {
@@ -55,29 +54,30 @@ final class CallContextDetector
             return null;
         }
 
-        $activeParam = 0;
+        $separators = $node->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS);
+        if (!is_array($separators)) {
+            throw new LogicException('A syntax source returned a call without its argument separators');
+        }
+        $activeParam = count(array_filter($separators, static fn (mixed $pos): bool => $pos < $offset));
         $usedNames = [];
         $positionalCount = 0;
         $sawNamedArg = false;
-        $inNamedValue = false;
 
         foreach ($node->args as $i => $arg) {
-            $argEnd = $arg->getEndFilePos();
-            $argBeforeCursor = $offset > $argEnd;
-
             if ($arg instanceof Arg && $arg->name !== null) {
                 $usedNames[] = $arg->name->name;
                 $sawNamedArg = true;
-                // Past the colon after the name, up to the end of the value typed so far.
-                $inNamedValue = $inNamedValue
-                    || ($offset > $arg->name->getEndFilePos() + 1 && $offset <= $argEnd + 1);
-            } elseif (!$sawNamedArg && $argBeforeCursor) {
+            } elseif (!$sawNamedArg && $i < $activeParam) {
                 $positionalCount++;
             }
-            if ($argBeforeCursor) {
-                $activeParam = $i + 1;
-            }
         }
+
+        // The argument being typed is in its value once the cursor is past the
+        // colon after its name.
+        $typing = $node->args[$activeParam] ?? null;
+        $inNamedValue = $typing instanceof Arg
+            && $typing->name !== null
+            && $offset > $typing->name->getEndFilePos() + 1;
 
         return [$node, $activeParam, $usedNames, $positionalCount, $inNamedValue];
     }
