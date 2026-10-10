@@ -376,6 +376,71 @@ final class SkeletonSyntaxSourceTest extends TestCase
         ];
     }
 
+    /**
+     * Imports, property names, and constant names sit where they are written,
+     * as php-parser places them.
+     */
+    #[DataProvider('declarationPositionFixtures')]
+    public function testDeclarationsCarryTheirWrittenPositions(string $fixture): void
+    {
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+
+        self::assertSame(
+            self::describeDeclarationPositions($parsed),
+            self::describeDeclarationPositions($this->tree($document)),
+            'the skeleton must place each declaration as php-parser does',
+        );
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function declarationPositionFixtures(): array
+    {
+        return [
+            'imports and aliases' => ['src/IncompleteCode/AliasedImports.php'],
+            'group imports' => ['src/IncompleteCode/GroupImports.php'],
+            'properties and constants' => ['src/Inheritance/ChildClass.php'],
+        ];
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     * @return list<array{string, string, int, int}>
+     */
+    private static function describeDeclarationPositions(array $tree): array
+    {
+        $nodes = [];
+        $finder = new NodeFinder();
+        foreach ($finder->findInstanceOf($tree, Node\UseItem::class) as $item) {
+            array_push($nodes, $item, $item->name, ...($item->alias === null ? [] : [$item->alias]));
+        }
+        foreach ($finder->findInstanceOf($tree, Stmt\GroupUse::class) as $group) {
+            $nodes[] = $group->prefix;
+        }
+        foreach ($finder->findInstanceOf($tree, Node\PropertyItem::class) as $property) {
+            $nodes[] = $property->name;
+        }
+        foreach ($finder->findInstanceOf($tree, Node\Const_::class) as $constant) {
+            $nodes[] = $constant->name;
+        }
+
+        return array_map(
+            fn (Node $node) => [$node->getType(), self::text($node), $node->getStartFilePos(), $node->getEndFilePos()],
+            $nodes,
+        );
+    }
+
+    private static function text(Node $node): string
+    {
+        return match (true) {
+            $node instanceof Node\UseItem => $node->name->toString(),
+            $node instanceof Node\Name, $node instanceof Node\Identifier => $node->toString(),
+            default => '',
+        };
+    }
+
     public function testNullableParameterTypesCarryTheirWrittenPositions(): void
     {
         $fixture = 'src/TypeInference/BuiltinTypes.php';
