@@ -142,6 +142,7 @@ final class CallContextDetectorTest extends TestCase
             'right after a string value' => ['after_string_value', true],
             'an empty argument list' => ['function_empty', false],
             'a positional variable' => ['variable_in_call', true],
+            'a bare word, which may become a name' => ['bare_word_in_call', false],
         ];
     }
 

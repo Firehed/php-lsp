@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Tests\Parser\DescribesSyntaxTreesTrait;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
+use PhpParser\Node\Expr\ConstFetch;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
@@ -211,6 +212,41 @@ class CursorTextNodeLocatorTest extends TestCase
 
         self::assertInstanceOf(FuncCall::class, $call);
         self::assertCount(2, $call->args, 'each comma at depth zero closes an arg');
+    }
+
+    /**
+     * @return array<string, array{string, class-string, string}>
+     */
+    public static function typedValues(): array
+    {
+        return [
+            'a bare word' => ['bare_word_in_call', ConstFetch::class, 'cou'],
+            'a variable' => ['variable_in_call', Variable::class, 'va'],
+        ];
+    }
+
+    /**
+     * @param class-string $valueClass
+     */
+    #[DataProvider('typedValues')]
+    public function testTheArgumentBeingTypedHoldsWhatWasTyped(string $marker, string $valueClass, string $text): void
+    {
+        $fixture = 'src/Completion/EditingNamedArg.php';
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+
+        $offset = $this->markerOffset($content, $marker);
+        $call = self::enclosingCall((new CursorTextNodeLocator())->nodeAt(new ParsedDocument($document, []), $offset));
+
+        self::assertNotNull($call, 'the cursor is inside an unclosed call');
+        $value = $call->args[0]->value ?? null;
+        self::assertInstanceOf($valueClass, $value, 'the typed argument says whether a name could still follow');
+        $typed = match (true) {
+            $value instanceof ConstFetch => $value->name->toString(),
+            $value instanceof Variable => $value->name,
+            default => null,
+        };
+        self::assertSame($text, $typed, 'the value holds the text typed so far');
     }
 
     public function testRecordsTheCommasBetweenTheCallsOwnArguments(): void

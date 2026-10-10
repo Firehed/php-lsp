@@ -90,6 +90,12 @@ class EditingNamedArg
         localHelper(name: 'value'/*|after_string_value*/
     }
 
+    public function testBareWordInCall(): void
+    {
+        // Cursor after a bare word, which may yet become an argument name
+        localHelper(cou/*|bare_word_in_call*/
+    }
+
     private function instanceMethod(string $name, int $count = 0): void
     {
     }
