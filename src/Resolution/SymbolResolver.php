@@ -337,13 +337,13 @@ final class SymbolResolver implements CodeResolverInterface
             return null;
         }
 
-        [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
+        [$callNode, $activeParameter, $usedNames, $positionalCount, $inArgumentValue] = $callInfo;
         $callable = $this->resolveCallable($callNode, $parsed->tree, $document);
         if ($callable === null) {
             return null;
         }
 
-        return new CallContext($callable, $activeParameter, $usedNames, $positionalCount);
+        return new CallContext($callable, $activeParameter, $usedNames, $positionalCount, $inArgumentValue);
     }
 
     public function getNameContext(TextDocument $document, int $line): NameContext

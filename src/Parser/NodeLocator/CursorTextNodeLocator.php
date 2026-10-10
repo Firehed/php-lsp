@@ -413,19 +413,15 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         $lastSegment = substr($argsText, $currentStart);
         $lastStart = $argsStart + $currentStart;
         $lastEnd = $offset;
-        $trimmed = trim($lastSegment);
-        $hasNamed = $trimmed !== '' && preg_match('/^(\w+)\s*:/', $trimmed) === 1;
         // Deliberately no end-position check: a nodeAt at an earlier offset
         // inside `$var` still needs to descend into the member access.
         $inner = ($memberInside !== null && $memberInside->getStartFilePos() >= $lastStart)
             ? $memberInside
             : null;
 
-        if ($hasNamed || $inner !== null) {
-            $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
-            if ($arg !== null) {
-                $args[] = $arg;
-            }
+        $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
+        if ($arg !== null) {
+            $args[] = $arg;
         }
 
         return [$args, $separators];
@@ -457,9 +453,11 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             return null;
         }
 
-        $value = $memberInside instanceof \PhpParser\Node\Expr
-            ? $memberInside
-            : new Variable('_', self::posAttrs($segStart, $segEnd, $line));
+        $value = match (true) {
+            $memberInside instanceof \PhpParser\Node\Expr => $memberInside,
+            $named === null => self::typedValue($segment, $segStart, $segEnd, $line),
+            default => new Variable('_', self::posAttrs($segStart, $segEnd, $line)),
+        };
 
         return new Arg(
             $value,
@@ -468,6 +466,25 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             self::posAttrs($segStart, $segEnd, $line),
             $named,
         );
+    }
+
+    /**
+     * A positional argument's value as typed so far, as far as completion
+     * reads it: a bare word, which may yet become a name, or a variable; any
+     * other text is a placeholder spanning the segment.
+     */
+    private static function typedValue(string $segment, int $segStart, int $segEnd, int $line): Expr
+    {
+        $trimmed = trim($segment);
+        $start = $segStart + strlen($segment) - strlen(ltrim($segment));
+        $attrs = self::posAttrs($start, $start + strlen($trimmed) - 1, $line);
+        if (preg_match('/^[A-Za-z_]\w*$/', $trimmed) === 1) {
+            return new Expr\ConstFetch(new Name($trimmed, $attrs), $attrs);
+        }
+        if (preg_match('/^\$(\w+)$/', $trimmed, $m) === 1) {
+            return new Variable($m[1], $attrs);
+        }
+        return new Variable('_', self::posAttrs($segStart, $segEnd, $line));
     }
 
     /**

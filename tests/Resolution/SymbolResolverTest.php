@@ -180,6 +180,28 @@ final class SymbolResolverTest extends TestCase
         self::assertSame($user, $resolved, 'the imported name is looked up by its fully qualified form');
     }
 
+    public function testCallContextCarriesTheArgumentAtTheCursor(): void
+    {
+        $fixture = 'src/Resolution/ArgumentBoundaries.php';
+        $content = $this->loadFixture($fixture);
+        ['line' => $line, 'character' => $character] = $this->locateCursor($content, 'function_named_value');
+        $function = self::functionInfo(
+            QualifiedName::fromFullyQualified('boundaryTarget'),
+            parameters: [self::parameterInfo('name'), self::parameterInfo('count', position: 1)],
+        );
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupFunction')->willReturn($function);
+
+        $context = self::parsingResolver($symbols)
+            ->getCallContext(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
+
+        self::assertEquals(
+            new CallContext($function, 1, ['count'], 1, inArgumentValue: true),
+            $context,
+            'the call context reports the callable, the arguments supplied, and that a value is being typed',
+        );
+    }
+
     public function testCallContextNamesTheCallableAndActiveParameter(): void
     {
         $add = self::functionInfo(QualifiedName::fromFullyQualified('signatureHelpAdd'));

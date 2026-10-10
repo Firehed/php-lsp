@@ -291,23 +291,6 @@ class CompletionClassifierTest extends TestCase
         yield 'not in an argument list' => ['$x = na', ''];
     }
 
-    #[DataProvider('provideArgumentValuePrefixes')]
-    public function testArgumentValuePrefix(string $textBeforeCursor, ?string $expected): void
-    {
-        self::assertSame($expected, CompletionClassifier::argumentValuePrefix($textBeforeCursor));
-    }
-
-    /**
-     * @codeCoverageIgnore
-     * @return iterable<string, array{string, ?string}>
-     */
-    public static function provideArgumentValuePrefixes(): iterable
-    {
-        yield 'nothing typed after the colon' => ['foo(name: ', ''];
-        yield 'value partly typed' => ['foo(name: Sta', 'Sta'];
-        yield 'no colon at all' => ['foo(na', null];
-    }
-
     #[DataProvider('provideCallExpressionPrefixes')]
     public function testCallExpressionPrefix(string $textBeforeCursor, ?string $expected): void
     {

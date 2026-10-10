@@ -73,9 +73,6 @@ final class CompletionClassifier
     // An argument name typed after a call's `(` or an argument separator.
     private const ARGUMENT_NAME_PATTERN = '/[(,]\s*(\w*)$/';
 
-    // The value typed after a named argument's `name:`.
-    private const ARGUMENT_VALUE_PATTERN = '/\w+:\s*(\w*)$/';
-
     /**
      * The argument name being typed, empty when the position admits one but nothing
      * has been typed yet.
@@ -85,18 +82,6 @@ final class CompletionClassifier
         return preg_match(self::ARGUMENT_NAME_PATTERN, $textBeforeCursor, $matches) === 1
             ? $matches[1]
             : '';
-    }
-
-    /**
-     * The value being typed after a named argument's colon, or null where the cursor
-     * is not in a value position at all — which the caller must tell apart from a
-     * value position with nothing typed yet, since only the former offers no items.
-     */
-    public static function argumentValuePrefix(string $textBeforeCursor): ?string
-    {
-        return preg_match(self::ARGUMENT_VALUE_PATTERN, $textBeforeCursor, $matches) === 1
-            ? $matches[1]
-            : null;
     }
 
     public static function classify(string $textBeforeCursor): CompletionClassification
@@ -216,10 +201,6 @@ final class CompletionClassifier
     {
         if (preg_match(self::VARIABLE_PATTERN, $textBeforeCursor) === 1) {
             return null;
-        }
-        $valuePrefix = self::argumentValuePrefix($textBeforeCursor);
-        if ($valuePrefix !== null) {
-            return $valuePrefix;
         }
         return preg_match('/(\w+)$/', $textBeforeCursor, $matches) === 1
             ? $matches[1]

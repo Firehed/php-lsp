@@ -10,6 +10,7 @@ use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
+use PhpParser\Node\Expr\ConstFetch;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
@@ -25,6 +26,7 @@ use PhpParser\Node\Expr\StaticCall;
  *   1: int,
  *   2: list<string>,
  *   3: int,
+ *   4: bool,
  * }
  *
  * @internal
@@ -71,7 +73,33 @@ final class CallContextDetector
             }
         }
 
-        return [$node, $activeParam, $usedNames, $positionalCount];
+        $inValue = self::inValue($node->args[$activeParam] ?? null, $offset);
+
+        return [$node, $activeParam, $usedNames, $positionalCount, $inValue];
+    }
+
+    /**
+     * Whether the argument being typed is past the point where a name could
+     * still be written: a named one once the cursor is past its name and the
+     * character after it (the colon, as `name:` is written); a positional one
+     * once it has begun and is not a bare word, which may yet become a name.
+     */
+    private static function inValue(?Node $typing, int $offset): bool
+    {
+        if (!$typing instanceof Arg) {
+            return false;
+        }
+        if ($typing->name !== null) {
+            return $offset > $typing->name->getEndFilePos() + 1;
+        }
+        $value = $typing->value;
+        // Written as one word: the name spans only its last part, however it
+        // resolved. A spread or by-reference argument is never a name.
+        $bareWord = $value instanceof ConstFetch
+            && !$typing->unpack
+            && !$typing->byRef
+            && $value->name->getEndFilePos() - $value->name->getStartFilePos() + 1 === strlen($value->name->getLast());
+        return !$bareWord && $offset > $typing->getStartFilePos();
     }
 
     /**

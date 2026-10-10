@@ -75,14 +75,16 @@ return [
             ),
         ],
     ),
-    'after a numeric value' => $complete($editing, 'after_named_value', new Expectation\Offers('count:')),
-    'after a single-quoted value' => $complete($editing, 'after_string_value', new Expectation\Offers('count:')),
-    'after a double-quoted value' => $complete($editing, 'after_double_string', new Expectation\Offers('count:')),
-    'variable prefix offers variables and names, not expressions' => $complete(
+    'right after a numeric value, which is still the value' => $complete(
+        $editing,
+        'after_named_value',
+        new Expectation\Withholds('count:'),
+    ),
+    'variable prefix offers variables, not names or expressions' => $complete(
         $editing,
         'variable_in_call',
-        new Expectation\Offers('$variable', 'name:'),
-        new Expectation\Withholds('new'),
+        new Expectation\Offers('$variable'),
+        new Expectation\Withholds('name:', 'new'),
     ),
     'value position offers expression keywords' => $complete(
         $named,
@@ -94,6 +96,13 @@ return [
         'after_colon_prefix',
         new Expectation\Offers('new', 'null'),
         new Expectation\Withholds('true', 'if', 'name:'),
+    ),
+    // A prefix no function shares keeps the list short enough to be complete,
+    // so it can show the remaining argument names are withheld.
+    'value position offers no argument names' => $complete(
+        $named,
+        'after_colon_unmatched_prefix',
+        new Expectation\Withholds('count:', 'active:'),
     ),
     'argument position offers names before expression keywords' => $complete(
         $named,
