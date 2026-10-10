@@ -55,6 +55,12 @@ use PhpParser\Node\UseItem;
  *   bracePositions: list<int>,
  *   braceDepths: list<int>,
  * }
+ * @phpstan-type Positions array{
+ *   startFilePos: int,
+ *   endFilePos: int,
+ *   startLine: int,
+ *   endLine: int,
+ * }
  */
 final class SkeletonSyntaxSource implements SyntaxSourceInterface
 {
@@ -732,7 +738,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
      * A name that refers to a class-like, fully qualified when written with a
      * leading `\` so name resolution leaves it as written.
      *
-     * @param array{startFilePos: int, endFilePos: int, startLine: int, endLine: int} $attributes
+     * @param Positions $attributes
      */
     private static function referenceName(string $written, array $attributes): Name
     {
@@ -743,7 +749,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
 
     /**
      * @param PositionMap $positions
-     * @return array{startFilePos: int, endFilePos: int, startLine: int, endLine: int}
+     * @return Positions
      */
     private static function positions(array $positions, int $start, int $end): array
     {
