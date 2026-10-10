@@ -512,12 +512,11 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         // narrowing.
         $list = $m[6] ?? ['', -1];
         $items = [];
-        foreach (self::matchAll('/[^,]+/', $list[0]) as $piece) {
-            $item = trim($piece[0][0]);
-            if ($item === '') {
-                continue;
-            }
-            $itemStart = $list[1] + $piece[0][1] + strlen($piece[0][0]) - strlen(ltrim($piece[0][0]));
+        // Each item starts at its first non-space character, so the empty item
+        // a trailing comma leaves is never matched.
+        foreach (self::matchAll('/[^,\s][^,]*/', $list[0]) as $piece) {
+            $item = rtrim($piece[0][0]);
+            $itemStart = $list[1] + $piece[0][1];
             if (preg_match(self::GROUP_USE_ITEM_ALIAS_PATTERN, $item, $im, PREG_OFFSET_CAPTURE) === 1) {
                 $items[] = self::useItem(
                     [$im[1][0], $itemStart + $im[1][1]],
