@@ -427,18 +427,14 @@ final class SkeletonSyntaxSourceTest extends TestCase
         }
 
         return array_map(
-            fn (Node $node) => [$node->getType(), self::text($node), $node->getStartFilePos(), $node->getEndFilePos()],
+            fn (Node\UseItem|Node\Name|Node\Identifier $node) => [
+                $node->getType(),
+                $node instanceof Node\UseItem ? $node->name->toString() : $node->toString(),
+                $node->getStartFilePos(),
+                $node->getEndFilePos(),
+            ],
             $nodes,
         );
-    }
-
-    private static function text(Node $node): string
-    {
-        return match (true) {
-            $node instanceof Node\UseItem => $node->name->toString(),
-            $node instanceof Node\Name, $node instanceof Node\Identifier => $node->toString(),
-            default => '',
-        };
     }
 
     public function testNullableParameterTypesCarryTheirWrittenPositions(): void
