@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
+namespace Firehed\PhpLsp\Tests\Parser\NodeLocator;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
