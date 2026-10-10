@@ -100,6 +100,18 @@ final class ComposerAutoloadMapReaderTest extends TestCase
         );
     }
 
+    public function testItNeedsComposersGeneratedFilesWatched(): void
+    {
+        $watched = new ComposerAutoloadMapReader($this->workspace)->watchedPaths();
+
+        self::assertSame(
+            ComposerAutoloadMap::sourceFilesFor($this->workspace),
+            $watched->files,
+            'the map is stale exactly when a file it was read from changes',
+        );
+        self::assertSame([], $watched->roots, 'the map depends on no directory listing');
+    }
+
     public function testFromMapReturnsAReaderThatServesTheGivenMap(): void
     {
         $map = new ComposerAutoloadMap(psr4: ['Given\\' => ['/tmp/given']]);

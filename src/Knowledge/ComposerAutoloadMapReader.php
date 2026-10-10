@@ -7,6 +7,8 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\FileUri;
+use Firehed\PhpLsp\Watch\WatchedPaths;
+use Firehed\PhpLsp\Watch\WatchedPathsSourceInterface;
 
 /**
  * Owns the {@see ComposerAutoloadMap} for the project: reads it on first use and
@@ -21,7 +23,7 @@ use Firehed\PhpLsp\Domain\FileUri;
  * drops it; the backends compare that instance against the one they last built
  * their derived indexes from and rebuild when it changes.
  */
-final class ComposerAutoloadMapReader implements InvalidatableInterface
+final class ComposerAutoloadMapReader implements InvalidatableInterface, WatchedPathsSourceInterface
 {
     private ?ComposerAutoloadMap $map = null;
 
@@ -58,5 +60,10 @@ final class ComposerAutoloadMapReader implements InvalidatableInterface
         if (str_starts_with(FileUri::toPath($uri), $this->composerDir)) {
             $this->map = null;
         }
+    }
+
+    public function watchedPaths(): WatchedPaths
+    {
+        return new WatchedPaths(files: ComposerAutoloadMap::sourceFilesFor($this->projectRoot));
     }
 }
