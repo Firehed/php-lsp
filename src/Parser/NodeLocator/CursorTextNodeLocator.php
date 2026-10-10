@@ -419,11 +419,9 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             ? $memberInside
             : null;
 
-        if (trim($lastSegment) !== '' || $inner !== null) {
-            $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
-            if ($arg !== null) {
-                $args[] = $arg;
-            }
+        $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
+        if ($arg !== null) {
+            $args[] = $arg;
         }
 
         return [$args, $separators];
