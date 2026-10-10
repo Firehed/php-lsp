@@ -670,23 +670,15 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     }
 
     /**
-     * The offset of the next class-like declaration at line start after
-     * `$fromOffset`, or the file length when none follows. `$fromOffset` sits
-     * on the current class's own declaration, so scan for the same pattern
-     * twice — the first match is this class, the second is the one that bounds
-     * its body.
+     * The offset of the next class-like declaration after the one at
+     * `$declOffset`, or the file length when none follows. Its line starts at
+     * or before `$declOffset`, so a scan from the byte after cannot find it.
      */
-    private static function nextClassLikeDeclPos(string $content, int $fromOffset): int
+    private static function nextClassLikeDeclPos(string $content, int $declOffset): int
     {
-        $pattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|interface|trait|enum)\s+\w/m';
-        if (preg_match($pattern, $content, $first, PREG_OFFSET_CAPTURE, $fromOffset) !== 1) {
-            // @codeCoverageIgnoreStart
-            return strlen($content);
-            // @codeCoverageIgnoreEnd
-        }
-        $skipTo = $first[0][1] + strlen($first[0][0]);
-        if (preg_match($pattern, $content, $second, PREG_OFFSET_CAPTURE, $skipTo) === 1) {
-            return $second[0][1];
+        $pattern = '/^\s*\K(?:(?:abstract|final|readonly)\s+)*(?:class|interface|trait|enum)\s+\w/m';
+        if (preg_match($pattern, $content, $next, PREG_OFFSET_CAPTURE, $declOffset + 1) === 1) {
+            return $next[0][1];
         }
         return strlen($content);
     }
