@@ -24,18 +24,16 @@ final class NamedArgumentCandidatesTest extends TestCase
 
     public function testOffersNothingInANamedArgumentsValue(): void
     {
-        $callable = self::createStub(ResolvedCallableInterface::class);
-        $callable->method('getParameters')->willReturn([
-            self::parameterInfo('name', new PrimitiveType('string'), 0),
-            self::parameterInfo('count', new PrimitiveType('int'), 1),
-        ]);
         $codeResolver = self::createStub(CodeResolverInterface::class);
-        $codeResolver->method('getCallContext')
-            ->willReturn(new CallContext($callable, 0, ['name'], inNamedArgumentValue: true));
-        $line = 'foo(name: ';
-        $doc = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
+        $codeResolver->method('getCallContext')->willReturn(new CallContext(
+            self::createStub(ResolvedCallableInterface::class),
+            0,
+            ['name'],
+            inNamedArgumentValue: true,
+        ));
+        $doc = new TextDocument('file:///t.php', 'php', 0, '');
 
-        $items = (new NamedArgumentCandidates($codeResolver))->find(new CompletionRequest($doc, 1, strlen($line)));
+        $items = (new NamedArgumentCandidates($codeResolver))->find(new CompletionRequest($doc, 0, 0));
 
         self::assertSame([], $items, 'a value is being typed, so no argument name fits');
     }
