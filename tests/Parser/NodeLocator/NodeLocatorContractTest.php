@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\AssertsTreeContractTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -71,6 +72,26 @@ final class NodeLocatorContractTest extends TestCase
         ];
         yield 'cursor text, skeleton: instance access' => [
             $cursorText, $skeleton, 'src/IncompleteCode/VeryBroken.php', self::atCursor('this_in_if'),
+        ];
+
+        $production = ProductionSyntaxSource::create();
+        yield 'production: a node the tree holds' => [
+            $production->locator,
+            $production->source,
+            'src/Inheritance/ChildClass.php',
+            self::atHover('inherited_method'),
+        ];
+        yield 'production: a node synthesized from text' => [
+            $production->locator,
+            $production->source,
+            'src/Resolution/CursorTextResolution.php',
+            self::atCursor('aliased_static'),
+        ];
+        yield 'production: a file only the skeleton reads' => [
+            $production->locator,
+            $production->source,
+            'src/IncompleteCode/VeryBroken.php',
+            self::atCursor('this_in_if'),
         ];
     }
 
