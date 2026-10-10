@@ -10,6 +10,7 @@ use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
+use PhpParser\Node\Expr\ConstFetch;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
@@ -72,14 +73,29 @@ final class CallContextDetector
             }
         }
 
-        // The argument being typed is in its value once the cursor is past its
-        // name and the character after it: the colon, as `name:` is written.
-        $typing = $node->args[$activeParam] ?? null;
-        $inNamedValue = $typing instanceof Arg
-            && $typing->name !== null
-            && $offset > $typing->name->getEndFilePos() + 1;
+        $inValue = self::inValue($node->args[$activeParam] ?? null, $offset);
 
-        return [$node, $activeParam, $usedNames, $positionalCount, $inNamedValue];
+        return [$node, $activeParam, $usedNames, $positionalCount, $inValue];
+    }
+
+    /**
+     * Whether the argument being typed is past the point where a name could
+     * still be written: a named one once the cursor is past its name and the
+     * character after it (the colon, as `name:` is written); a positional one
+     * once its value has begun and is not a bare word, which may yet become a
+     * name.
+     */
+    private static function inValue(?Node $typing, int $offset): bool
+    {
+        if (!$typing instanceof Arg) {
+            return false;
+        }
+        if ($typing->name !== null) {
+            return $offset > $typing->name->getEndFilePos() + 1;
+        }
+        $value = $typing->value;
+        $bareWord = $value instanceof ConstFetch && $value->name->isUnqualified();
+        return !$bareWord && $offset > $value->getStartFilePos();
     }
 
     /**
