@@ -192,7 +192,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         $out = [];
         foreach ($matches as $m) {
             $start = $m[0][1];
-            $body = self::sliceClassBody($content, $start);
+            $body = self::sliceClassBody($content, $start, $m[2][1] + strlen($m[2][0]));
             // A trailing optional group that did not participate in the match
             // may be omitted from `$m` (older PHP) rather than returned as
             // ["", -1]; the coalesce covers both.
@@ -640,10 +640,10 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
      * In that case the slice runs to the next class-like declaration or to
      * end-of-file, so the truncated class still holds its members.
      */
-    private static function sliceClassBody(string $content, int $declOffset): string
+    private static function sliceClassBody(string $content, int $declOffset, int $nameEnd): string
     {
         $bracePos = strpos($content, '{', $declOffset);
-        $nextDeclPos = self::nextClassLikeDeclPos($content, $declOffset);
+        $nextDeclPos = self::nextClassLikeDeclPos($content, $nameEnd);
         if (
             $bracePos !== false
             && $bracePos < $nextDeclPos
@@ -670,14 +670,15 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     }
 
     /**
-     * The offset of the next class-like declaration after the one at
-     * `$declOffset`, or the file length when none follows. Its line starts at
-     * or before `$declOffset`, so a scan from the byte after cannot find it.
+     * The offset of the next class-like declaration after the one whose name
+     * ends at `$nameEnd`, or the file length when none follows. Every line of
+     * that declaration up to its name starts before `$nameEnd`, so the scan
+     * cannot find it again, even with a modifier on a line of its own.
      */
-    private static function nextClassLikeDeclPos(string $content, int $declOffset): int
+    private static function nextClassLikeDeclPos(string $content, int $nameEnd): int
     {
         $pattern = '/^\s*\K(?:(?:abstract|final|readonly)\s+)*(?:class|interface|trait|enum)\s+\w/m';
-        if (preg_match($pattern, $content, $next, PREG_OFFSET_CAPTURE, $declOffset + 1) === 1) {
+        if (preg_match($pattern, $content, $next, PREG_OFFSET_CAPTURE, $nameEnd) === 1) {
             return $next[0][1];
         }
         return strlen($content);
