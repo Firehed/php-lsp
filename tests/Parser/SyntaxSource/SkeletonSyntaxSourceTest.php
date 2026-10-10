@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -373,6 +375,8 @@ final class SkeletonSyntaxSourceTest extends TestCase
             'class extends' => ['src/Inheritance/ChildClass.php'],
             'class extends and implements' => ['src/Exception/AppException.php'],
             'interface extends a list' => ['src/Hierarchy/LeafInterface.php'],
+            'fully qualified parents' => ['src/Inheritance/GlobalParent.php'],
+            'namespace-relative parent' => ['src/Inheritance/RelativeParent.php'],
         ];
     }
 
@@ -437,9 +441,33 @@ final class SkeletonSyntaxSourceTest extends TestCase
         );
     }
 
-    public function testNullableParameterTypesCarryTheirWrittenPositions(): void
+    /**
+     * The skeleton does not read a constant's value, so the value it stands in
+     * occupies no position: a cursor there finds nothing in the tree and falls
+     * through to the cursor text, as in code being typed.
+     */
+    public function testAnUnreadConstantValueOccupiesNoPosition(): void
     {
-        $fixture = 'src/TypeInference/BuiltinTypes.php';
+        $fixture = 'src/Inheritance/ChildClass.php';
+        $content = $this->loadFixture($fixture);
+        $tree = $this->tree(new TextDocument('file:///' . $fixture, 'php', 1, $content));
+        $declaration = 'CHILD_CONST =';
+        $afterEquals = strpos($content, $declaration);
+        self::assertNotFalse($afterEquals, "the fixture must declare `{$declaration}`");
+        $afterEquals += strlen($declaration);
+
+        self::assertNull(
+            (new TreeNodeLocator())->nodeAt(
+                new ParsedDocument(new TextDocument('file:///' . $fixture, 'php', 1, $content), $tree),
+                $afterEquals,
+            ),
+            'no node sits on the unread value',
+        );
+    }
+
+    #[DataProvider('nullableParameterFixtures')]
+    public function testNullableParameterTypesCarryTheirWrittenPositions(string $fixture): void
+    {
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
         $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
 
@@ -451,8 +479,19 @@ final class SkeletonSyntaxSourceTest extends TestCase
     }
 
     /**
+     * @return array<string, array{string}>
+     */
+    public static function nullableParameterFixtures(): array
+    {
+        return [
+            'imported class types' => ['src/TypeInference/BuiltinTypes.php'],
+            'fully qualified type' => ['src/Inheritance/GlobalParent.php'],
+        ];
+    }
+
+    /**
      * @param array<Stmt> $tree
-     * @return list<array{string, int, int, int, int}>
+     * @return list<array{string, string, int, int, int, int}>
      */
     private static function describeNullableParameterTypes(array $tree): array
     {
@@ -467,6 +506,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
             }
             $described[] = [
                 $param->var->name,
+                $param->type->type->toString(),
                 $param->type->getStartFilePos(),
                 $param->type->getEndFilePos(),
                 $param->type->type->getStartFilePos(),

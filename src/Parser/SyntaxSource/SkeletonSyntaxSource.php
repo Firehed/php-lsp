@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\BuildsWrittenNamesTrait;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Modifiers;
@@ -55,9 +56,17 @@ use PhpParser\Node\UseItem;
  *   bracePositions: list<int>,
  *   braceDepths: list<int>,
  * }
+ * @phpstan-type Positions array{
+ *   startFilePos: int,
+ *   endFilePos: int,
+ *   startLine: int,
+ *   endLine: int,
+ * }
  */
 final class SkeletonSyntaxSource implements SyntaxSourceInterface
 {
+    use BuildsWrittenNamesTrait;
+
     private const string NAME_PATTERN = '[A-Za-z_\\\\][A-Za-z0-9_\\\\]*';
     private const string SIMPLE_NAME_PATTERN = '[A-Za-z_][A-Za-z0-9_]*';
     private const string GROUP_USE_ITEM_ALIAS_PATTERN
@@ -389,7 +398,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         if (in_array($first, self::PRIMITIVE_TYPES, true)) {
             return new Node\Identifier($first, $attrs);
         }
-        $node = new Node\Name($first, $attrs);
+        $node = self::nameAsWritten($first, $attrs);
         return $nullable
             ? new Node\NullableType($node, self::positions($positions, $typeStart, $nameEnd))
             : $node;
@@ -440,8 +449,12 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
             $matchEnd = $matchStart + strlen($m[0][0]);
             $nameStart = $baseOffset + $m[2][1];
             $name = new Identifier($m[2][0], self::positions($positions, $nameStart, $nameStart + strlen($m[2][0])));
-            // The value is not read; its placeholder sits just past the `=`.
-            $value = new Node\Scalar\String_('', self::positions($positions, $matchEnd, $matchEnd));
+            // The value is not read. Its placeholder ends before it starts, so it
+            // carries positions but no offset falls inside it.
+            $value = new Node\Scalar\String_('', [
+                ...self::positions($positions, $matchEnd, $matchEnd),
+                'endFilePos' => $matchEnd - 1,
+            ]);
             $out[] = new Stmt\ClassConst(
                 [new Const_($name, $value, self::positions($positions, $nameStart, $matchEnd))],
                 self::visibilityFlag($visibility),
@@ -758,8 +771,8 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     {
         $names = [];
         foreach ($written as $name) {
-            $names[] = new Name(
-                ltrim($name['name'], '\\'),
+            $names[] = self::nameAsWritten(
+                $name['name'],
                 self::positions($positions, $name['start'], $name['start'] + strlen($name['name'])),
             );
         }
@@ -768,7 +781,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
 
     /**
      * @param PositionMap $positions
-     * @return array{startFilePos: int, endFilePos: int, startLine: int, endLine: int}
+     * @return Positions
      */
     private static function positions(array $positions, int $start, int $end): array
     {
