@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
+use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
@@ -52,23 +53,21 @@ final class CallContextDetector
             return null;
         }
 
-        $activeParam = 0;
+        $separators = ParsedDocument::argumentSeparatorsOf($node);
+        if ($separators === null) {
+            throw new LogicException('A syntax source returned a call without its argument separators');
+        }
+        $activeParam = count(array_filter($separators, static fn (int $pos): bool => $pos < $offset));
         $usedNames = [];
         $positionalCount = 0;
         $sawNamedArg = false;
 
         foreach ($node->args as $i => $arg) {
-            $argEnd = $arg->getEndFilePos();
-            $argBeforeCursor = $offset > $argEnd;
-
             if ($arg instanceof Arg && $arg->name !== null) {
                 $usedNames[] = $arg->name->name;
                 $sawNamedArg = true;
-            } elseif (!$sawNamedArg && $argBeforeCursor) {
+            } elseif (!$sawNamedArg && $i < $activeParam) {
                 $positionalCount++;
-            }
-            if ($argBeforeCursor) {
-                $activeParam = $i + 1;
             }
         }
 

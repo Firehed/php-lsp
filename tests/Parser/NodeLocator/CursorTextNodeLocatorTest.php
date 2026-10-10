@@ -213,6 +213,23 @@ class CursorTextNodeLocatorTest extends TestCase
         self::assertCount(2, $call->args, 'each comma at depth zero closes an arg');
     }
 
+    public function testRecordsTheCommasBetweenTheCallsOwnArguments(): void
+    {
+        $fixture = 'src/Completion/EditingNamedArg.php';
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $offset = $this->markerOffset($content, 'nested_brackets');
+
+        $call = self::enclosingCall((new CursorTextNodeLocator())->nodeAt(new ParsedDocument($document, []), $offset));
+
+        self::assertNotNull($call, 'the cursor is inside an unclosed call');
+        self::assertSame(
+            [$offset - 2],
+            $call->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS),
+            'only the comma after the nested call is the call\'s own',
+        );
+    }
+
     public function testNamedArgInTrailingSegmentIsCaptured(): void
     {
         $call = self::synthesizeCallAtCursor("<?php\nfoo(name: ");

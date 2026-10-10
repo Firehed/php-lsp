@@ -37,7 +37,7 @@ final class PhpParserSyntaxSource implements SyntaxSourceInterface
             if ($ast === null) {
                 return new ParsedDocument($document, []);
             }
-            return new ParsedDocument($document, $this->annotator->annotate($ast));
+            return new ParsedDocument($document, $this->annotator->annotate($ast, $this->parser->getTokens()));
         } catch (\PhpParser\Error) {
             return new ParsedDocument($document, []);
         }
