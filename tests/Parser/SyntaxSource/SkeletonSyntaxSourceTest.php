@@ -374,6 +374,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
             'class extends and implements' => ['src/Exception/AppException.php'],
             'interface extends a list' => ['src/Hierarchy/LeafInterface.php'],
             'fully qualified parents' => ['src/Inheritance/GlobalParent.php'],
+            'namespace-relative parent' => ['src/Inheritance/RelativeParent.php'],
         ];
     }
 

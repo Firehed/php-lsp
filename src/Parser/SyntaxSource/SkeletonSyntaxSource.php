@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\BuildsWrittenNamesTrait;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Modifiers;
@@ -64,6 +65,8 @@ use PhpParser\Node\UseItem;
  */
 final class SkeletonSyntaxSource implements SyntaxSourceInterface
 {
+    use BuildsWrittenNamesTrait;
+
     private const string NAME_PATTERN = '[A-Za-z_\\\\][A-Za-z0-9_\\\\]*';
     private const string SIMPLE_NAME_PATTERN = '[A-Za-z_][A-Za-z0-9_]*';
     private const string GROUP_USE_ITEM_ALIAS_PATTERN
@@ -394,7 +397,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         // actual type resolution rejects it downstream.
         $node = in_array($first, self::PRIMITIVE_TYPES, true)
             ? new Node\Identifier($first, $attrs)
-            : self::referenceName($first, $attrs);
+            : self::nameAsWritten($first, $attrs);
         return $nullable
             ? new Node\NullableType($node, self::positions($positions, $typeStart, $nameEnd))
             : $node;
@@ -725,25 +728,12 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     {
         $names = [];
         foreach ($written as $name) {
-            $names[] = self::referenceName(
+            $names[] = self::nameAsWritten(
                 $name['name'],
                 self::positions($positions, $name['start'], $name['start'] + strlen($name['name'])),
             );
         }
         return $names;
-    }
-
-    /**
-     * A name that refers to a class-like, fully qualified when written with a
-     * leading `\` so name resolution leaves it as written.
-     *
-     * @param Positions $attributes
-     */
-    private static function referenceName(string $written, array $attributes): Name
-    {
-        return str_starts_with($written, '\\')
-            ? new Name\FullyQualified(substr($written, 1), $attributes)
-            : new Name($written, $attributes);
     }
 
     /**

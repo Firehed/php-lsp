@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser\NodeLocator;
 
+use Firehed\PhpLsp\Parser\BuildsWrittenNamesTrait;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -24,7 +25,6 @@ use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
-use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\UseItem;
 use PhpParser\Node\VarLikeIdentifier;
@@ -38,6 +38,8 @@ use PhpParser\Node\VarLikeIdentifier;
  */
 final class CursorTextNodeLocator implements NodeLocatorInterface
 {
+    use BuildsWrittenNamesTrait;
+
     private const string NON_FUNCTION_KEYWORD_PATTERN
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
 
@@ -366,15 +368,10 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
      */
     private static function writtenName(string $written, int $startFilePos, int $line): Name
     {
-        $attrs = self::posAttrs($startFilePos, $startFilePos + strlen($written) - 1, $line);
-        if (str_starts_with($written, '\\')) {
-            return new FullyQualified(substr($written, 1), $attrs);
-        }
-        if (str_starts_with($written, 'namespace\\')) {
-            return new Name\Relative(substr($written, strlen('namespace\\')), $attrs);
-        }
-
-        return new Name($written, $attrs);
+        return self::nameAsWritten(
+            $written,
+            self::posAttrs($startFilePos, $startFilePos + strlen($written) - 1, $line),
+        );
     }
 
     /**
