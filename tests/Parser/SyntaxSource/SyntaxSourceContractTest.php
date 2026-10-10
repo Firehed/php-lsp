@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\AssertsTreeContractTrait;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -25,7 +26,10 @@ final class SyntaxSourceContractTest extends TestCase
     use AssertsTreeContractTrait;
     use LoadsFixturesTrait;
 
-    private const array FIXTURES = [
+    /**
+     * Files every source makes a tree of.
+     */
+    private const array PARSEABLE = [
         'src/Domain/User.php',
         'src/Inheritance/ChildClass.php',
         'src/Exception/AppException.php',
@@ -33,22 +37,30 @@ final class SyntaxSourceContractTest extends TestCase
         'src/Resolution/CursorTextResolution.php',
         'src/IncompleteCode/AliasedImports.php',
         'src/IncompleteCode/GroupImports.php',
-        'src/IncompleteCode/VeryBroken.php',
         'src/TypeInference/BuiltinTypes.php',
         'SignatureHelp.php',
     ];
 
     /**
+     * A file php-parser makes no tree of, so only the skeleton reads it.
+     */
+    private const string SKELETON_ONLY = 'src/IncompleteCode/VeryBroken.php';
+
+    /**
+     * Each source, and the production stack that combines them, on every file
+     * it makes a tree of.
+     *
      * @return iterable<string, array{SyntaxSourceInterface, string}>
      */
     public static function treesFromEverySource(): iterable
     {
         $sources = [
-            'php-parser' => new PhpParserSyntaxSource(new TreeAnnotator()),
-            'skeleton' => new SkeletonSyntaxSource(),
+            'php-parser' => [new PhpParserSyntaxSource(new TreeAnnotator()), self::PARSEABLE],
+            'skeleton' => [new SkeletonSyntaxSource(), [...self::PARSEABLE, self::SKELETON_ONLY]],
+            'production' => [ProductionSyntaxSource::create()->source, [...self::PARSEABLE, self::SKELETON_ONLY]],
         ];
-        foreach ($sources as $sourceName => $source) {
-            foreach (self::FIXTURES as $fixture) {
+        foreach ($sources as $sourceName => [$source, $fixtures]) {
+            foreach ($fixtures as $fixture) {
                 yield "{$sourceName}: {$fixture}" => [$source, $fixture];
             }
         }
@@ -61,9 +73,6 @@ final class SyntaxSourceContractTest extends TestCase
         $parsed = $source->parse($document);
 
         self::assertSame($document, $parsed->document, 'the tree is paired with the document it was parsed from');
-        if ($parsed->tree === []) {
-            self::markTestSkipped("{$fixture} yields no tree from this source");
-        }
         self::assertTreeMeetsContract($parsed->tree, $fixture);
     }
 }
