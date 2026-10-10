@@ -364,9 +364,12 @@ final class SkeletonSyntaxSourceTest extends TestCase
         );
     }
 
-    public function testAnIndentedTruncatedClassEndsAtTheNextDeclaration(): void
+    /**
+     * @param array<string, list<string>> $expected
+     */
+    #[DataProvider('classMemberFixtures')]
+    public function testEachClassHoldsOnlyItsOwnMembers(string $fixture, array $expected): void
     {
-        $fixture = 'TopLevel/truncated_class_in_braced_namespace.php';
         $tree = $this->tree(new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture)));
 
         $methods = [];
@@ -377,11 +380,24 @@ final class SkeletonSyntaxSourceTest extends TestCase
             );
         }
 
-        self::assertSame(
-            ['Truncated' => ['first'], 'Following' => ['second']],
-            $methods,
-            'a class without its own brace holds only the members before the next declaration',
-        );
+        self::assertSame($expected, $methods, 'a class holds only the members before the next declaration');
+    }
+
+    /**
+     * @return array<string, array{string, array<string, list<string>>}>
+     */
+    public static function classMemberFixtures(): array
+    {
+        return [
+            'indented class without its own brace' => [
+                'TopLevel/truncated_class_in_braced_namespace.php',
+                ['Truncated' => ['first'], 'Following' => ['second']],
+            ],
+            'modifier on its own line' => [
+                'TopLevel/modifier_on_its_own_line.php',
+                ['SplitDeclaration' => ['first'], 'Following' => ['second']],
+            ],
+        ];
     }
 
     /**
