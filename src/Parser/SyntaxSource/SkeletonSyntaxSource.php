@@ -389,7 +389,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         if (in_array($first, self::PRIMITIVE_TYPES, true)) {
             return new Node\Identifier($first, $attrs);
         }
-        $node = new Node\Name($first, $attrs);
+        $node = self::referenceName($first, $attrs);
         return $nullable
             ? new Node\NullableType($node, self::positions($positions, $typeStart, $nameEnd))
             : $node;
@@ -720,12 +720,25 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     {
         $names = [];
         foreach ($written as $name) {
-            $names[] = new Name(
-                ltrim($name['name'], '\\'),
+            $names[] = self::referenceName(
+                $name['name'],
                 self::positions($positions, $name['start'], $name['start'] + strlen($name['name'])),
             );
         }
         return $names;
+    }
+
+    /**
+     * A name that refers to a class-like, fully qualified when written with a
+     * leading `\` so name resolution leaves it as written.
+     *
+     * @param array{startFilePos: int, endFilePos: int, startLine: int, endLine: int} $attributes
+     */
+    private static function referenceName(string $written, array $attributes): Name
+    {
+        return str_starts_with($written, '\\')
+            ? new Name\FullyQualified(substr($written, 1), $attributes)
+            : new Name($written, $attributes);
     }
 
     /**
