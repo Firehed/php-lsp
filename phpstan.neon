@@ -116,7 +116,7 @@ parameters:
             allowIn:
                 - src/Completion/CompletionClassifier.php
                 - src/Domain/DocblockParser.php
-                - src/Parser/SyntaxSource/CursorTextNodeLocator.php
+                - src/Parser/NodeLocator/CursorTextNodeLocator.php
                 - src/Parser/SyntaxSource/SkeletonSyntaxSource.php
                 - tests/*
         -

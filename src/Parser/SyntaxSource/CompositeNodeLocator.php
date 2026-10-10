@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
+use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\ParsedDocument;
