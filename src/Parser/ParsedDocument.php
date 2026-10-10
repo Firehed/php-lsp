@@ -22,8 +22,8 @@ use PhpParser\Node\Stmt;
  *   carries its `namespacedName`. A namespace or import declaration's own
  *   name is what it declares, so it too keeps its written form.
  * - On every call and attribute, an {@see self::ARGUMENT_SEPARATORS} attribute:
- *   the file positions, in order, of the commas between its own arguments,
- *   a trailing comma included.
+ *   the file positions, in order, of the commas within its span that separate
+ *   its own arguments, a trailing comma included.
  */
 final readonly class ParsedDocument
 {
