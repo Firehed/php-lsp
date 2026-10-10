@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -447,6 +449,91 @@ final class SkeletonSyntaxSourceTest extends TestCase
             'fully qualified parents' => ['src/Inheritance/GlobalParent.php'],
             'namespace-relative parent' => ['src/Inheritance/RelativeParent.php'],
         ];
+    }
+
+    /**
+     * Imports, property names, and constant names sit where they are written,
+     * as php-parser places them.
+     */
+    #[DataProvider('declarationPositionFixtures')]
+    public function testDeclarationsCarryTheirWrittenPositions(string $fixture): void
+    {
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+
+        self::assertSame(
+            self::describeDeclarationPositions($parsed),
+            self::describeDeclarationPositions($this->tree($document)),
+            'the skeleton must place each declaration as php-parser does',
+        );
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function declarationPositionFixtures(): array
+    {
+        return [
+            'imports and aliases' => ['src/IncompleteCode/AliasedImports.php'],
+            'group imports' => ['src/IncompleteCode/GroupImports.php'],
+            'properties and constants' => ['src/Inheritance/ChildClass.php'],
+        ];
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     * @return list<array{string, string, int, int}>
+     */
+    private static function describeDeclarationPositions(array $tree): array
+    {
+        $nodes = [];
+        $finder = new NodeFinder();
+        foreach ($finder->findInstanceOf($tree, Node\UseItem::class) as $item) {
+            array_push($nodes, $item, $item->name, ...($item->alias === null ? [] : [$item->alias]));
+        }
+        foreach ($finder->findInstanceOf($tree, Stmt\GroupUse::class) as $group) {
+            $nodes[] = $group->prefix;
+        }
+        foreach ($finder->findInstanceOf($tree, Node\PropertyItem::class) as $property) {
+            $nodes[] = $property->name;
+        }
+        foreach ($finder->findInstanceOf($tree, Node\Const_::class) as $constant) {
+            $nodes[] = $constant->name;
+        }
+
+        return array_map(
+            fn (Node\UseItem|Node\Name|Node\Identifier $node) => [
+                $node->getType(),
+                $node instanceof Node\UseItem ? $node->name->toString() : $node->toString(),
+                $node->getStartFilePos(),
+                $node->getEndFilePos(),
+            ],
+            $nodes,
+        );
+    }
+
+    /**
+     * The skeleton does not read a constant's value, so the value it stands in
+     * occupies no position: a cursor there finds nothing in the tree and falls
+     * through to the cursor text, as in code being typed.
+     */
+    public function testAnUnreadConstantValueOccupiesNoPosition(): void
+    {
+        $fixture = 'src/Inheritance/ChildClass.php';
+        $content = $this->loadFixture($fixture);
+        $tree = $this->tree(new TextDocument('file:///' . $fixture, 'php', 1, $content));
+        $declaration = 'CHILD_CONST =';
+        $afterEquals = strpos($content, $declaration);
+        self::assertNotFalse($afterEquals, "the fixture must declare `{$declaration}`");
+        $afterEquals += strlen($declaration);
+
+        self::assertNull(
+            (new TreeNodeLocator())->nodeAt(
+                new ParsedDocument(new TextDocument('file:///' . $fixture, 'php', 1, $content), $tree),
+                $afterEquals,
+            ),
+            'no node sits on the unread value',
+        );
     }
 
     #[DataProvider('nullableParameterFixtures')]
