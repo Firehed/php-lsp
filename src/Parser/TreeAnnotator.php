@@ -97,9 +97,9 @@ final class TreeAnnotator
     }
 
     /**
-     * Scans from the first argument to the bracket that closes the list (or
-     * the call's last token, when recovery left it unclosed), keeping commas
-     * at the list's own depth.
+     * A call's own commas sit only in the gaps between its arguments, or after
+     * the last one before the `)` that closes the list (the call's last token,
+     * when recovery left it unclosed), so only those gaps are scanned.
      *
      * @param array<Token> $tokens
      * @return list<int>
@@ -107,22 +107,17 @@ final class TreeAnnotator
     private static function argumentSeparators(CallLike|Attribute $call, array $tokens): array
     {
         $args = $call instanceof Attribute ? $call->args : $call->getRawArgs();
-        if ($args === []) {
-            return [];
-        }
         $separators = [];
-        $depth = 0;
-        for ($i = $args[0]->getStartTokenPos(); $i <= $call->getEndTokenPos(); $i++) {
-            $token = $tokens[$i];
-            if ($token->is(['(', '[', '{', T_CURLY_OPEN, T_DOLLAR_OPEN_CURLY_BRACES, T_ATTRIBUTE])) {
-                $depth++;
-            } elseif ($token->is([')', ']', '}'])) {
-                if ($depth === 0) {
+        foreach ($args as $i => $arg) {
+            $next = $args[$i + 1] ?? null;
+            $gapEnd = $next === null ? $call->getEndTokenPos() : $next->getStartTokenPos() - 1;
+            for ($t = $arg->getEndTokenPos() + 1; $t <= $gapEnd; $t++) {
+                if ($next === null && $tokens[$t]->is(')')) {
                     break;
                 }
-                $depth--;
-            } elseif ($depth === 0 && $token->is(',')) {
-                $separators[] = $token->pos;
+                if ($tokens[$t]->is(',')) {
+                    $separators[] = $tokens[$t]->pos;
+                }
             }
         }
         return $separators;

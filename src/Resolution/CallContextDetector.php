@@ -54,11 +54,11 @@ final class CallContextDetector
             return null;
         }
 
-        $separators = $node->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS);
-        if (!is_array($separators)) {
+        $separators = ParsedDocument::argumentSeparatorsOf($node);
+        if ($separators === null) {
             throw new LogicException('A syntax source returned a call without its argument separators');
         }
-        $activeParam = count(array_filter($separators, static fn (mixed $pos): bool => $pos < $offset));
+        $activeParam = count(array_filter($separators, static fn (int $pos): bool => $pos < $offset));
         $usedNames = [];
         $positionalCount = 0;
         $sawNamedArg = false;

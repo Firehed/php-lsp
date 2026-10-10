@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Parser;
 
+use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -90,14 +91,28 @@ final class TreeAnnotatorTest extends TestCase
             || $node instanceof Attribute);
         $recorded = [];
         foreach ($calls as $call) {
-            $separators = $call->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS);
-            self::assertIsArray($separators, 'every call carries its argument separators, even when it has none');
+            $separators = ParsedDocument::argumentSeparatorsOf($call);
+            self::assertNotNull($separators, 'every call carries its argument separators, even when it has none');
+            foreach ($separators as $position) {
+                self::assertSame(
+                    $call,
+                    (new NodeAtPosition())->find(
+                        $annotated,
+                        $position,
+                        static fn (Node $node): bool => $node instanceof CallLike || $node instanceof Attribute,
+                    ),
+                    'a comma is recorded only by the innermost call that holds it',
+                );
+            }
             array_push($recorded, ...$separators);
         }
         sort($recorded);
         $expected = array_map(
             fn (string $marker): int => $this->markerOffset($content, $marker) - 1,
-            ['method_1', 'method_2', 'static_1', 'new_1', 'new_2', 'nullsafe_1', 'attribute_1'],
+            [
+                'method_1', 'method_2', 'static_1', 'new_1', 'new_2', 'nullsafe_1', 'attribute_1',
+                'inner_1', 'outer_1', 'outer_2', 'outer_3', 'outer_4', 'attribute_2', 'anonymous_1',
+            ],
         );
         sort($expected);
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use PhpParser\Node;
 use PhpParser\Node\Stmt;
 
 /**
@@ -21,8 +22,8 @@ use PhpParser\Node\Stmt;
  *   carries its `namespacedName`. A namespace or import declaration's own
  *   name is what it declares, so it too keeps its written form.
  * - On every call and attribute, an {@see self::ARGUMENT_SEPARATORS} attribute:
- *   the file positions, in order, of the commas between its own arguments,
- *   a trailing comma included.
+ *   the file positions, in order, of the commas within its span that separate
+ *   its own arguments, a trailing comma included.
  */
 final readonly class ParsedDocument
 {
@@ -35,5 +36,27 @@ final readonly class ParsedDocument
         public TextDocument $document,
         public array $tree,
     ) {
+    }
+
+    /**
+     * The {@see self::ARGUMENT_SEPARATORS} a call carries, or null when it
+     * carries none or they are not file positions.
+     *
+     * @return ?list<int>
+     */
+    public static function argumentSeparatorsOf(Node $call): ?array
+    {
+        $recorded = $call->getAttribute(self::ARGUMENT_SEPARATORS);
+        if (!is_array($recorded) || !array_is_list($recorded)) {
+            return null;
+        }
+        $positions = [];
+        foreach ($recorded as $position) {
+            if (!is_int($position)) {
+                return null;
+            }
+            $positions[] = $position;
+        }
+        return $positions;
     }
 }
