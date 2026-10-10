@@ -22,14 +22,14 @@ final class NamedArgumentCandidatesTest extends TestCase
 {
     use BuildsSymbolInfoTrait;
 
-    public function testOffersNothingInANamedArgumentsValue(): void
+    public function testOffersNothingInAnArgumentsValue(): void
     {
         $codeResolver = self::createStub(CodeResolverInterface::class);
         $codeResolver->method('getCallContext')->willReturn(new CallContext(
             self::createStub(ResolvedCallableInterface::class),
             0,
             ['name'],
-            inNamedArgumentValue: true,
+            inArgumentValue: true,
         ));
         $doc = new TextDocument('file:///t.php', 'php', 0, '');
 

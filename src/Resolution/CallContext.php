@@ -15,16 +15,17 @@ final readonly class CallContext
     /**
      * @param list<string> $usedParameterNames Names already used as named arguments
      * @param int $positionallyFilledCount Number of positional args before first named arg
-     * @param bool $inNamedArgumentValue Whether the argument being typed is named and the
-     *        cursor is past `name:` (read as the name and the character after it), where
-     *        only a value can be typed
+     * @param bool $inArgumentValue Whether the argument being typed is past the point
+     *        where an argument name could still be written: past `name:` (read as the
+     *        name and the character after it), or into a positional value that is not
+     *        a bare word
      */
     public function __construct(
         public ResolvedCallableInterface $callable,
         public int $activeParameterIndex,
         public array $usedParameterNames,
         public int $positionallyFilledCount = 0,
-        public bool $inNamedArgumentValue = false,
+        public bool $inArgumentValue = false,
     ) {
     }
 }

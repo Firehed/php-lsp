@@ -196,7 +196,7 @@ final class SymbolResolverTest extends TestCase
             ->getCallContext(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
 
         self::assertEquals(
-            new CallContext($function, 1, ['count'], 1, inNamedArgumentValue: true),
+            new CallContext($function, 1, ['count'], 1, inArgumentValue: true),
             $context,
             'the call context reports the callable, the arguments supplied, and that a value is being typed',
         );
