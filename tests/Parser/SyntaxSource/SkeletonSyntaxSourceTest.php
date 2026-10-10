@@ -364,6 +364,26 @@ final class SkeletonSyntaxSourceTest extends TestCase
         );
     }
 
+    public function testAnIndentedTruncatedClassEndsAtTheNextDeclaration(): void
+    {
+        $fixture = 'TopLevel/truncated_class_in_braced_namespace.php';
+        $tree = $this->tree(new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture)));
+
+        $methods = [];
+        foreach ((new NodeFinder())->findInstanceOf($tree, Stmt\Class_::class) as $class) {
+            $methods[(string) $class->name] = array_map(
+                fn (Stmt\ClassMethod $method) => $method->name->toString(),
+                $class->getMethods(),
+            );
+        }
+
+        self::assertSame(
+            ['Truncated' => ['first'], 'Following' => ['second']],
+            $methods,
+            'a class without its own brace holds only the members before the next declaration',
+        );
+    }
+
     /**
      * A class-like starts at its declaration, as php-parser places it, not on
      * the blank lines before it.
