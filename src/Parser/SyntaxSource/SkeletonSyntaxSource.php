@@ -183,7 +183,8 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     {
         // Anchor at the start of a line so a "class" or "interface" word that
         // appears inside a docblock or a string does not read as a declaration.
-        $pattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(class|interface|trait|enum)\s+(\w+)'
+        // `\K` starts the match at the declaration, not on blank lines before it.
+        $pattern = '/^\s*\K(?:(?:abstract|final|readonly)\s+)*(class|interface|trait|enum)\s+(\w+)'
             . '(?:\s+extends\s+((?:' . self::NAME_PATTERN . ')(?:\s*,\s*' . self::NAME_PATTERN . ')*))?'
             . '(?:\s+implements\s+(' . self::NAME_PATTERN . '(?:\s*,\s*' . self::NAME_PATTERN . ')*))?/m';
         $matches = self::matchAll($pattern, $content);
