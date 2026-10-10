@@ -11,7 +11,8 @@ use Firehed\PhpLsp\Resolution\CodeResolverInterface;
  * Produces named-argument completion items (`name:`) for a call, skipping
  * parameters already supplied positionally or by name and variadics.
  *
- * Returns null when the position is not inside a call.
+ * Returns null when the position is not inside a call, and nothing while a
+ * named argument's value is being typed.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */

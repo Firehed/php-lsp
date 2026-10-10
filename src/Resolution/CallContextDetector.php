@@ -72,8 +72,8 @@ final class CallContextDetector
             }
         }
 
-        // The argument being typed is in its value once the cursor is past the
-        // colon after its name.
+        // The argument being typed is in its value once the cursor is past its
+        // name and the character after it: the colon, as `name:` is written.
         $typing = $node->args[$activeParam] ?? null;
         $inNamedValue = $typing instanceof Arg
             && $typing->name !== null
