@@ -365,6 +365,76 @@ final class SkeletonSyntaxSourceTest extends TestCase
     }
 
     /**
+     * @param array<string, list<string>> $expected
+     */
+    #[DataProvider('classMemberFixtures')]
+    public function testEachClassHoldsOnlyItsOwnMembers(string $fixture, array $expected): void
+    {
+        $tree = $this->tree(new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture)));
+
+        $methods = [];
+        foreach ((new NodeFinder())->findInstanceOf($tree, Stmt\Class_::class) as $class) {
+            $methods[(string) $class->name] = array_map(
+                fn (Stmt\ClassMethod $method) => $method->name->toString(),
+                $class->getMethods(),
+            );
+        }
+
+        self::assertSame($expected, $methods, 'a class holds only the members before the next declaration');
+    }
+
+    /**
+     * @return array<string, array{string, array<string, list<string>>}>
+     */
+    public static function classMemberFixtures(): array
+    {
+        return [
+            'indented class without its own brace' => [
+                'TopLevel/truncated_class_in_braced_namespace.php',
+                ['Truncated' => ['first'], 'Following' => ['second']],
+            ],
+            'modifier on its own line' => [
+                'TopLevel/modifier_on_its_own_line.php',
+                ['SplitDeclaration' => ['first'], 'Following' => ['second']],
+            ],
+        ];
+    }
+
+    /**
+     * A class-like spans from its declaration to its closing brace, as
+     * php-parser places it: not from the blank lines before it, and not past
+     * its body when a modifier opens the declaration.
+     */
+    #[DataProvider('parentNameFixtures')]
+    public function testClassLikesSpanWhereTheyAreWritten(string $fixture): void
+    {
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+
+        self::assertSame(
+            self::describeClassLikeSpans($parsed),
+            self::describeClassLikeSpans($this->tree($document)),
+            'the skeleton must span each class-like as php-parser does',
+        );
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     * @return list<array{string, int, int}>
+     */
+    private static function describeClassLikeSpans(array $tree): array
+    {
+        return array_values(array_map(
+            fn (Stmt\ClassLike $classLike) => [
+                (string) $classLike->name,
+                $classLike->getStartFilePos(),
+                $classLike->getEndFilePos(),
+            ],
+            (new NodeFinder())->findInstanceOf($tree, Stmt\ClassLike::class),
+        ));
+    }
+
+    /**
      * @return array<string, array{string}>
      */
     public static function parentNameFixtures(): array
@@ -373,6 +443,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
             'class extends' => ['src/Inheritance/ChildClass.php'],
             'class extends and implements' => ['src/Exception/AppException.php'],
             'interface extends a list' => ['src/Hierarchy/LeafInterface.php'],
+            'final class after a blank line' => ['src/Inheritance/FinalDescendant.php'],
             'fully qualified parents' => ['src/Inheritance/GlobalParent.php'],
             'namespace-relative parent' => ['src/Inheritance/RelativeParent.php'],
         ];
