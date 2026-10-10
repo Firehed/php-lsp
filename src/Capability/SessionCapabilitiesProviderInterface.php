@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Capability;
 
+use Firehed\PhpLsp\Protocol\InitializeResult;
+use Firehed\PhpLsp\Protocol\Message;
+
 /**
  * Read-only access to the resolved {@see SessionCapabilities} for the components
  * that shape output by client support (RFC 1 §4.8, §5.4).
@@ -17,4 +20,9 @@ namespace Firehed\PhpLsp\Capability;
 interface SessionCapabilitiesProviderInterface
 {
     public function getSessionCapabilities(): SessionCapabilities;
+
+    // Note: to simplify the initial wiring, this was added into the existing
+    // interface since there's a single implementation. It's a bit of a code
+    // smell, and should eventually split out.
+    public function negotiate(Message $message): InitializeResult;
 }
