@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Parser;
 
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use PhpParser\Node;
@@ -90,7 +90,7 @@ final class TreeAnnotatorTest extends TestCase
             || $node instanceof Attribute);
         $recorded = [];
         foreach ($calls as $call) {
-            $separators = $call->getAttribute(SyntaxSourceInterface::ARGUMENT_SEPARATORS);
+            $separators = $call->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS);
             self::assertIsArray($separators, 'every call carries its argument separators, even when it has none');
             array_push($recorded, ...$separators);
         }

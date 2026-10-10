@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
+use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use LogicException;
 use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Expr\New_;
+use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Name;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -24,6 +28,50 @@ use PHPUnit\Framework\TestCase;
 final class CallContextDetectorTest extends TestCase
 {
     use LoadsFixturesTrait;
+
+    /**
+     * @return array<string, array{string, class-string, int, list<string>, int}>
+     */
+    public static function calls(): array
+    {
+        return [
+            'first argument' => ['first_param', FuncCall::class, 0, [], 0],
+            'second argument' => ['second_param', FuncCall::class, 1, [], 1],
+            'named argument' => ['named_arg', FuncCall::class, 1, ['a', 'b'], 0],
+            'constructor' => ['constructor', New_::class, 0, [], 0],
+            'static call' => ['static_call', StaticCall::class, 0, [], 0],
+        ];
+    }
+
+    /**
+     * @param class-string $callClass
+     * @param list<string> $usedNames
+     */
+    #[DataProvider('calls')]
+    public function testDetectsTheEnclosingCall(
+        string $marker,
+        string $callClass,
+        int $activeParameter,
+        array $usedNames,
+        int $positionalCount,
+    ): void {
+        $detection = $this->detectAt('SignatureHelp.php', $marker);
+
+        self::assertNotNull($detection, 'the cursor is inside a call');
+        [$call, $active, $used, $positional] = $detection;
+        self::assertInstanceOf($callClass, $call, 'the enclosing call is found through the parent links');
+        self::assertSame($activeParameter, $active, 'commas before the cursor advance the parameter');
+        self::assertSame($usedNames, $used, 'every named argument counts as used');
+        self::assertSame($positionalCount, $positional, 'only positional arguments before the cursor fill');
+    }
+
+    public function testNoCallEnclosesTheCursor(): void
+    {
+        self::assertNull(
+            $this->detectAt('SignatureHelp.php', 'outside_call'),
+            'an assignment outside any call has no call context',
+        );
+    }
 
     /**
      * @return array<string, array{string, int, int}>
@@ -41,18 +89,13 @@ final class CallContextDetectorTest extends TestCase
         ];
     }
 
-    public function testReportsNothingOutsideACall(): void
-    {
-        self::assertNull($this->detectAt('outside_call'), 'a cursor between statements is in no call');
-    }
-
     #[DataProvider('boundaries')]
     public function testCountsOnlyArgumentsClosedByACommaAsFinished(
         string $marker,
         int $activeParameter,
         int $positionalCount,
     ): void {
-        $detection = $this->detectAt($marker);
+        $detection = $this->detectAt('src/Resolution/ArgumentBoundaries.php', $marker);
 
         self::assertNotNull($detection, 'the cursor is inside a call');
         self::assertSame($activeParameter, $detection[1], 'the argument being typed is the active parameter');
@@ -61,28 +104,29 @@ final class CallContextDetectorTest extends TestCase
 
     public function testRejectsACallWithoutItsArgumentSeparators(): void
     {
-        $syntax = self::createStub(SyntaxSourceInterface::class);
-        $syntax->method('nodeAt')->willReturn(new FuncCall(new Name('f')));
+        $locator = self::createStub(NodeLocatorInterface::class);
+        $locator->method('nodeAt')->willReturn(new FuncCall(new Name('f')));
 
         $this->expectException(LogicException::class);
 
-        (new CallContextDetector($syntax))->detect([], new TextDocument('file:///f.php', 'php', 1, ''), 0);
+        (new CallContextDetector($locator))->detect(
+            new ParsedDocument(new TextDocument('file:///f.php', 'php', 1, ''), []),
+            0,
+        );
     }
 
     /**
      * @return RawDetection|null
      */
-    private function detectAt(string $marker): ?array
+    private function detectAt(string $fixture, string $marker): ?array
     {
-        $fixture = 'src/Resolution/ArgumentBoundaries.php';
         $content = $this->loadFixture($fixture);
-        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $syntax = new PhpParserSyntaxSource(new TreeAnnotator());
-
-        return (new CallContextDetector($syntax))->detect(
-            $syntax->parse($document),
-            $document,
-            $this->markerOffset($content, $marker),
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse(
+            new TextDocument('file:///' . $fixture, 'php', 1, $content),
         );
+
+        $detector = new CallContextDetector(new TreeNodeLocator());
+
+        return $detector->detect($parsed, $this->markerOffset($content, $marker));
     }
 }

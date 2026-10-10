@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
@@ -66,16 +67,17 @@ final class SymbolResolver implements CodeResolverInterface
 
     public function __construct(
         private readonly SyntaxSourceInterface $parser,
+        private readonly NodeLocatorInterface $locator,
         private readonly SymbolSourceInterface $symbolSource,
         private readonly MemberResolverInterface $memberResolver,
         private readonly TypeSourceInterface $typeSource,
     ) {
-        $this->callDetector = new CallContextDetector($parser);
+        $this->callDetector = new CallContextDetector($locator);
         $this->memberAccessDetector = new MemberAccessDetector(
             $symbolSource,
             $memberResolver,
             $typeSource,
-            $parser,
+            $locator,
         );
     }
 
@@ -98,16 +100,16 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): ?ResolvedSymbolInterface {
-        $ast = $this->parser->parse($document);
+        $parsed = $this->parser->parse($document);
 
         $offset = $document->offsetAt($line, $character);
-        $node = $this->parser->nodeAt($ast, $document, $offset);
+        $node = $this->locator->nodeAt($parsed, $offset);
 
         if ($node === null) {
             return null;
         }
 
-        return $this->resolveNode($node, $ast, $document);
+        return $this->resolveNode($node, $parsed->tree, $document);
     }
 
     /**
@@ -278,9 +280,7 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): ?MemberAccessContext {
-        $ast = $this->parser->parse($document);
-
-        return $this->memberAccessDetector->detect($document, $ast, $line, $character);
+        return $this->memberAccessDetector->detect($this->parser->parse($document), $line, $character);
     }
 
     /**
@@ -294,7 +294,7 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): array {
-        $ast = $this->parser->parse($document);
+        $ast = $this->parser->parse($document)->tree;
 
         $offset = $document->offsetAt($line, $character);
         $scope = Scope::atOffset($ast, $offset);
@@ -328,17 +328,17 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): ?CallContext {
-        $ast = $this->parser->parse($document);
+        $parsed = $this->parser->parse($document);
 
         $offset = $document->offsetAt($line, $character);
 
-        $callInfo = $this->callDetector->detect($ast, $document, $offset);
+        $callInfo = $this->callDetector->detect($parsed, $offset);
         if ($callInfo === null) {
             return null;
         }
 
         [$callNode, $activeParameter, $usedNames, $positionalCount] = $callInfo;
-        $callable = $this->resolveCallable($callNode, $ast, $document);
+        $callable = $this->resolveCallable($callNode, $parsed->tree, $document);
         if ($callable === null) {
             return null;
         }
@@ -348,7 +348,7 @@ final class SymbolResolver implements CodeResolverInterface
 
     public function getNameContext(TextDocument $document, int $line): NameContext
     {
-        $ast = $this->parser->parse($document);
+        $ast = $this->parser->parse($document)->tree;
 
         return NameContextFactory::fromAst($ast, $line);
     }

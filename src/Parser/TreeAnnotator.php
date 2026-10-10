@@ -18,14 +18,14 @@ use PhpParser\NodeVisitorAbstract;
 use PhpParser\Token;
 
 /**
- * The parent-connecting and name-resolving pass every tree-producing
+ * The parent-connecting and name-resolving pass every
  * {@see SyntaxSource\SyntaxSourceInterface} runs on its own result, which
  * also records argument separators when given the tree's tokens.
  *
  * A skeleton tree ({@see SyntaxSource\SkeletonSyntaxSource})
  * is annotated by the same code as a parsed one, so a downstream
  * reader finds the parent links and resolved names
- * {@see SyntaxSource\SyntaxSourceInterface} promises regardless of which
+ * {@see ParsedDocument} promises regardless of which
  * source produced the tree.
  */
 final class TreeAnnotator
@@ -62,7 +62,7 @@ final class TreeAnnotator
      * @param array<Node> $tree
      * @param array<Token> $tokens The tokens the tree was parsed from, or none
      *        when no lexer produced it; a source that builds nodes itself sets
-     *        {@see SyntaxSource\SyntaxSourceInterface::ARGUMENT_SEPARATORS} on them.
+     *        {@see ParsedDocument::ARGUMENT_SEPARATORS} on them.
      * @return array<Stmt>
      */
     public function annotate(array $tree, array $tokens): array
@@ -83,7 +83,7 @@ final class TreeAnnotator
                 {
                     if ($node instanceof CallLike || $node instanceof Attribute) {
                         $node->setAttribute(
-                            SyntaxSource\SyntaxSourceInterface::ARGUMENT_SEPARATORS,
+                            ParsedDocument::ARGUMENT_SEPARATORS,
                             ($this->separatorsOf)($node),
                         );
                     }

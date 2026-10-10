@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\NodeAtPosition;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\ErrorHandler;
-use PhpParser\Node;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 
@@ -29,51 +28,18 @@ final class PhpParserSyntaxSource implements SyntaxSourceInterface
         $this->parser = (new ParserFactory())->createForNewestSupportedVersion();
     }
 
-    /**
-     * @return array<\PhpParser\Node\Stmt>
-     */
-    public function parse(TextDocument $document): array
+    public function parse(TextDocument $document): ParsedDocument
     {
         $errorHandler = new ErrorHandler\Collecting();
 
         try {
             $ast = $this->parser->parse($document->getContent(), $errorHandler);
             if ($ast === null) {
-                return [];
+                return new ParsedDocument($document, []);
             }
-            $tree = $this->annotator->annotate($ast, $this->parser->getTokens());
-            foreach ($tree as $stmt) {
-                $stmt->setAttribute(self::PRODUCER_ATTRIBUTE, true);
-            }
-            return $tree;
+            return new ParsedDocument($document, $this->annotator->annotate($ast, $this->parser->getTokens()));
         } catch (\PhpParser\Error) {
-            return [];
+            return new ParsedDocument($document, []);
         }
     }
-
-    /**
-     * The composite passes the first non-empty parse's tree to every source's
-     * `nodeAt`. When php-parser produced nothing, the tree in hand came from a
-     * later source (the skeleton), and this source has no business walking it —
-     * the marker set in `parse()` says the tree is ours. When the innermost
-     * hit is a bare statement (a class, a method, the namespace) rather than an
-     * expression, php-parser has nothing cursor-shaped to offer at this offset;
-     * yielding null lets the cursor-text source synthesize one from the source
-     * text.
-     *
-     * @param array<\PhpParser\Node\Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
-    {
-        if ($tree === [] || $tree[0]->getAttribute(self::PRODUCER_ATTRIBUTE) !== true) {
-            return null;
-        }
-        $node = (new NodeAtPosition())->find($tree, $offset);
-        if ($node instanceof \PhpParser\Node\Stmt) {
-            return null;
-        }
-        return $node;
-    }
-
-    private const string PRODUCER_ATTRIBUTE = 'phpLsp.phpParserSource';
 }

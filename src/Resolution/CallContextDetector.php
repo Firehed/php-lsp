@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
@@ -15,7 +15,6 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Stmt;
 
 /**
  * Detects call context (function/method/constructor calls) at a cursor
@@ -33,17 +32,16 @@ use PhpParser\Node\Stmt;
 final class CallContextDetector
 {
     public function __construct(
-        private readonly SyntaxSourceInterface $parser,
+        private readonly NodeLocatorInterface $locator,
     ) {
     }
 
     /**
-     * @param array<Stmt> $ast
      * @return RawDetection|null
      */
-    public function detect(array $ast, TextDocument $document, int $offset): ?array
+    public function detect(ParsedDocument $parsed, int $offset): ?array
     {
-        $node = $this->parser->nodeAt($ast, $document, $offset);
+        $node = $this->locator->nodeAt($parsed, $offset);
         // Walk parents until an enclosing call is found. The tree annotator sets
         // the parent attribute, so this is a pointer walk, not a traversal.
         while ($node !== null && !self::isCallLike($node)) {
@@ -55,7 +53,7 @@ final class CallContextDetector
             return null;
         }
 
-        $separators = $node->getAttribute(SyntaxSourceInterface::ARGUMENT_SEPARATORS);
+        $separators = $node->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS);
         if (!is_array($separators)) {
             throw new LogicException('A syntax source returned a call without its argument separators');
         }

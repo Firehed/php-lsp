@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Parser\SyntaxSource;
+namespace Firehed\PhpLsp\Parser\NodeLocator;
 
-use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\BuildsWrittenNamesTrait;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
@@ -24,21 +25,21 @@ use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
-use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\UseItem;
 use PhpParser\Node\VarLikeIdentifier;
 
 /**
  * Synthesizes the member-access or call node at the cursor from the document
- * text. `parse()` yields nothing. Placed last in the composite, so it answers
- * only when every earlier member has answered null (RFC 1 §4.11).
+ * text (RFC 1 §4.11).
  *
- * The synthesized node is resolved and linked into the tree `nodeAt()` is
- * handed, so it meets the same contract as a parsed node.
+ * The synthesized node is resolved and linked into the parsed document's tree,
+ * so it meets the same contract as a parsed node.
  */
-final class CursorTextSyntaxSource implements SyntaxSourceInterface
+final class CursorTextNodeLocator implements NodeLocatorInterface
 {
+    use BuildsWrittenNamesTrait;
+
     private const string NON_FUNCTION_KEYWORD_PATTERN
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
 
@@ -57,19 +58,9 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         $this->annotator = new TreeAnnotator(tolerant: true);
     }
 
-    /**
-     * @return array<Stmt>
-     */
-    public function parse(TextDocument $document): array
+    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
     {
-        return [];
-    }
-
-    /**
-     * @param array<Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
-    {
+        $document = $parsed->document;
         if ($offset < 0 || $offset > strlen($document->getContent())) {
             return null;
         }
@@ -86,7 +77,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         if ($root === null) {
             return null;
         }
-        $this->attach($root, $tree);
+        $this->attach($root, $parsed->tree);
 
         return $this->nodeAtPosition->find([$root], $offset);
     }
@@ -234,7 +225,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
         [$args, $separators] = self::parseArgs($argsText, $parenPos + 1, $offset, $line, $memberInside);
         $callNode->args = $args;
-        $callNode->setAttribute(SyntaxSourceInterface::ARGUMENT_SEPARATORS, $separators);
+        $callNode->setAttribute(ParsedDocument::ARGUMENT_SEPARATORS, $separators);
 
         $callStart = $callNode->getStartFilePos();
         $callNode->setAttribute('endFilePos', max($callStart, $offset));
@@ -378,15 +369,10 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
      */
     private static function writtenName(string $written, int $startFilePos, int $line): Name
     {
-        $attrs = self::posAttrs($startFilePos, $startFilePos + strlen($written) - 1, $line);
-        if (str_starts_with($written, '\\')) {
-            return new FullyQualified(substr($written, 1), $attrs);
-        }
-        if (str_starts_with($written, 'namespace\\')) {
-            return new Name\Relative(substr($written, strlen('namespace\\')), $attrs);
-        }
-
-        return new Name($written, $attrs);
+        return self::nameAsWritten(
+            $written,
+            self::posAttrs($startFilePos, $startFilePos + strlen($written) - 1, $line),
+        );
     }
 
     /**
