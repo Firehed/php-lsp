@@ -449,8 +449,12 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
             $matchEnd = $matchStart + strlen($m[0][0]);
             $nameStart = $baseOffset + $m[2][1];
             $name = new Identifier($m[2][0], self::positions($positions, $nameStart, $nameStart + strlen($m[2][0])));
-            // The value is not read; its placeholder sits just past the `=`.
-            $value = new Node\Scalar\String_('', self::positions($positions, $matchEnd, $matchEnd));
+            // The value is not read. Its placeholder ends before it starts, so it
+            // carries positions but no offset falls inside it.
+            $value = new Node\Scalar\String_('', [
+                ...self::positions($positions, $matchEnd, $matchEnd),
+                'endFilePos' => $matchEnd - 1,
+            ]);
             $out[] = new Stmt\ClassConst(
                 [new Const_($name, $value, self::positions($positions, $nameStart, $matchEnd))],
                 self::visibilityFlag($visibility),
