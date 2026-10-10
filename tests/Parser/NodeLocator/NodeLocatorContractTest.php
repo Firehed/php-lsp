@@ -6,16 +6,17 @@ namespace Firehed\PhpLsp\Tests\Parser\NodeLocator;
 
 use Closure;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
+use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\AssertsTreeContractTrait;
-use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -74,18 +75,13 @@ final class NodeLocatorContractTest extends TestCase
             $cursorText, $skeleton, 'src/IncompleteCode/VeryBroken.php', self::atCursor('this_in_if'),
         ];
 
-        $production = ProductionSyntaxSource::create();
-        yield 'production: a node the tree holds' => [
-            $production->locator,
-            $production->source,
-            'src/Inheritance/ChildClass.php',
-            self::atHover('inherited_method'),
+        $composite = new CompositeNodeLocator($tree, $cursorText);
+        $sources = new CompositeSyntaxSource($parser, $skeleton);
+        yield 'composite: a node the tree holds' => [
+            $composite, $sources, 'src/Inheritance/ChildClass.php', self::atHover('inherited_method'),
         ];
-        yield 'production: a file only the skeleton reads' => [
-            $production->locator,
-            $production->source,
-            'src/IncompleteCode/VeryBroken.php',
-            self::atCursor('this_in_if'),
+        yield 'composite: a file only the skeleton reads' => [
+            $composite, $sources, 'src/IncompleteCode/VeryBroken.php', self::atCursor('this_in_if'),
         ];
     }
 
@@ -110,12 +106,12 @@ final class NodeLocatorContractTest extends TestCase
         self::assertLocatedNodeMeetsContract($node, $parsed, $offset, "{$fixture} at {$offset}");
     }
 
-    public function testTheProductionFallbackOnAParsedTreeMeetsTheContract(): void
+    public function testTheCompositeFallbackOnAParsedTreeMeetsTheContract(): void
     {
         $fixture = 'src/Inheritance/ChildClass.php';
-        $production = ProductionSyntaxSource::create();
         $content = $this->loadFixture($fixture);
-        $parsed = $production->source->parse(new TextDocument('file:///' . $fixture, 'php', 1, $content));
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))
+            ->parse(new TextDocument('file:///' . $fixture, 'php', 1, $content));
         $offset = $this->markerOffset($content, 'direct_parent_static');
         self::assertNotSame([], $parsed->tree, "php-parser must yield a tree for {$fixture}");
         self::assertNull(
@@ -123,7 +119,8 @@ final class NodeLocatorContractTest extends TestCase
             'the parsed tree must hold nothing here, or this case never reaches the cursor text',
         );
 
-        $node = $production->locator->nodeAt($parsed, $offset);
+        $composite = new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator());
+        $node = $composite->nodeAt($parsed, $offset);
 
         self::assertNotNull($node, 'the cursor text answers where the parsed tree does not');
         self::assertLocatedNodeMeetsContract($node, $parsed, $offset, "{$fixture} at {$offset}");

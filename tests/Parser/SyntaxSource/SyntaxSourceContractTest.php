@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\AssertsTreeContractTrait;
-use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -47,17 +48,22 @@ final class SyntaxSourceContractTest extends TestCase
     private const string SKELETON_ONLY = 'src/IncompleteCode/VeryBroken.php';
 
     /**
-     * Each source on every file it makes a tree of, and the production stack
-     * that combines them once through each of its members.
+     * Each source on every file it makes a tree of, and the memoized composite
+     * over them once through each of its members.
      *
      * @return iterable<string, array{SyntaxSourceInterface, string}>
      */
     public static function treesFromEverySource(): iterable
     {
+        $parser = new PhpParserSyntaxSource(new TreeAnnotator());
+        $skeleton = new SkeletonSyntaxSource();
         $sources = [
-            'php-parser' => [new PhpParserSyntaxSource(new TreeAnnotator()), self::PARSEABLE],
-            'skeleton' => [new SkeletonSyntaxSource(), [...self::PARSEABLE, self::SKELETON_ONLY]],
-            'production' => [ProductionSyntaxSource::create()->source, [self::PARSEABLE[0], self::SKELETON_ONLY]],
+            'php-parser' => [$parser, self::PARSEABLE],
+            'skeleton' => [$skeleton, [...self::PARSEABLE, self::SKELETON_ONLY]],
+            'memoized composite' => [
+                new MemoizingSyntaxSource(new CompositeSyntaxSource($parser, $skeleton)),
+                [self::PARSEABLE[0], self::SKELETON_ONLY],
+            ],
         ];
         foreach ($sources as $sourceName => [$source, $fixtures]) {
             foreach ($fixtures as $fixture) {
