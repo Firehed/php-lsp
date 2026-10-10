@@ -399,6 +399,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
         return [
             'imported class types' => ['src/TypeInference/BuiltinTypes.php'],
             'fully qualified type' => ['src/Inheritance/GlobalParent.php'],
+            'primitive types' => ['src/TypeInference/NullablePrimitiveParameters.php'],
         ];
     }
 
