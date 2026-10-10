@@ -365,6 +365,27 @@ final class SkeletonSyntaxSourceTest extends TestCase
     }
 
     /**
+     * A class-like starts at its declaration, as php-parser places it, not on
+     * the blank lines before it.
+     */
+    #[DataProvider('parentNameFixtures')]
+    public function testClassLikesStartWhereTheyAreWritten(string $fixture): void
+    {
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+        $starts = fn (array $tree) => array_map(
+            fn (Stmt\ClassLike $classLike) => [(string) $classLike->name, $classLike->getStartFilePos()],
+            (new NodeFinder())->findInstanceOf($tree, Stmt\ClassLike::class),
+        );
+
+        self::assertSame(
+            $starts($parsed),
+            $starts($this->tree($document)),
+            'the skeleton must start each class-like where php-parser does',
+        );
+    }
+
+    /**
      * @return array<string, array{string}>
      */
     public static function parentNameFixtures(): array
