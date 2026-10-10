@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -436,6 +438,30 @@ final class SkeletonSyntaxSourceTest extends TestCase
                 $node->getEndFilePos(),
             ],
             $nodes,
+        );
+    }
+
+    /**
+     * The skeleton does not read a constant's value, so the value it stands in
+     * occupies no position: a cursor there finds nothing in the tree and falls
+     * through to the cursor text, as in code being typed.
+     */
+    public function testAnUnreadConstantValueOccupiesNoPosition(): void
+    {
+        $fixture = 'src/Inheritance/ChildClass.php';
+        $content = $this->loadFixture($fixture);
+        $tree = $this->tree(new TextDocument('file:///' . $fixture, 'php', 1, $content));
+        $declaration = 'CHILD_CONST =';
+        $afterEquals = strpos($content, $declaration);
+        self::assertNotFalse($afterEquals, "the fixture must declare `{$declaration}`");
+        $afterEquals += strlen($declaration);
+
+        self::assertNull(
+            (new TreeNodeLocator())->nodeAt(
+                new ParsedDocument(new TextDocument('file:///' . $fixture, 'php', 1, $content), $tree),
+                $afterEquals,
+            ),
+            'no node sits on the unread value',
         );
     }
 
