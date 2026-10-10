@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Modifiers;
 use PhpParser\Node;
@@ -35,13 +36,17 @@ use PhpParser\Node\UseItem;
  *   kind: int,
  *   bodyStart: int,
  * }
+ * @phpstan-type WrittenName array{
+ *   name: string,
+ *   start: int,
+ * }
  * @phpstan-type ClassLikeMatch array{
  *   start: int,
  *   kind: string,
  *   name: string,
  *   nameStart: int,
- *   extends: ?string,
- *   implements: list<string>,
+ *   extends: list<WrittenName>,
+ *   implements: list<WrittenName>,
  *   body: string,
  *   end: int,
  * }
@@ -68,30 +73,15 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         $this->annotator = new TreeAnnotator(tolerant: true);
     }
 
-    /**
-     * @return array<Stmt>
-     */
-    public function parse(TextDocument $document): array
+    public function parse(TextDocument $document): ParsedDocument
     {
         $content = $document->getContent();
         $positions = self::indexContent($content);
         $tree = $this->buildTree($content, $positions);
         if ($tree === []) {
-            return [];
+            return new ParsedDocument($document, []);
         }
-        return $this->annotator->annotate($tree);
-    }
-
-    /**
-     * The skeleton describes structure, not expressions; the cursor lives inside
-     * expressions php-parser recovers on its own, so this source has nothing to
-     * add and lets the composite fall through to the next member (RFC 1 §4.11).
-     *
-     * @param array<Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
-    {
-        return null;
+        return new ParsedDocument($document, $this->annotator->annotate($tree));
     }
 
     /**
@@ -201,26 +191,37 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         $out = [];
         foreach ($matches as $m) {
             $start = $m[0][1];
+            $body = self::sliceClassBody($content, $start);
             // A trailing optional group that did not participate in the match
             // may be omitted from `$m` (older PHP) rather than returned as
             // ["", -1]; the coalesce covers both.
-            $extends = $m[3][0] ?? '';
-            $implements = $m[4][0] ?? '';
-            $body = self::sliceClassBody($content, $start);
             $out[] = [
                 'start' => $start,
                 'kind' => $m[1][0],
                 'name' => $m[2][0],
                 'nameStart' => $m[2][1],
-                'extends' => $extends === '' ? null : $extends,
-                'implements' => $implements === ''
-                    ? []
-                    : array_map(trim(...), explode(',', $implements)),
+                'extends' => self::writtenNames($m[3] ?? ['', -1]),
+                'implements' => self::writtenNames($m[4] ?? ['', -1]),
                 'body' => $body,
                 'end' => $start + strlen($body),
             ];
         }
         return $out;
+    }
+
+    /**
+     * Each name in a captured comma-separated list, at the offset it is written.
+     *
+     * @param array{0: string, 1: int} $list
+     * @return list<WrittenName>
+     */
+    private static function writtenNames(array $list): array
+    {
+        $names = [];
+        foreach (self::matchAll('/' . self::NAME_PATTERN . '/', $list[0]) as $m) {
+            $names[] = ['name' => $m[0][0], 'start' => $list[1] + $m[0][1]];
+        }
+        return $names;
     }
 
     /**
@@ -250,13 +251,12 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
             self::positions($positions, $c['nameStart'], $c['nameStart'] + strlen($c['name'])),
         );
         $attributes = self::positions($positions, $c['start'], $c['end']);
-        $mkName = fn (string $n): Name => self::name($n, $c['start'], $positions);
 
         return match ($c['kind']) {
             'interface' => new Stmt\Interface_(
                 $nameNode,
                 [
-                    'extends' => $c['extends'] === null ? [] : [$mkName($c['extends'])],
+                    'extends' => self::names($c['extends'], $positions),
                     'stmts' => $members,
                 ],
                 $attributes,
@@ -266,7 +266,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
                 $nameNode,
                 [
                     'scalarType' => null,
-                    'implements' => array_map($mkName, $c['implements']),
+                    'implements' => self::names($c['implements'], $positions),
                     'stmts' => $members,
                 ],
                 $attributes,
@@ -275,8 +275,8 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
                 $nameNode,
                 [
                     'flags' => 0,
-                    'extends' => $c['extends'] === null ? null : $mkName($c['extends']),
-                    'implements' => array_map($mkName, $c['implements']),
+                    'extends' => self::names($c['extends'], $positions)[0] ?? null,
+                    'implements' => self::names($c['implements'], $positions),
                     'stmts' => $members,
                 ],
                 $attributes,
@@ -364,10 +364,12 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         array $positions,
     ): Node\Identifier|Node\Name|Node\NullableType|null {
         $text = trim($text);
+        $typeStart = max(0, $anchor);
         $nullable = str_starts_with($text, '?');
         if ($nullable) {
             $text = substr($text, 1);
         }
+        $nameStart = $nullable ? $typeStart + 1 : $typeStart;
         // Union types: A|B. Intersection is not attempted; the receiver query
         // reads the first constituent to type the variable, which is enough for
         // completion inside a broken method. `explode` on an empty string still
@@ -378,8 +380,8 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         if ($first === '') {
             return null;
         }
-        $anchor = max(0, $anchor);
-        $attrs = self::positions($positions, $anchor, $anchor + strlen($first));
+        $nameEnd = $nameStart + strlen($first);
+        $attrs = self::positions($positions, $nameStart, $nameEnd);
         // Primitive type names are compared verbatim: parameter types in PHP
         // source are conventionally lowercase, and the fallback path — treating
         // an unrecognised token as a class name — is safe when the file's
@@ -388,7 +390,9 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
             return new Node\Identifier($first, $attrs);
         }
         $node = new Node\Name($first, $attrs);
-        return $nullable ? new Node\NullableType($node, $attrs) : $node;
+        return $nullable
+            ? new Node\NullableType($node, self::positions($positions, $typeStart, $nameEnd))
+            : $node;
     }
 
     private const array PRIMITIVE_TYPES = [
@@ -708,11 +712,20 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     }
 
     /**
+     * @param list<WrittenName> $written
      * @param PositionMap $positions
+     * @return list<Name>
      */
-    private static function name(string $short, int $anchor, array $positions): Name
+    private static function names(array $written, array $positions): array
     {
-        return new Name(ltrim($short, '\\'), self::positions($positions, $anchor, $anchor));
+        $names = [];
+        foreach ($written as $name) {
+            $names[] = new Name(
+                ltrim($name['name'], '\\'),
+                self::positions($positions, $name['start'], $name['start'] + strlen($name['name'])),
+            );
+        }
+        return $names;
     }
 
     /**

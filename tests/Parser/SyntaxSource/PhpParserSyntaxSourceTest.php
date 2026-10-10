@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Node\Stmt\Class_;
@@ -34,8 +35,9 @@ final class PhpParserSyntaxSourceTest extends TestCase
 
         $result = $this->source->parse($doc);
 
-        self::assertCount(1, $result);
-        self::assertInstanceOf(Function_::class, $result[0]);
+        self::assertSame($doc, $result->document, 'the tree is paired with the document it was parsed from');
+        self::assertCount(1, $result->tree);
+        self::assertInstanceOf(Function_::class, $result->tree[0]);
     }
 
     public function testParseClass(): void
@@ -44,8 +46,8 @@ final class PhpParserSyntaxSourceTest extends TestCase
 
         $result = $this->source->parse($doc);
 
-        self::assertCount(1, $result);
-        self::assertInstanceOf(Class_::class, $result[0]);
+        self::assertCount(1, $result->tree);
+        self::assertInstanceOf(Class_::class, $result->tree[0]);
     }
 
     public function testParseInvalidPhpUsesErrorRecovery(): void
@@ -54,9 +56,10 @@ final class PhpParserSyntaxSourceTest extends TestCase
 
         $result = $this->source->parse($doc);
 
+        self::assertSame($doc, $result->document, 'an empty parse is still paired with its document');
         self::assertSame(
             [],
-            $result,
+            $result->tree,
             'a syntax error that stops recovery early yields the empty AST rather than throwing',
         );
     }
@@ -67,7 +70,7 @@ final class PhpParserSyntaxSourceTest extends TestCase
 
         self::assertSame(
             [],
-            $this->source->parse($doc),
+            $this->source->parse($doc)->tree,
             'a name-resolution failure yields no statements rather than a partial or null AST',
         );
     }
@@ -78,7 +81,7 @@ final class PhpParserSyntaxSourceTest extends TestCase
 
         $result = $this->source->parse($doc);
 
-        self::assertCount(0, $result);
+        self::assertCount(0, $result->tree);
     }
 
     public function testParseReturnTypeIsNonNullable(): void
@@ -88,8 +91,8 @@ final class PhpParserSyntaxSourceTest extends TestCase
         self::assertInstanceOf(\ReflectionNamedType::class, $return);
         self::assertFalse(
             $return->allowsNull(),
-            'parse() must return array<Stmt> without null so no caller has to test or default it',
+            'parse() must return a ParsedDocument without null so no caller has to test or default it',
         );
-        self::assertSame('array', $return->getName());
+        self::assertSame(ParsedDocument::class, $return->getName());
     }
 }

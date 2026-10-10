@@ -13,13 +13,13 @@ use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
 
 /**
- * The parent-connecting and name-resolving pass every tree-producing
+ * The parent-connecting and name-resolving pass every
  * {@see SyntaxSource\SyntaxSourceInterface} runs on its own result.
  *
  * A skeleton tree ({@see SyntaxSource\SkeletonSyntaxSource})
  * is annotated by the same code as a parsed one, so a downstream
  * reader finds the parent links and resolved names
- * {@see SyntaxSource\SyntaxSourceInterface} promises regardless of which
+ * {@see ParsedDocument} promises regardless of which
  * source produced the tree.
  */
 final class TreeAnnotator

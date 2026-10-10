@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Parser\SyntaxSource;
+namespace Firehed\PhpLsp\Parser\NodeLocator;
 
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
@@ -31,13 +31,12 @@ use PhpParser\Node\VarLikeIdentifier;
 
 /**
  * Synthesizes the member-access or call node at the cursor from the document
- * text. `parse()` yields nothing. Placed last in the composite, so it answers
- * only when every earlier member has answered null (RFC 1 §4.11).
+ * text (RFC 1 §4.11).
  *
- * The synthesized node is resolved and linked into the tree `nodeAt()` is
- * handed, so it meets the same contract as a parsed node.
+ * The synthesized node is resolved and linked into the parsed document's tree,
+ * so it meets the same contract as a parsed node.
  */
-final class CursorTextSyntaxSource implements SyntaxSourceInterface
+final class CursorTextNodeLocator implements NodeLocatorInterface
 {
     private const string NON_FUNCTION_KEYWORD_PATTERN
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
@@ -57,19 +56,9 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         $this->annotator = new TreeAnnotator(tolerant: true);
     }
 
-    /**
-     * @return array<Stmt>
-     */
-    public function parse(TextDocument $document): array
+    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
     {
-        return [];
-    }
-
-    /**
-     * @param array<Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
-    {
+        $document = $parsed->document;
         if ($offset < 0 || $offset > strlen($document->getContent())) {
             return null;
         }
@@ -86,7 +75,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         if ($root === null) {
             return null;
         }
-        $this->attach($root, $tree);
+        $this->attach($root, $parsed->tree);
 
         return $this->nodeAtPosition->find([$root], $offset);
     }

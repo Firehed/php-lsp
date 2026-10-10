@@ -35,8 +35,10 @@ final class ThisTypingParityTest extends TestCase
 
     protected function setUp(): void
     {
+        $production = ProductionSyntaxSource::create();
         $this->resolver = new SymbolResolver(
-            ProductionSyntaxSource::create()->source,
+            $production->source,
+            $production->locator,
             self::createStub(SymbolSourceInterface::class),
             self::createStub(MemberResolverInterface::class),
             self::createStub(TypeSourceInterface::class),
