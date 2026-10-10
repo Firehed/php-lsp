@@ -81,12 +81,6 @@ final class NodeLocatorContractTest extends TestCase
             'src/Inheritance/ChildClass.php',
             self::atHover('inherited_method'),
         ];
-        yield 'production: a node synthesized from text' => [
-            $production->locator,
-            $production->source,
-            'src/Resolution/CursorTextResolution.php',
-            self::atCursor('aliased_static'),
-        ];
         yield 'production: a file only the skeleton reads' => [
             $production->locator,
             $production->source,
@@ -113,6 +107,25 @@ final class NodeLocatorContractTest extends TestCase
         $node = $locator->nodeAt($parsed, $offset);
 
         self::assertNotNull($node, "the locator must answer at offset {$offset} in {$fixture}");
+        self::assertLocatedNodeMeetsContract($node, $parsed, $offset, "{$fixture} at {$offset}");
+    }
+
+    public function testTheProductionFallbackOnAParsedTreeMeetsTheContract(): void
+    {
+        $fixture = 'src/Inheritance/ChildClass.php';
+        $production = ProductionSyntaxSource::create();
+        $content = $this->loadFixture($fixture);
+        $parsed = $production->source->parse(new TextDocument('file:///' . $fixture, 'php', 1, $content));
+        $offset = $this->markerOffset($content, 'direct_parent_static');
+        self::assertNotSame([], $parsed->tree, "php-parser must yield a tree for {$fixture}");
+        self::assertNull(
+            (new TreeNodeLocator())->nodeAt($parsed, $offset),
+            'the parsed tree must hold nothing here, or this case never reaches the cursor text',
+        );
+
+        $node = $production->locator->nodeAt($parsed, $offset);
+
+        self::assertNotNull($node, 'the cursor text answers where the parsed tree does not');
         self::assertLocatedNodeMeetsContract($node, $parsed, $offset, "{$fixture} at {$offset}");
     }
 
