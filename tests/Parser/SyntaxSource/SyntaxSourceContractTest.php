@@ -47,8 +47,8 @@ final class SyntaxSourceContractTest extends TestCase
     private const string SKELETON_ONLY = 'src/IncompleteCode/VeryBroken.php';
 
     /**
-     * Each source, and the production stack that combines them, on every file
-     * it makes a tree of.
+     * Each source on every file it makes a tree of, and the production stack
+     * that combines them once through each of its members.
      *
      * @return iterable<string, array{SyntaxSourceInterface, string}>
      */
@@ -57,7 +57,7 @@ final class SyntaxSourceContractTest extends TestCase
         $sources = [
             'php-parser' => [new PhpParserSyntaxSource(new TreeAnnotator()), self::PARSEABLE],
             'skeleton' => [new SkeletonSyntaxSource(), [...self::PARSEABLE, self::SKELETON_ONLY]],
-            'production' => [ProductionSyntaxSource::create()->source, [...self::PARSEABLE, self::SKELETON_ONLY]],
+            'production' => [ProductionSyntaxSource::create()->source, [self::PARSEABLE[0], self::SKELETON_ONLY]],
         ];
         foreach ($sources as $sourceName => [$source, $fixtures]) {
             foreach ($fixtures as $fixture) {
