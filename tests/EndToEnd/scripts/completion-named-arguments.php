@@ -80,11 +80,11 @@ return [
         'after_named_value',
         new Expectation\Withholds('count:'),
     ),
-    'variable prefix offers variables and names, not expressions' => $complete(
+    'variable prefix offers variables, not names or expressions' => $complete(
         $editing,
         'variable_in_call',
-        new Expectation\Offers('$variable', 'name:'),
-        new Expectation\Withholds('new'),
+        new Expectation\Offers('$variable'),
+        new Expectation\Withholds('name:', 'new'),
     ),
     'value position offers expression keywords' => $complete(
         $named,

@@ -20,6 +20,7 @@ class ArgumentBoundaries
         $this->target(name: 'a', /*|after_named*/);
         $this->target('a', $count + /*|inside_second_value*/1);
         $this->target(/*|positional*/'a');
+        $this->target($count/*|positional_variable*/);
         $this->target(name: /*|named_value*/'a');
         $this->target(name: 'a', /*|next_argument*/count: 1);
         $this->target(name: 'a'/*|after_string_value*/);

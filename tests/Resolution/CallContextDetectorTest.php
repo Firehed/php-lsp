@@ -110,7 +110,10 @@ final class CallContextDetectorTest extends TestCase
     public static function argumentSlots(): array
     {
         return [
-            'a positional argument' => ['positional', false],
+            'before a positional argument' => ['positional', false],
+            'a bare word, which may become a name' => ['typing_first', false],
+            'a positional variable' => ['positional_variable', true],
+            'after a positional string and a space' => ['after_first_with_space', true],
             'the value of a named argument' => ['named_value', true],
             'the start of the argument after a named one' => ['next_argument', false],
             'right after a named argument\'s string value' => ['after_string_value', true],
@@ -121,12 +124,12 @@ final class CallContextDetectorTest extends TestCase
     }
 
     #[DataProvider('argumentSlots')]
-    public function testReportsWhetherTheCursorIsInANamedArgumentsValue(string $marker, bool $expected): void
+    public function testReportsWhetherAValueIsBeingTyped(string $marker, bool $expected): void
     {
         $detection = $this->detectAt('src/Resolution/ArgumentBoundaries.php', $marker);
 
         self::assertNotNull($detection, 'the cursor is inside a call');
-        self::assertSame($expected, $detection[4], 'whether a named argument\'s value is being typed');
+        self::assertSame($expected, $detection[4], 'whether a value, where no argument name fits, is being typed');
     }
 
     /**
@@ -138,6 +141,7 @@ final class CallContextDetectorTest extends TestCase
             'right after a numeric value' => ['after_named_value', true],
             'right after a string value' => ['after_string_value', true],
             'an empty argument list' => ['function_empty', false],
+            'a positional variable' => ['variable_in_call', true],
         ];
     }
 
@@ -146,7 +150,7 @@ final class CallContextDetectorTest extends TestCase
      * rather than the parsed tree; the rule is the same.
      */
     #[DataProvider('unclosedSlots')]
-    public function testReportsANamedValueInAnUnclosedCall(string $marker, bool $expected): void
+    public function testReportsAValueInAnUnclosedCall(string $marker, bool $expected): void
     {
         $detection = $this->detectAt(
             'src/Completion/EditingNamedArg.php',
@@ -155,7 +159,7 @@ final class CallContextDetectorTest extends TestCase
         );
 
         self::assertNotNull($detection, 'the cursor is inside a call');
-        self::assertSame($expected, $detection[4], 'whether a named argument\'s value is being typed');
+        self::assertSame($expected, $detection[4], 'whether a value, where no argument name fits, is being typed');
     }
 
     public function testRejectsACallWithoutItsArgumentSeparators(): void
