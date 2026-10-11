@@ -32,6 +32,8 @@ Every service is used through an interface, even when it has one implementation.
 The interface describes what a caller can ask.
 It never says where the answer comes from, and it never takes a parser node or a reflection object where another implementation would take something else.
 
+Code decides by what a symbol can do, such as whether it can be instantiated, not by checking which kind of symbol it is.
+
 ### One wiring place
 
 Instantiating services is to occur in one wiring place: a PSR-11 container.
@@ -80,8 +82,6 @@ Every question about the type graph goes to the member resolver, member lookup a
 Its implementation walks used traits, then the parent chain, then interfaces.
 No other class walks the graph, so no member kind can see a different hierarchy than another.
 `TypeGraphParityTest` checks the reported members against PHP's runtime reflection.
-
-Code decides by what a symbol can do, such as whether it can be instantiated, not by checking which kind of symbol it is.
 
 ### Client capabilities
 
@@ -148,7 +148,7 @@ When considering edits (or avoiding them), remember: the project and architectur
 ## Development Workflow
 
 - GitHub issues are the source of truth for feature specs. Confirm a feature is not already built, and resolve every open question before writing code.
-- A good issue states which service owns each fact and how the work separates concerns. Adding a feature extends an existing route; it does not add a second one.
+- A good issue states which service owns each fact and how the work separates concerns. Adding a feature extends the existing route for its fact, or adds the first one; it never adds a second.
 - Debug through the test suite. Do not write ad hoc PHP scripts.
 - When creating a new issue, add the `ai-authored` label.
 
