@@ -275,6 +275,10 @@ class MessageReaderTest extends TestCase
         yield 'whitespace separated' => ['4 0'];
     }
 
+    /**
+     * Leading zeros and whitespace around the value leave the length readable,
+     * so both frame normally.
+     */
     #[DataProvider('usableContentLengthSpellings')]
     public function testContentLengthSpellingsThatStillFrame(string $template): void
     {
