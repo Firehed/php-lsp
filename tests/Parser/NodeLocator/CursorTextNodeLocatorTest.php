@@ -298,7 +298,7 @@ class CursorTextNodeLocatorTest extends TestCase
         $call = $this->callBeforeLiteralMarker('paren_in_string');
 
         self::assertInstanceOf(FuncCall::class, $call);
-        self::assertCount(1, $call->args, 'the `\')\'` before the cursor is read from the source, not the blanked code');
+        self::assertCount(1, $call->args, 'the argument is read from the source, not the blanked code');
     }
 
     public function testNamedArgInTrailingSegmentIsCaptured(): void
