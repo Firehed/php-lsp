@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Protocol\ResponseError;
  *
  * It carries the JSON-RPC error the sender is to be answered with, decided
  * where the raw bytes are still in hand. Malformed input must never terminate
- * the process (RFC 1 §9).
+ * the process.
  */
 final readonly class MalformedFrame
 {

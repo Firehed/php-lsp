@@ -23,7 +23,7 @@ use PhpParser\Node\UseItem;
  * sense of still yields a tree that {@see \Firehed\PhpLsp\Resolution\Scope},
  * {@see \Firehed\PhpLsp\Knowledge\DeclarationScanner}, and
  * {@see \Firehed\PhpLsp\Repository\DefaultClassInfoFactory} read the same way
- * they read a php-parser tree (RFC 1 §5.3).
+ * they read a php-parser tree.
  *
  * The tree is deliberately minimal: bodies are empty, parameters and types are
  * absent. Only the structural shape a positional query needs — enough for

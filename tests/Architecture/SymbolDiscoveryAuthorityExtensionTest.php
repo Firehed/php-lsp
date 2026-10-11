@@ -39,19 +39,18 @@ class SymbolDiscoveryAuthorityExtensionTest extends PHPStanTestCase
         self::assertNotNull(
             $result,
             $className . ' referenced from ' . ($namespace ?? 'the global namespace')
-                . ' must be restricted (RFC 1 §4.2).',
+                . ' must be restricted.',
         );
         self::assertSame(
             self::IDENTIFIER,
             $result->identifier,
-            'The diagnostic must carry the stable §4.2 identifier.',
+            'The diagnostic must carry the stable identifier.',
         );
         self::assertSame(
             $className . ' is a symbol-discovery backend collaborator and must not be referenced outside a '
-                . 'SymbolSourceInterface/SymbolSinkInterface backend; depend on the Knowledge seam instead '
-                . '(RFC 1 §4.2).',
+                . 'SymbolSourceInterface/SymbolSinkInterface backend; depend on the Knowledge seam instead.',
             $result->errorMessage,
-            'The diagnostic must name the offending collaborator and cite §4.2.',
+            'The diagnostic must name the offending collaborator.',
         );
     }
 
@@ -88,7 +87,7 @@ class SymbolDiscoveryAuthorityExtensionTest extends PHPStanTestCase
     }
 
     /**
-     * References that §4.2 permits: any confined collaborator from a backend package,
+     * References the rule permits: any confined collaborator from a backend package,
      * the composition root, or the test namespace; and any non-confined class.
      *
      * @return iterable<string, array{class-string, ?string}>

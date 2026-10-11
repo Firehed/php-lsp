@@ -6,11 +6,11 @@ namespace Firehed\PhpLsp\Domain;
 
 /**
  * The fully-qualified namespace path that {@see \Firehed\PhpLsp\Knowledge\SymbolSourceInterface::childrenOf}
- * enumerates, as a typed identifier rather than a bare string (RFC 1 §5.1). The global namespace
+ * enumerates, as a typed identifier rather than a bare string. The global namespace
  * is the empty path.
  *
  * A namespace is not a symbol: it has no declaration site and no {@see \Firehed\PhpLsp\Domain\NameKind},
- * existing only because something is declared beneath it (RFC 1 §5.1).
+ * existing only because something is declared beneath it.
  * So this carries the path alone.
  *
  * Namespaces are case-insensitive in PHP, and comparisons here reflect that.

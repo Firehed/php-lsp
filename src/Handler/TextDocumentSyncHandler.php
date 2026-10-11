@@ -106,7 +106,7 @@ final class TextDocumentSyncHandler implements HandlerInterface
         assert(is_string($uri));
 
         // Closing a file that was edited in the editor must drop the on-disk cache
-        // so the next query reflects disk rather than the pre-edit value (RFC 1 §5.3).
+        // so the next query reflects disk rather than the pre-edit value.
         $this->symbols->closeDocument($uri);
         $this->invalidator->invalidate($uri);
         $this->documentManager->close($uri);

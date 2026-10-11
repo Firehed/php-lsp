@@ -6,12 +6,12 @@ namespace Firehed\PhpLsp\Protocol;
 
 /**
  * A negotiated position encoding, per [LSP] "Basic JSON Structures"
- * (`PositionEncodingKind`) and RFC 1 §4.9.
+ * (`PositionEncodingKind`).
  *
  * An LSP `Position`'s `character` is measured in code units of the negotiated
  * encoding. The interior of the server operates on byte offsets (the AST's own
  * unit), so each encoding knows how to map a `character` column within a line to
- * a byte offset and back — the conversion RFC 1 §4.9 confines to the document
+ * a byte offset and back — the conversion confined to the document
  * boundary.
  *
  * UTF-16 is the only encoding the server currently negotiates; it is also the
@@ -23,7 +23,7 @@ namespace Firehed\PhpLsp\Protocol;
  * *codepoints*: an astral codepoint (e.g. "😀", U+1F389, four UTF-8 bytes) is one
  * `mb_` character but *two* UTF-16 code units (a surrogate pair). So `mb_strlen`
  * over-shortens a length and `mb_substr` mis-slices whenever an astral codepoint
- * is in play — the exact §4.9 defect this class exists to prevent. The surrogate
+ * is in play — the exact defect this class exists to prevent. The surrogate
  * accounting in {@see utf16Units()} is precisely what `mb_` does not give you;
  * `mb_str_split` (splitting into codepoints) is the only `mb_` primitive that
  * fits, and it is already used. (`grapheme_*` is grapheme-based, also wrong.)
@@ -60,7 +60,7 @@ enum PositionEncoding: string
      * The length of `$text` in this encoding's code units — the wire column span
      * a byte string occupies. Used to size an outbound completion `Range` from a
      * byte-measured prefix, since the client reads the range in the negotiated
-     * encoding, not in bytes (RFC 1 §4.9).
+     * encoding, not in bytes.
      */
     public function codeUnitLength(string $text): int
     {

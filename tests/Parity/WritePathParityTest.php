@@ -19,8 +19,6 @@ use PHPUnit\Framework\TestCase;
  * the symbol state for a fixed corpus spanning every extracted kind; a companion
  * test freezes the open → update → close lifecycle so re-indexing and clearing are
  * proven, not assumed. All inputs are in-repo.
- *
- * See RFC 1 §4.3, §5.2.
  */
 final class WritePathParityTest extends TestCase
 {
@@ -92,8 +90,8 @@ final class WritePathParityTest extends TestCase
     {
         // The write path must survive a document that php-parser cannot make sense
         // of, and the skeleton in the composite now recovers the
-        // structural shape so completion still finds the class and its members
-        // (RFC 1 §5.3, §9). What is registered is the shape the skeleton recognises;
+        // structural shape so completion still finds the class and its members.
+        // What is registered is the shape the skeleton recognises;
         // whether the file would actually run is a runtime question.
         $uri = 'file:///virtual/Broken.php';
         $broken = file_get_contents($this->projectRoot . '/tests/Fixtures/src/IncompleteCode/VeryBroken.php');

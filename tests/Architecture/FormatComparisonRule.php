@@ -51,7 +51,7 @@ final class FormatComparisonRule implements Rule
 
         return [
             RuleErrorBuilder::message(
-                'comparing format() output branches on display representation; use Type predicates (RFC 1 §4.5).',
+                'comparing format() output branches on display representation; use Type predicates.',
             )
                 ->identifier('phpLsp.formatComparison')
                 ->build(),

@@ -14,7 +14,7 @@ use Firehed\PhpLsp\Resolution\MemberAccessKind;
 
 /**
  * A consumer deciding behavior by branching on a symbol-kind enum, in every
- * syntactic form, which RFC 1 §4.5 forbids.
+ * syntactic form, which the rule forbids.
  */
 final class BranchesOnKind
 {

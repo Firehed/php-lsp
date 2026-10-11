@@ -88,8 +88,8 @@ class TextDocumentTest extends TestCase
     /**
      * "é" is one UTF-16 code unit but two UTF-8 bytes; "😀" is two UTF-16 units
      * (a surrogate pair) but four bytes. The interior works in byte offsets, so
-     * a UTF-16 character column must be converted, not read as a byte column
-     * (RFC 1 §4.9, issue #192). Line 1 is `$s = 'é😀';`.
+     * a UTF-16 character column must be converted, not read as a byte column.
+     * Line 1 is `$s = 'é😀';`.
      *
      * @param int<0, max> $character
      * @param int<0, max> $byteOffset
@@ -126,7 +126,7 @@ class TextDocumentTest extends TestCase
      * A multibyte character before the cursor makes the wire column smaller than
      * the byte column: `é` is one UTF-16 unit but two bytes, so column 7 in
      * `$café->` lands at byte 8. Slicing the raw wire column as a byte length
-     * would drop the `>` (RFC 1 §4.9).
+     * would drop the `>`.
      */
     public function testTextBeforeCursorConvertsMultibyteColumnToBytes(): void
     {

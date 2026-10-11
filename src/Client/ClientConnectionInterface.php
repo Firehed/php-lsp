@@ -13,7 +13,7 @@ interface ClientConnectionInterface
 {
     /**
      * Send a server-initiated request. The reply is not correlated — the read loop
-     * drops it (RFC 1 §5.2) — because the effect applies client-side regardless.
+     * drops it — because the effect applies client-side regardless.
      *
      * @param array<array-key, mixed> $params
      */

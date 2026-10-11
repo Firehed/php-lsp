@@ -181,7 +181,7 @@ class LifecycleHandlerTest extends TestCase
         self::assertSame(
             ErrorCode::ServerNotInitialized,
             $error->code,
-            'requests before initialize get ServerNotInitialized (RFC 1 §4.8)',
+            'requests before initialize get ServerNotInitialized',
         );
     }
 
@@ -228,7 +228,7 @@ class LifecycleHandlerTest extends TestCase
         self::assertSame(
             ErrorCode::InvalidRequest,
             $error->code,
-            'requests after shutdown get InvalidRequest (RFC 1 §4.8)',
+            'requests after shutdown get InvalidRequest',
         );
     }
 

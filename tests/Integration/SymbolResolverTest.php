@@ -1142,8 +1142,8 @@ final class SymbolResolverTest extends TestCase
 
     /**
      * Variable member access resolves correctly on a line carrying a multibyte
-     * character before the cursor, where the wire column trails the byte column
-     * (RFC 1 §4.9). A regression net over the variable-access surface the wire
+     * character before the cursor, where the wire column trails the byte column.
+     * A regression net over the variable-access surface the wire
      * column feeds.
      */
     public function testGetMemberAccessContextForVariablePastMultibyte(): void
@@ -1166,8 +1166,7 @@ final class SymbolResolverTest extends TestCase
      * The same wire-column-past-multibyte scenario, but through the variable
      * access text fallback: an incomplete `while ($user->` denies a clean AST
      * node, so resolution slices the text before the cursor itself. A raw
-     * wire-column slice would truncate past the "🎉" and resolve nothing
-     * (RFC 1 §4.9).
+     * wire-column slice would truncate past the "🎉" and resolve nothing.
      */
     public function testGetMemberAccessContextForVariableViaFallbackPastMultibyte(): void
     {

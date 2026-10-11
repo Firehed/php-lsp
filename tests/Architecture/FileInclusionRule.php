@@ -11,7 +11,7 @@ use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
 
 /**
- * The RFC 1 §8.1 filesystem confinement, for the one read the language spells
+ * The filesystem confinement, for the one read the language spells
  * as a keyword: `include` and `require` open and read a file, and a
  * disallowed-calls entry can only name functions.
  *
@@ -45,7 +45,7 @@ final class FileInclusionRule implements Rule
         }
 
         $message = sprintf(
-            '%s reads a file; filesystem access is confined (RFC 1 §8.1).',
+            '%s reads a file; filesystem access is confined.',
             self::KEYWORDS[$node->type],
         );
 

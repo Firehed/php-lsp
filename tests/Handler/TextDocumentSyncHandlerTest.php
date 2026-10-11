@@ -151,7 +151,7 @@ class TextDocumentSyncHandlerTest extends TestCase
         $symbols->expects($this->never())->method('updateDocument');
 
         // The invalidator drop is what makes the next on-disk query re-read disk
-        // rather than the pre-edit cached value (RFC 1 §5.3). Covered here at the
+        // rather than the pre-edit cached value. Covered here at the
         // handler boundary; the fan-out through composite invalidators lives in
         // the integration test.
         $invalidator = $this->createMock(InvalidatableInterface::class);

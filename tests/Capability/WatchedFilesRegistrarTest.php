@@ -43,7 +43,7 @@ class WatchedFilesRegistrarTest extends TestCase
     {
         $client = $this->createMock(ClientConnectionInterface::class);
         // Without client support the feature cannot be registered ([LSP] Register
-        // Capability); the §7 fallback (no invalidation) applies instead.
+        // Capability); the fallback (no invalidation) applies instead.
         $client->expects($this->never())->method('request');
 
         $registrar = new WatchedFilesRegistrar($client);

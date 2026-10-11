@@ -30,16 +30,16 @@ use Firehed\PhpLsp\Domain\SymbolKind;
  * plus one walk of every PSR-4 and PSR-0 root, each walked name confirmed
  * through Composer's own loader so runtime rules apply verbatim. The index is
  * built once on first use — a project without a `vendor/` never pays for it —
- * and adjusted one name at a time when a watched file changes (RFC 1 §5.2,
- * §5.3). The map itself is read through {@see ComposerAutoloadMapReader}: when
+ * and adjusted one name at a time when a watched file changes.
+ * The map itself is read through {@see ComposerAutoloadMapReader}: when
  * `composer install` regenerates the autoload files the reader returns a new
  * map instance, the derived index is dropped, and the next query rebuilds it
  * against the new map. Names declared in `autoload.files` entries are the
  * separate {@see AutoloadFilesBackend}'s concern.
  *
  * Lookup is a name-to-file resolve through Composer, then a parse of that one
- * file. It stays out of the index because the index has only names (RFC 1 §3,
- * lazy-first). Only class-likes are addressable through Composer's maps;
+ * file. It stays out of the index because the index has only names.
+ * Only class-likes are addressable through Composer's maps;
  * functions and constants have no name -> file route here.
  */
 final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableInterface
@@ -77,8 +77,8 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
     /**
      * A watched-file event adjusts one name rather than dropping the whole
      * index. The path's previously walked name (if any) is removed, and the
-     * name Composer's loader now confirms at that path (if any) is added
-     * (RFC 1 §5.2, §5.3). Classmap entries change with the map itself: a
+     * name Composer's loader now confirms at that path (if any) is added.
+     * Classmap entries change with the map itself: a
      * regenerated autoload map (a fresh instance from
      * {@see ComposerAutoloadMapReader::current()}) drops the whole derived
      * index so the next query rebuilds against the new map.

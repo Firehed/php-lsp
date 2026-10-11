@@ -13,7 +13,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * Assembles the symbol-knowledge tier: the {@see SymbolSourceInterface} read composite
  * over its fixed backend precedence, the {@see SymbolSinkInterface} write path for open
  * documents, and the {@see InvalidatableInterface} fan-out that drops cached on-disk
- * state (RFC 1 §4.2, §4.3, §5.2, §5.3).
+ * state.
  *
  * The wiring lives here, in one place, so the composition root ({@see \Firehed\PhpLsp\Server})
  * and the tests that exercise the surfaces (parity, handlers) build the same stack
@@ -36,8 +36,8 @@ final readonly class KnowledgeStack
     /**
      * Build the stack for a project. Precedence in the composite: an open
      * document overrides the autoload.files set, which overrides the file on
-     * disk resolved through Composer's maps, which overrides the built-ins
-     * (RFC 1 §5.3). Composer requires the files entries before the autoloader
+     * disk resolved through Composer's maps, which overrides the built-ins.
+     * Composer requires the files entries before the autoloader
      * is ever asked, so a name declared there wins over the name -> file map.
      */
     public static function forProject(

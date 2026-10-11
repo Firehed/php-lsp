@@ -146,7 +146,7 @@ class MemberAccessDetectorTest extends TestCase
         self::assertSame(
             'fromArray',
             $result->prefix,
-            'slicing the raw wire column would truncate the member prefix (RFC 1 §4.9)',
+            'slicing the raw wire column would truncate the member prefix',
         );
     }
 

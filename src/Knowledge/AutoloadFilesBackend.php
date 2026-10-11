@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Domain\FileUri;
  * parse the set and derive a name -> declaration map.
  *
  * The index is built eagerly at construction, and rebuilt when a file in the set
- * changes on disk (RFC 1 §5.2, §5.3). The map itself is read through
+ * changes on disk. The map itself is read through
  * {@see ComposerAutoloadMapReader}, so a regenerated `autoload_files.php` under
  * `vendor/composer/` reaches the entry list on the next invalidation and the
  * derived index rebuilds against the new set. Composer requires the entries in
@@ -29,7 +29,7 @@ use Firehed\PhpLsp\Domain\FileUri;
  * Every symbol namespace is covered, because once an entry is parsed the three
  * kinds cost the same walk — and a scan narrowed to functions and constants
  * would leave a class-like declared in the set reachable at runtime but invisible
- * here (RFC 1 §4.2).
+ * here.
  */
 final class AutoloadFilesBackend implements SymbolSourceInterface, InvalidatableInterface
 {
@@ -50,7 +50,7 @@ final class AutoloadFilesBackend implements SymbolSourceInterface, Invalidatable
      * Re-derives the index when a file in the set changed on disk, or when the
      * autoload map itself was regenerated (a `composer install`, seen here as a
      * change of the map instance {@see ComposerAutoloadMapReader::current()}
-     * returns). A change to neither costs nothing (RFC 1 §5.2, §5.3).
+     * returns). A change to neither costs nothing.
      */
     public function invalidate(string $uri): void
     {

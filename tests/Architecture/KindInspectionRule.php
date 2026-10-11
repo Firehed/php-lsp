@@ -14,7 +14,7 @@ use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
 
 /**
- * The RFC 1 §8.1 mechanism for §4.5: consumers MUST NOT use `instanceof`
+ * Consumers MUST NOT use `instanceof`
  * against a concrete TypeInterface or ResolvedSymbolInterface implementation to decide
  * suitability.
  *
@@ -131,7 +131,7 @@ final class KindInspectionRule implements Rule
         }
 
         $message = sprintf(
-            'instanceof %s branches on concrete %s; use predicates (RFC 1 §4.5).',
+            'instanceof %s branches on concrete %s; use predicates.',
             $this->shortName($className),
             $interface,
         );

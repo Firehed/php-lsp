@@ -99,7 +99,7 @@ final class Server
 
         // The symbol-knowledge tier: one read composite over the fixed backend
         // precedence (open document › disk › built-in) and one write path, sharing
-        // an open-document backend and index (RFC 1 §4.2, §4.3, §5.3). Every
+        // an open-document backend and index. Every
         // knowledge consumer — SymbolResolver, the completion sources, and
         // MemberResolver — reads through this one composite.
         $knowledge = KnowledgeStack::forProject(
@@ -126,7 +126,7 @@ final class Server
 
         // Watched-file events are registered dynamically after `initialized` (there
         // is no static server capability for them), gated on the client declaring
-        // support; the events invalidate cached workspace state (RFC 1 §5.2, §5.3).
+        // support; the events invalidate cached workspace state.
         $watchedFilesRegistrar = new WatchedFilesRegistrar(new TransportClientConnection($transport));
         $lifecycleHandler = new LifecycleHandler($negotiator, [$watchedFilesRegistrar]);
 
@@ -178,8 +178,8 @@ final class Server
 
             if ($message instanceof MalformedFrame) {
                 // Answered at whatever id the reader could correlate the frame
-                // to, and at the JSON-RPC null id when it could recover none
-                // (RFC 1 §9). The loop continues: one bad frame must not end
+                // to, and at the JSON-RPC null id when it could recover none.
+                // The loop continues: one bad frame must not end
                 // the session.
                 $this->transport->write(ResponseMessage::error($message->id, $message->error));
                 continue;
@@ -188,7 +188,7 @@ final class Server
             $result = null;
 
             try {
-                // Lifecycle gate (RFC 1 §4.8): a message not permitted in the current
+                // Lifecycle gate: a message not permitted in the current
                 // state is answered with the lifecycle error and never dispatched. A
                 // gated notification has no id, so its error is simply dropped.
                 $error = $this->lifecycleHandler->lifecycleErrorFor($message);
@@ -198,7 +198,7 @@ final class Server
                         // Inside the try because `supports()` is part of the
                         // handler contract: a failure selecting a handler is a
                         // handler failure, and must be answered rather than
-                        // crashing the read loop (RFC 1 §9).
+                        // crashing the read loop.
                         $handler = $this->findHandler($message->method);
 
                         if ($handler !== null) {
@@ -210,8 +210,8 @@ final class Server
                             );
                         }
                     } catch (\Throwable $e) {
-                        // A failing handler must not take the read loop down with it
-                        // (RFC 1 §9): an editor session that dies on one bad request
+                        // A failing handler must not take the read loop down with it:
+                        // an editor session that dies on one bad request
                         // loses all unsaved server state. Notifications have no id to
                         // answer, so their failure is contained and dropped.
                         //
@@ -259,8 +259,8 @@ final class Server
     /**
      * A result a handler produced but the encoder cannot represent fails here
      * rather than in `handle()`, so the dispatch catch never sees it. It is
-     * still a handler failure and must not take the read loop down with it
-     * (RFC 1 §9); text lifted from a file that is not valid UTF-8 reaches the
+     * still a handler failure and must not take the read loop down with it;
+     * text lifted from a file that is not valid UTF-8 reaches the
      * writer exactly this way.
      *
      * The replacement carries only the exception message and the decoded id,

@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
  * on first use, returns a stable instance across reads, and re-reads when a
  * file under vendor/composer changes on disk. That last behavior is what lets
  * the disk backends detect a `composer install` by identity comparison against
- * the map they built their derived indexes from (RFC 1 §5.2, §5.3).
+ * the map they built their derived indexes from.
  */
 #[CoversClass(ComposerAutoloadMapReader::class)]
 final class ComposerAutoloadMapReaderTest extends TestCase

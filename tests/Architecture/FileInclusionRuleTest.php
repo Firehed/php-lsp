@@ -17,10 +17,10 @@ class FileInclusionRuleTest extends RuleTestCase
         $this->analyse(
             [__DIR__ . '/data/includes-a-file.php'],
             [
-                ['require reads a file; filesystem access is confined (RFC 1 §8.1).', 15],
-                ['require_once reads a file; filesystem access is confined (RFC 1 §8.1).', 20],
-                ['include reads a file; filesystem access is confined (RFC 1 §8.1).', 25],
-                ['include_once reads a file; filesystem access is confined (RFC 1 §8.1).', 30],
+                ['require reads a file; filesystem access is confined.', 15],
+                ['require_once reads a file; filesystem access is confined.', 20],
+                ['include reads a file; filesystem access is confined.', 25],
+                ['include_once reads a file; filesystem access is confined.', 30],
             ],
         );
     }

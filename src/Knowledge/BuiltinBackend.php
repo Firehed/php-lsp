@@ -45,16 +45,16 @@ use ReflectionProperty;
  * The lowest-precedence {@see SymbolSourceInterface}: the symbols built into PHP and its
  * loaded extensions, described through reflection. It is consulted only after the
  * open-document and disk backends, so a name either of them can resolve never
- * reaches reflection (RFC 1 §5.3).
+ * reaches reflection.
  *
  * This backend is reflection-backed and therefore describes the
- * *server's* runtime, not the project's target — a known RFC 1 §4.7 gap;
+ * *server's* runtime, not the project's target — a known gap;
  * the interim treats every reflected built-in as available.
  *
  * Enumeration draws on one derived index of the internal symbols, built once on
  * first use and shared by every read: `childrenOf` reads its namespace grouping
  * and `search` reads its per-kind grouping, so the two answers can never disagree
- * about which names count as built-in (RFC 1 §4.2).
+ * about which names count as built-in.
  *
  * Two things make that index less obvious than it looks:
  *
@@ -382,7 +382,7 @@ final class BuiltinBackend implements SymbolSourceInterface
         }
 
         // Reflection also sees the server's own dependencies; enumeration filters
-        // those out, so lookup must too (RFC 1 §4.2).
+        // those out, so lookup must too.
         if (!$reflection->isInternal()) {
             return null;
         }

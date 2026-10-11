@@ -23,9 +23,9 @@ final class MessageReader
     }
 
     /**
-     * Reads one frame, reporting the three outcomes RFC 1 §9 requires be told
-     * apart: a usable message, a frame that could not be decoded (answer with
-     * an error and keep serving), and a clean end of stream (stop serving).
+     * Reads one frame, reporting one of three outcomes: a usable message, a
+     * frame that could not be decoded (answer with an error and keep serving),
+     * and a clean end of stream (stop serving).
      */
     public function read(): Message|MalformedFrame|EndOfStream
     {
@@ -94,15 +94,14 @@ final class MessageReader
     /**
      * Null when no usable Content-Length is present. Per [LSP] "Base Protocol"
      * it is a byte count whose header field structure "conforms to the HTTP
-     * semantic" ([RFC 7230] §3.2), and so is §3.3.2's `Content-Length = 1*DIGIT`.
+     * semantic".
      *
      * A bare (int) cast accepted whatever the sender sent: "abc" framed a
      * zero-length body and "-5" a negative one, which makes substr() consume
      * from the wrong end and corrupts every frame that follows.
      *
-     * Rejecting the *value* is not the same as rejecting the message. [RFC 7230]
-     * §3.3.3 treats an invalid Content-Length as unrecoverable framing, and it
-     * is — for opaque bytes. An LSP content part is JSON, so the decoder can
+     * Rejecting the *value* is not the same as rejecting the message.
+     * An LSP content part is JSON, so the decoder can
      * still tell a whole message from rubbish, and the caller falls back to it
      * rather than bouncing a client that got only the header wrong.
      */
@@ -122,7 +121,7 @@ final class MessageReader
             }
         }
 
-        // Conflicting values are unrecoverable framing ([RFC 7230] §3.3.3), and
+        // Conflicting values are unrecoverable framing, and
         // taking the first silently is the worst option: it is what lets two
         // readers of the same bytes disagree about where a frame ends. Repeats
         // of one value say nothing contradictory, so they still frame.
@@ -192,7 +191,7 @@ final class MessageReader
 
         // A frame that names no method but carries a result or error is a Response
         // to a request the server sent — the client's reply to
-        // `client/registerCapability` (RFC 1 §5.2, dynamic registration). The server
+        // `client/registerCapability` (dynamic registration). The server
         // does not correlate its outbound requests today, so the reply owes no
         // answer and is dropped like a Notification (JSON-RPC 2.0 §4.1); the frame
         // behind it still reads. Checked before the method guard below so a Response

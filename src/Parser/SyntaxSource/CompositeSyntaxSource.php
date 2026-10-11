@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Parser\ParsedDocument;
  * in order — primary parse, then skeleton fallback — and the first non-empty
  * result wins; the empty tree is returned only when every member returned it,
  * so a fallback reaches consumers exactly when the earlier members had nothing
- * to say (RFC 1 §4.11).
+ * to say.
  */
 final class CompositeSyntaxSource implements SyntaxSourceInterface
 {

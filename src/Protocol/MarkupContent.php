@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Protocol;
 /**
  * A `MarkupContent` result literal per [LSP] "Basic JSON Structures": a value
  * paired with the {@see MarkupKind} the client should render it as. The kind is
- * chosen from the client's declared support (RFC 1 §4.8), so a plaintext-only
+ * chosen from the client's declared support, so a plaintext-only
  * client is never sent markdown.
  *
  * @phpstan-type LspMarkupContent array{kind: string, value: string}

@@ -14,8 +14,7 @@ use Firehed\PhpLsp\Domain\FileUri;
  * invalidatable for that path — the {@see AutoloadFilesBackend} and
  * {@see ComposerMapBackend} hold this reader instead of a map snapshot, so a
  * `composer install` that regenerates the autoload files reaches both backends
- * on the next query rather than being trapped in a copy they made at boot
- * (RFC 1 §5.2, §5.3).
+ * on the next query rather than being trapped in a copy they made at boot.
  *
  * Each read of {@see current()} returns the same instance until an invalidation
  * drops it; the backends compare that instance against the one they last built

@@ -106,7 +106,7 @@ trait OpensDocumentsTrait
      * `character` as the UTF-16 wire column a conformant client sends, rather than
      * the byte column {@see openFixtureAtCursor()} returns. Use for fixtures with
      * multibyte content before the cursor, where the two columns diverge and the
-     * interior must convert the wire column at the boundary (RFC 1 §4.9).
+     * interior must convert the wire column at the boundary.
      *
      * @param string $fixturePath Path relative to tests/Fixtures/
      * @param string $cursorName The marker name (without delimiters)

@@ -12,7 +12,7 @@ use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
 
 /**
- * The RFC 1 §8.1 mechanism for §4.6: TypeInterface objects MUST be constructed through
+ * TypeInterface objects MUST be constructed through
  * the type factory.
  *
  * @implements Rule<New_>
@@ -68,7 +68,7 @@ final class TypeConstructionRule implements Rule
 
         $shortName = $this->shortName($className);
         $message = sprintf(
-            'new %s is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).',
+            'new %s is confined to TypeFactory; use TypeFactory methods instead.',
             $shortName,
         );
 

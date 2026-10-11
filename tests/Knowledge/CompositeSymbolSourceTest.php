@@ -26,7 +26,7 @@ use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The composite is the single place symbol sources are composed (RFC 1 §4.2, §5.3):
+ * The composite is the single place symbol sources are composed:
  * these prove the fixed precedence — an earlier (more authoritative) backend wins a
  * lookup, a merge, and a name clash. The concrete slots (openDocuments,
  * autoloadFiles) start empty so the fake-backed disk and built-in slots — the two
@@ -89,7 +89,7 @@ final class CompositeSymbolSourceTest extends TestCase
         self::assertSame(
             'disk.php',
             $info->file,
-            'the earlier backend must win: disk overrides the built-in copy (RFC 1 §5.3)',
+            'the earlier backend must win: disk overrides the built-in copy',
         );
     }
 
@@ -112,7 +112,7 @@ final class CompositeSymbolSourceTest extends TestCase
 
         self::assertNull(
             $source->lookupClassLike(self::className('App\Absent')),
-            'absence across every backend is a bare null, not an error (RFC 1 §5.3)',
+            'absence across every backend is a bare null, not an error',
         );
     }
 
@@ -129,7 +129,7 @@ final class CompositeSymbolSourceTest extends TestCase
         self::assertSame(
             'disk.php',
             $info->file,
-            'the earlier backend must win: disk overrides the built-in copy (RFC 1 §5.3)',
+            'the earlier backend must win: disk overrides the built-in copy',
         );
     }
 
@@ -152,7 +152,7 @@ final class CompositeSymbolSourceTest extends TestCase
 
         self::assertNull(
             $source->lookupFunction(FunctionName::fromFullyQualified('App\absent')),
-            'absence across every backend is a bare null, not an error (RFC 1 §5.3)',
+            'absence across every backend is a bare null, not an error',
         );
     }
 
@@ -169,7 +169,7 @@ final class CompositeSymbolSourceTest extends TestCase
         self::assertSame(
             'disk.php',
             $info->file,
-            'the earlier backend must win: disk overrides the built-in copy (RFC 1 §5.3)',
+            'the earlier backend must win: disk overrides the built-in copy',
         );
     }
 
@@ -192,7 +192,7 @@ final class CompositeSymbolSourceTest extends TestCase
 
         self::assertNull(
             $source->lookupConstant(ConstantName::fromFullyQualified('App\ABSENT')),
-            'absence across every backend is a bare null, not an error (RFC 1 §5.3)',
+            'absence across every backend is a bare null, not an error',
         );
     }
 

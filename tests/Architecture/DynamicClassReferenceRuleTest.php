@@ -17,12 +17,12 @@ class DynamicClassReferenceRuleTest extends RuleTestCase
         $this->analyse(
             [__DIR__ . '/data/dynamic-class-reference.php'],
             [
-                ['new on a computed class name; name the class literally (RFC 1 §4.5).', 26],
-                ['instanceof on a computed class name; name the class literally (RFC 1 §4.5).', 31],
-                ['class constant fetch on a computed class name; name the class literally (RFC 1 §4.5).', 36],
-                ['class constant fetch on a computed class name; name the class literally (RFC 1 §4.5).', 41],
-                ['static call on a computed class name; name the class literally (RFC 1 §4.5).', 46],
-                ['static property fetch on a computed class name; name the class literally (RFC 1 §4.5).', 51],
+                ['new on a computed class name; name the class literally.', 26],
+                ['instanceof on a computed class name; name the class literally.', 31],
+                ['class constant fetch on a computed class name; name the class literally.', 36],
+                ['class constant fetch on a computed class name; name the class literally.', 41],
+                ['static call on a computed class name; name the class literally.', 46],
+                ['static property fetch on a computed class name; name the class literally.', 51],
             ],
         );
     }

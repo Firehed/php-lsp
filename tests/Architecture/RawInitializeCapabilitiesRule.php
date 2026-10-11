@@ -13,11 +13,11 @@ use PHPStan\Rules\RuleErrorBuilder;
 use PHPStan\Type\MixedType;
 
 /**
- * The RFC 1 §8.1 mechanism for §4.8: the raw `initialize` parameters are
+ * The raw `initialize` parameters are
  * reachable only within the negotiation component.
  *
- * `capabilities` (client capabilities, §4.8) and `general` (which carries
- * `positionEncodings`, §4.9) are the [LSP] `InitializeParams` fields the
+ * `capabilities` (client capabilities) and `general` (which carries
+ * `positionEncodings`) are the [LSP] `InitializeParams` fields the
  * negotiation reads ("Server lifecycle" → `initialize`), so reading either key
  * anywhere else is a component re-inspecting the raw parameters instead of
  * querying the `SessionCapabilities` value resolved once during negotiation.
@@ -56,13 +56,13 @@ final class RawInitializeCapabilitiesRule implements Rule
         // them yields `mixed`. A read that resolves to a concrete type is
         // indexing one of the server's own typed structures — the `capabilities`
         // of an outgoing InitializeResult, say — which is not an initialize
-        // parameter at all and which §4.8 says nothing about.
+        // parameter at all.
         if (!$scope->getType($node) instanceof MixedType) {
             return [];
         }
 
         $message = sprintf(
-            'Raw initialize %s must not be read outside %s; query SessionCapabilities instead (RFC 1 §4.8).',
+            'Raw initialize %s must not be read outside %s; query SessionCapabilities instead.',
             $dim->value,
             self::NEGOTIATION_NAMESPACE,
         );

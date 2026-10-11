@@ -7,8 +7,8 @@ namespace Firehed\PhpLsp\Capability;
 use Firehed\PhpLsp\Protocol\Message;
 
 /**
- * The negotiation package is the one place RFC 1 §4.8 allows the raw
- * `initialize` parameters to be read.
+ * The negotiation package is the one place allowed to read the raw
+ * `initialize` parameters.
  */
 final class NegotiatesRawCapabilities
 {

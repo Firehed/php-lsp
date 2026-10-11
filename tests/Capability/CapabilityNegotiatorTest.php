@@ -89,7 +89,7 @@ class CapabilityNegotiatorTest extends TestCase
                 'completionProvider',
             ],
             array_keys($capabilities),
-            'RFC 1 §4.8 forbids advertising a capability the server does not implement; '
+            'never advertise a capability the server does not implement; '
                 . 'extend this list only together with the handler that answers the method',
         );
         self::assertTrue($capabilities['definitionProvider'], 'DefinitionHandler implements textDocument/definition');

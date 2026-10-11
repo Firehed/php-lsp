@@ -4,7 +4,7 @@
 declare(strict_types=1);
 
 // Fails when a guardrail baseline grows relative to a base ref (default
-// origin/main). RFC 1 §8.1: baseline totals only shrink; relocating a frozen
+// origin/main). Baseline totals only shrink; relocating a frozen
 // violation is allowed, absorbing a new one is not.
 //
 // A baseline file may be absent (treated as zero) or present. The hard lock —

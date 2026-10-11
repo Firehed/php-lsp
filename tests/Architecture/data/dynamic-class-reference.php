@@ -8,7 +8,7 @@ use PhpParser\NodeVisitorAbstract;
 
 /**
  * A class named by a computed value rather than literally, in every syntactic
- * form. Such a reference is invisible to the §8.1 rules, which read the name.
+ * form. Such a reference is invisible to the architecture rules, which read the name.
  */
 final class DynamicClassReference
 {

@@ -31,7 +31,7 @@ use PHPUnit\Framework\TestCase;
  * for what a namespace contains, and `search` for a bare short-name prefix.
  * Coverage across the three is identical — a `files`-declared name that resolved
  * on hover while staying invisible to completion is exactly the per-surface
- * split RFC 1 §4.2 forbids.
+ * split to avoid.
  */
 #[CoversClass(AutoloadFilesBackend::class)]
 final class AutoloadFilesBackendTest extends TestCase
@@ -233,7 +233,7 @@ final class AutoloadFilesBackendTest extends TestCase
 
             self::assertNotNull(
                 $backend->lookupConstant(ConstantName::fromFullyQualified('AFTER_CHANGE')),
-                'a name added by an external edit must resolve after invalidation (RFC 1 §5.2)',
+                'a name added by an external edit must resolve after invalidation',
             );
             self::assertNull(
                 $backend->lookupConstant(ConstantName::fromFullyQualified('BEFORE_CHANGE')),

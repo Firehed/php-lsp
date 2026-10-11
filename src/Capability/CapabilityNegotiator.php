@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Protocol\PositionEncoding;
 use Firehed\PhpLsp\Protocol\ServerInfo;
 
 /**
- * The protocol negotiation component (RFC 1 §4.8): the one place that reads the
+ * The protocol negotiation component: the one place that reads the
  * raw `initialize` parameters, and the source of the `SessionCapabilities` that
  * every output-shaping decision queries instead.
  *
@@ -87,8 +87,7 @@ final class CapabilityNegotiator implements SessionCapabilitiesProviderInterface
      * Per [LSP] `InitializeParams`, `general.positionEncodings` lists the
      * encodings the client supports; the server returns the first of its own
      * supported encodings the client offered. UTF-16 is always assumable, so a
-     * client that offers nothing the server supports still resolves to it
-     * (RFC 1 §4.9).
+     * client that offers nothing the server supports still resolves to it.
      *
      * @param array<array-key, mixed> $general
      */
@@ -138,7 +137,7 @@ final class CapabilityNegotiator implements SessionCapabilitiesProviderInterface
 
     /**
      * Only capabilities the server implements are advertised. A client that did
-     * not declare support for one simply will not invoke it; per RFC 1 §4.8 the
+     * not declare support for one simply will not invoke it; the
      * shaping of each response is decided by `SessionCapabilities`, not by this
      * list.
      *

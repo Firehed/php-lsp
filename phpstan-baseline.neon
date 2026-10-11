@@ -1,13 +1,13 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 1
 			path: src/Domain/ClassInfo.php
 
 		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 1
 			path: src/Domain/EnumCaseInfo.php
@@ -23,13 +23,13 @@ parameters:
 			path: src/Domain/EnumImplicits.php
 
 		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 1
 			path: src/Domain/EnumImplicits.php
 
 		-
-			message: '#^new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			message: '#^new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 3
 			path: src/Domain/EnumImplicits.php
@@ -55,7 +55,7 @@ parameters:
 			path: src/Knowledge/DeclarationSymbolInfoFactory.php
 
 		-
-			message: '#^new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			message: '#^new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 1
 			path: src/Knowledge/DeclarationSymbolInfoFactory.php
@@ -71,13 +71,13 @@ parameters:
 			path: src/Resolution/ExpressionResolver.php
 
 		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 5
 			path: src/Resolution/ExpressionResolver.php
 
 		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 3
 			path: src/Resolution/MemberAccessDetector.php
@@ -93,7 +93,7 @@ parameters:
 			path: src/Resolution/ParameterTyping.php
 
 		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead \(RFC 1 §4\.6\)\.$#'
+			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
 			identifier: phpLsp.typeConstruction
 			count: 1
 			path: src/Resolution/SymbolResolver.php

@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\TypeInterface;
 
 /**
  * A consumer deciding suitability by instanceof against concrete TypeInterface
- * implementations, which RFC 1 §4.5 forbids.
+ * implementations, which the rule forbids.
  */
 final class InstanceofType
 {

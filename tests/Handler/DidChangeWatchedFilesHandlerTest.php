@@ -24,7 +24,7 @@ class DidChangeWatchedFilesHandlerTest extends TestCase
     public function testInvalidatesEveryChangedFileRegardlessOfChangeType(): void
     {
         $invalidator = $this->createMock(InvalidatableInterface::class);
-        // Created, changed, and deleted alike drop the cached entry (RFC 1 §5.2).
+        // Created, changed, and deleted alike drop the cached entry.
         $matcher = $this->exactly(3);
         $invalidator->expects($matcher)
             ->method('invalidate')

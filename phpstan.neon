@@ -179,7 +179,7 @@ parameters:
                 - 'class_uses()'
                 - 'get_debug_type()'
                 - 'gettype()'
-            message: 'asking the runtime for a value''s concrete kind is kind inspection (RFC 1 §4.5); use predicates'
+            message: 'asking the runtime for a value''s concrete kind is kind inspection; use predicates'
             allowIn:
                 - tests/*
         -
@@ -291,7 +291,7 @@ parameters:
     disallowedClasses:
         -
             class: 'Firehed\PhpLsp\Knowledge\SymbolSourceInterface'
-            message: 'handlers resolve symbols through CodeResolverInterface (RFC 1 §4.2); SymbolSourceInterface is the knowledge tier one layer down'
+            message: 'handlers resolve symbols through CodeResolverInterface; SymbolSourceInterface is the knowledge tier one layer down'
             allowIn:
                 - src/Completion/* # completion sources own their lookups
                 - src/Knowledge/*
@@ -314,7 +314,7 @@ parameters:
     disallowedMethodCalls:
         -
             method: 'Firehed\PhpLsp\Cache\InvalidatableInterface::invalidate()'
-            message: 'single invalidation fan-out (RFC 1 §5.3): every cached on-disk holder forgets a changed file together, which is the invalidation composite; evicting one leaves the others stale'
+            message: 'single invalidation fan-out: every cached on-disk holder forgets a changed file together, which is the invalidation composite; evicting one leaves the others stale'
             allowIn:
                 - src/Handler/DidChangeWatchedFilesHandler.php # the watched-file trigger
                 - src/Handler/TextDocumentSyncHandler.php # the close-after-edit trigger
@@ -374,7 +374,7 @@ parameters:
         - tests/Architecture/data
 
 services:
-    # RFC 1 §8.1 enforcement mechanisms. Registering a rule tightens; removing
+    # Enforcement mechanisms. Registering a rule tightens; removing
     # one loosens (human only). Each rule's own lists are documented on its
     # constants.
     -

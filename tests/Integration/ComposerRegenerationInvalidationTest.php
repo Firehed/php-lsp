@@ -19,7 +19,7 @@ use PHPUnit\Framework\TestCase;
  * A `composer install` regenerates the autoload files under `vendor/composer/`.
  * The client reports these as watched-file changes: the map reader re-reads,
  * and both disk backends detect the new map and rebuild their derived indexes
- * from it (RFC 1 §5.2, §5.3). Regenerating the maps in place — same on-disk
+ * from it. Regenerating the maps in place — same on-disk
  * project, new set of `psr4` prefixes — must reach lookup, enumeration and
  * search on the next query rather than serve the pre-install cache.
  */
