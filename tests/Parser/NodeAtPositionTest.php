@@ -27,7 +27,7 @@ class NodeAtPositionTest extends TestCase
     {
         $code = '<?php new MyClass();';
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
-        $ast = $this->parser->parse($doc);
+        $ast = $this->parser->parse($doc)->tree;
 
         // Position on "MyClass" (line 0, char 10)
         $finder = new NodeAtPosition();
@@ -41,7 +41,7 @@ class NodeAtPositionTest extends TestCase
     {
         $code = '<?php $obj->doSomething();';
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
-        $ast = $this->parser->parse($doc);
+        $ast = $this->parser->parse($doc)->tree;
 
         // Position on "doSomething" (line 0, char 12)
         $finder = new NodeAtPosition();
@@ -56,7 +56,7 @@ class NodeAtPositionTest extends TestCase
     {
         $code = '<?php MyClass::staticMethod();';
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
-        $ast = $this->parser->parse($doc);
+        $ast = $this->parser->parse($doc)->tree;
 
         // Position on "MyClass" (line 0, char 8)
         $finder = new NodeAtPosition();
@@ -70,7 +70,7 @@ class NodeAtPositionTest extends TestCase
     {
         $code = '<?php // comment';
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
-        $ast = $this->parser->parse($doc);
+        $ast = $this->parser->parse($doc)->tree;
 
         $finder = new NodeAtPosition();
         $node = $finder->find($ast, $doc->offsetAt(0, 10));
@@ -82,7 +82,7 @@ class NodeAtPositionTest extends TestCase
     {
         $code = '<?php $obj->doSomething();';
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
-        $ast = $this->parser->parse($doc);
+        $ast = $this->parser->parse($doc)->tree;
 
         $finder = new NodeAtPosition();
 
@@ -103,7 +103,7 @@ class NodeAtPositionTest extends TestCase
     {
         $code = '<?php $obj->doSomething();';
         $doc = new TextDocument('file:///test.php', 'php', 1, $code);
-        $ast = $this->parser->parse($doc);
+        $ast = $this->parser->parse($doc)->tree;
 
         $finder = new NodeAtPosition();
         $node = $finder->find($ast, $doc->offsetAt(0, 12), fn (Node $n) => $n instanceof Node\Expr\StaticCall);

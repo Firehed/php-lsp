@@ -107,7 +107,7 @@ final class WritePathParityTest extends TestCase
         $phpParserOnly = new PhpParserSyntaxSource(new TreeAnnotator());
         self::assertSame(
             [],
-            $phpParserOnly->parse($document),
+            $phpParserOnly->parse($document)->tree,
             'php-parser alone must yield nothing on this fixture, or the test proves nothing about the skeleton',
         );
 

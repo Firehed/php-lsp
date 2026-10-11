@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -25,7 +24,7 @@ final class CompositeSyntaxSourceTest extends TestCase
         // A function declaration is a node the skeleton never fabricates
         // (it reconstructs namespaces and class-likes only), so finding one
         // proves the tree came from php-parser and reached the caller.
-        $tree = $composite->parse(self::doc('<?php function foo() {}'));
+        $tree = $composite->parse(self::doc('<?php function foo() {}'))->tree;
 
         self::assertNotSame(
             [],
@@ -40,7 +39,7 @@ final class CompositeSyntaxSourceTest extends TestCase
 
         self::assertSame(
             [],
-            $composite->parse(self::doc('<?php')),
+            $composite->parse(self::doc('<?php'))->tree,
             'no source had a tree, so the composite reports the empty list its fallbacks would have seen',
         );
     }
@@ -50,7 +49,6 @@ final class CompositeSyntaxSourceTest extends TestCase
         return new CompositeSyntaxSource(
             new PhpParserSyntaxSource(new TreeAnnotator()),
             new SkeletonSyntaxSource(),
-            new CursorTextSyntaxSource(),
         );
     }
 

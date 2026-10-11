@@ -24,7 +24,7 @@ use PHPUnit\Framework\TestCase;
  *
  * Freezes the load-bearing recovery paths: first-open of
  * a broken file (no last-good registration to preserve) still offers members
- * through the `SkeletonSyntaxSource` and `CursorTextSyntaxSource` composite
+ * through the `SkeletonSyntaxSource` and `CursorTextNodeLocator` composite
  * members, and a good open followed by a broken change offers them through the
  * `OpenDocumentBackend` preserved AST. A step that removes any of these paths
  * must first land a replacement that keeps this golden green.
@@ -200,7 +200,7 @@ final class CompletionParityTest extends TestCase
         $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
         $memberResolver = new MemberResolver($knowledge->source);
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
-        $resolver = new SymbolResolver($parser, $knowledge->source, $memberResolver, $typeSource);
+        $resolver = new SymbolResolver($parser, $production->locator, $knowledge->source, $memberResolver, $typeSource);
 
         $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')

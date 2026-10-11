@@ -22,6 +22,22 @@ final class NamedArgumentCandidatesTest extends TestCase
 {
     use BuildsSymbolInfoTrait;
 
+    public function testOffersNothingInAnArgumentsValue(): void
+    {
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('getCallContext')->willReturn(new CallContext(
+            self::createStub(ResolvedCallableInterface::class),
+            0,
+            ['name'],
+            inArgumentValue: true,
+        ));
+        $doc = new TextDocument('file:///t.php', 'php', 0, '');
+
+        $items = (new NamedArgumentCandidates($codeResolver))->find(new CompletionRequest($doc, 0, 0));
+
+        self::assertSame([], $items, 'a value is being typed, so no argument name fits');
+    }
+
     /**
      * @return iterable<string, array{list<string>, int, string, array<string, string>}>
      */

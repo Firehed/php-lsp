@@ -18,6 +18,8 @@ use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
+use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -53,7 +55,8 @@ class MemberAccessDetectorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->parser = ProductionSyntaxSource::create()->source;
+        $production = ProductionSyntaxSource::create();
+        $this->parser = $production->source;
 
         $emptySource = self::createStub(SymbolSourceInterface::class);
         $emptySource->method('lookupClassLike')->willReturn(null);
@@ -62,7 +65,7 @@ class MemberAccessDetectorTest extends TestCase
             $emptySource,
             $emptyMemberResolver,
             new NativeTypeSource($emptySource, $emptyMemberResolver),
-            $this->parser,
+            $production->locator,
         );
     }
 
@@ -89,10 +92,10 @@ class MemberAccessDetectorTest extends TestCase
             1,
             "<?php\nfunction test(string \$s): void {\n    \$s->foo;\n}\n",
         );
-        $ast = $this->parser->parse($document);
+        $parsed = $this->parser->parse($document);
         // Cursor sits on `foo`.
         self::assertNull(
-            $this->detector->detect($document, $ast, 2, 9),
+            $this->detector->detect($parsed, 2, 9),
             'A primitive-typed variable has no members and must yield no context',
         );
     }
@@ -341,11 +344,11 @@ class MemberAccessDetectorTest extends TestCase
         ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $parser = new PhpParserSyntaxSource(new TreeAnnotator());
-        $detector = self::detectorKnowingFixtureMembers($parser);
+        $detector = self::detectorKnowingFixtureMembers(new TreeNodeLocator());
 
         self::assertEquals(
             $expected,
-            $detector->detect($document, $parser->parse($document), $line, $character),
+            $detector->detect($parser->parse($document), $line, $character),
             'the receiver type comes from the expression before the operator; visibility from where the access is',
         );
     }
@@ -354,7 +357,7 @@ class MemberAccessDetectorTest extends TestCase
      * Members the fixtures declare, so chains and static calls resolve; every
      * other lookup finds nothing.
      */
-    private static function detectorKnowingFixtureMembers(SyntaxSourceInterface $parser): MemberAccessDetector
+    private static function detectorKnowingFixtureMembers(NodeLocatorInterface $locator): MemberAccessDetector
     {
         $user = self::type('Fixtures\Domain\User');
         $methods = [
@@ -444,7 +447,7 @@ class MemberAccessDetectorTest extends TestCase
             },
         );
 
-        return new MemberAccessDetector($symbols, $memberResolver, $types, $parser);
+        return new MemberAccessDetector($symbols, $memberResolver, $types, $locator);
     }
 
     private static function instance(TypeInterface $type, Visibility $visibility): MemberAccessContext
@@ -474,7 +477,6 @@ class MemberAccessDetectorTest extends TestCase
     {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $ast = $this->parser->parse($document);
-        return $this->detector->detect($document, $ast, $line, $character);
+        return $this->detector->detect($this->parser->parse($document), $line, $character);
     }
 }

@@ -42,7 +42,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $document = $production->reader->read($this->path);
         self::assertNotNull($document, 'the fixture must be readable so declarations can be scanned');
-        $this->declarations = (new DeclarationScanner())->scan($production->source->parse($document));
+        $this->declarations = (new DeclarationScanner())->scan($production->source->parse($document)->tree);
     }
 
     public function testBuildsClassInfoForAClassLikeDeclaration(): void
@@ -156,7 +156,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     {
         $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
         $document = new TextDocument('file:///dupes.php', 'php', 1, $content);
-        $ast = ProductionSyntaxSource::create()->source->parse($document);
+        $ast = ProductionSyntaxSource::create()->source->parse($document)->tree;
 
         $names = [];
         foreach ($this->factory->allIn((new DeclarationScanner())->scan($ast), '/dupes.php') as $symbol) {
@@ -251,7 +251,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $document = $production->reader->read($path);
         self::assertNotNull($document);
-        $declarations = (new DeclarationScanner())->scan($production->source->parse($document));
+        $declarations = (new DeclarationScanner())->scan($production->source->parse($document)->tree);
 
         $name = QualifiedName::fromFullyQualified('Fixtures\IncompleteCode\brokenFreeStandingParam');
         $info = array_find(
@@ -298,7 +298,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $document = $production->reader->read($path);
         self::assertNotNull($document, "the fixture $fixturePath must be readable");
-        $declarations = (new DeclarationScanner())->scan($production->source->parse($document));
+        $declarations = (new DeclarationScanner())->scan($production->source->parse($document)->tree);
 
         $name = QualifiedName::fromFullyQualified($fqn);
         $info = array_find(

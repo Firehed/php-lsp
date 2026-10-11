@@ -80,7 +80,7 @@ class EditingNamedArg
 
     public function testAfterCompleteNamedArg(): void
     {
-        // Cursor after complete named arg value (no trailing comma) - number doesn't match prefix pattern
+        // Cursor after a complete named arg value (no trailing comma): still the value
         localHelper(name: 123/*|after_named_value*/
     }
 
@@ -90,10 +90,10 @@ class EditingNamedArg
         localHelper(name: 'value'/*|after_string_value*/
     }
 
-    public function testAfterDoubleQuotedString(): void
+    public function testBareWordInCall(): void
     {
-        // Cursor after double-quoted string value
-        localHelper(name: "value"/*|after_double_string*/
+        // Cursor after a bare word, which may yet become an argument name
+        localHelper(cou/*|bare_word_in_call*/
     }
 
     private function instanceMethod(string $name, int $count = 0): void

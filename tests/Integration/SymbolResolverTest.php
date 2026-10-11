@@ -68,6 +68,7 @@ final class SymbolResolverTest extends TestCase
 
         $this->resolver = new SymbolResolver(
             parser: $this->parser,
+            locator: $production->locator,
             symbolSource: $knowledge->source,
             memberResolver: $memberResolver,
             typeSource: new NativeTypeSource($knowledge->source, $memberResolver),

@@ -105,14 +105,6 @@ class ContextDetectorTest extends TestCase
         self::assertSame(CompletionContext::Full, ContextDetector::getContext($code, 1000));
     }
 
-    public function testFullContextBeforeComment(): void
-    {
-        $code = $this->loadFixture('ContextDetector/member_access_before_comment.php');
-        $position = strpos($code, '$foo->bar');
-        self::assertIsInt($position);
-        self::assertSame(CompletionContext::Full, ContextDetector::getContext($code, $position + 9));
-    }
-
     public function testFullContextAfterComment(): void
     {
         $code = $this->loadFixture('ContextDetector/member_access_after_comment.php');
@@ -159,6 +151,65 @@ class ContextDetectorTest extends TestCase
         self::assertSame(CompletionContext::None, ContextDetector::getContext($code, strlen($code)));
     }
 
+    /**
+     * Each case places the cursor right after the given text.
+     *
+     * @return array<string, array{string, CompletionContext}>
+     */
+    public static function commentPlacements(): array
+    {
+        return [
+            'middle of a // comment' => ['// slash', CompletionContext::None],
+            'end of a // line' => ['// slash comment', CompletionContext::None],
+            'middle of a # comment' => ['# hash', CompletionContext::None],
+            'end of a # line' => ['# hash comment', CompletionContext::None],
+            'middle of a block comment' => ['/* block', CompletionContext::None],
+            'before a block comment closes' => ['/* block comment', CompletionContext::None],
+            'right after a block comment closes' => ['/* block comment */', CompletionContext::Full],
+            'inside a block comment spanning lines' => ["/* block\n   spanning", CompletionContext::None],
+            'before a spanning block comment closes' => ['spanning lines', CompletionContext::None],
+            'middle of a docblock' => ['/** doc', CompletionContext::None],
+            'before a docblock closes' => ['/** doc block', CompletionContext::None],
+            'code before a trailing // comment' => ['$a = 1;', CompletionContext::Full],
+            'end of a trailing // comment' => ['// trailing slash comment', CompletionContext::None],
+            'code before a trailing # comment' => ['$b = 2;', CompletionContext::Full],
+            'end of a trailing # comment' => ['# trailing hash comment', CompletionContext::None],
+            'code before an inline block comment' => ['$c =', CompletionContext::Full],
+            'inside an inline block comment' => ['/* inline', CompletionContext::None],
+            'code after an inline block comment' => ['/* inline block */ 3', CompletionContext::Full],
+            'end of an attribute line, which is not a comment' => ['#[Attribute]', CompletionContext::Full],
+            'end of a // comment the close tag ends' => ['// a comment the close tag ends ', CompletionContext::None],
+        ];
+    }
+
+    public function testNoneContextAtTheEndOfACrlfCommentLine(): void
+    {
+        $code = $this->loadFixture('ContextDetector/comment_crlf.php');
+        $comment = '// a comment ending in a CRLF';
+        $at = strpos($code, $comment);
+        self::assertIsInt($at);
+
+        self::assertSame(
+            CompletionContext::None,
+            ContextDetector::getContext($code, $at + strlen($comment)),
+            'a comment ending in a CRLF contains the position before the CR',
+        );
+    }
+
+    #[DataProvider('commentPlacements')]
+    public function testCommentPlacements(string $before, CompletionContext $expected): void
+    {
+        $code = $this->loadFixture('ContextDetector/comment_placements.php');
+        $at = strpos($code, $before);
+        self::assertIsInt($at, "the fixture contains {$before}");
+
+        self::assertSame(
+            $expected,
+            ContextDetector::getContext($code, $at + strlen($before)),
+            'completion is withheld inside a comment and offered in code around it',
+        );
+    }
+
     public function testNoneContextInHashComment(): void
     {
         $code = $this->loadFixture('ContextDetector/hash_comment.php');
@@ -175,14 +226,6 @@ class ContextDetectorTest extends TestCase
     {
         $code = $this->loadFixture('ContextDetector/docblock_open.php');
         self::assertSame(CompletionContext::None, ContextDetector::getContext($code, strlen($code)));
-    }
-
-    public function testNoneContextInMiddleOfComment(): void
-    {
-        $code = $this->loadFixture('ContextDetector/comment_with_member_access.php');
-        $position = strpos($code, '$this->');
-        self::assertIsInt($position);
-        self::assertSame(CompletionContext::None, ContextDetector::getContext($code, $position + 7));
     }
 
     public function testNoneContextInSingleQuotedString(): void

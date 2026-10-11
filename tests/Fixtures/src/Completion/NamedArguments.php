@@ -93,6 +93,11 @@ class NamedArguments
         $this->multipleParams(name: n/*|after_colon_prefix*/
     }
 
+    public function testAfterNamedArgColonWithUnmatchedPrefix(): void
+    {
+        $this->multipleParams(name: zz/*|after_colon_unmatched_prefix*/
+    }
+
     public function testNullsafeMethodCall(): void
     {
         $obj = $this->getNullable();

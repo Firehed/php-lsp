@@ -305,6 +305,10 @@
             "kind": 7
         },
         {
+            "label": "LiteralsInCallArguments",
+            "kind": 7
+        },
+        {
             "label": "MultibyteVarAccess",
             "kind": 7
         },

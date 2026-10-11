@@ -5,7 +5,13 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
+use Firehed\PhpLsp\Parser\ParsedDocument;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -15,6 +21,8 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SkeletonSyntaxSource::class)]
 final class SkeletonSyntaxSourceTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     private SkeletonSyntaxSource $source;
 
     protected function setUp(): void
@@ -24,14 +32,14 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testEmptyContentYieldsNoStatements(): void
     {
-        $ast = $this->source->parse(new TextDocument('file:///empty.php', 'php', 1, '<?php'));
+        $ast = $this->tree(new TextDocument('file:///empty.php', 'php', 1, '<?php'));
 
         self::assertSame([], $ast, 'nothing declared yields no statements');
     }
 
     public function testABareNamespaceYieldsANamespaceNode(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -51,7 +59,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testABracedNamespaceCarriesTheBracedKind(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -79,7 +87,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
         }
         PHP;
 
-        $ast = $this->source->parse(new TextDocument('file:///Widget.php', 'php', 1, $content));
+        $ast = $this->tree(new TextDocument('file:///Widget.php', 'php', 1, $content));
 
         $classes = (new NodeFinder())->findInstanceOf($ast, Stmt\Class_::class);
         self::assertCount(1, $classes);
@@ -128,7 +136,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
         }
         PHP;
 
-        $ast = $this->source->parse(new TextDocument('file:///Widget.php', 'php', 1, $content));
+        $ast = $this->tree(new TextDocument('file:///Widget.php', 'php', 1, $content));
 
         $classes = (new NodeFinder())->findInstanceOf($ast, Stmt\Class_::class);
         self::assertCount(1, $classes);
@@ -147,7 +155,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     #[DataProvider('classLikeKinds')]
     public function testEachClassLikeKeywordMapsToItsStmt(string $keyword, string $name, string $expected): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -171,7 +179,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testTopLevelClassesAreEmittedWithoutANamespace(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -185,7 +193,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     public function testAnEmptyBracedNamespaceEmitsANamespaceNodeWithoutAName(): void
     {
         // `namespace {}` is PHP for a braced global namespace: no name, braced body.
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -198,7 +206,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testAProtectedMemberModifierIsRecovered(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -212,7 +220,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testAConstImportIsTaggedAsAConstantUse(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -230,7 +238,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
         // namespace-scope imports; the depth check keeps it out of the
         // namespace's imports and stretches braceDepthAt through the class
         // body's closing brace.
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -250,7 +258,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     {
         // The braced-namespace slice runs to end-of-file when the brace is
         // unclosed, so a member declared inside it is still visible.
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -269,7 +277,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     {
         // A truncated declaration with no `{` anywhere after it still yields the
         // class-like; the body slice runs to end-of-file.
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -283,7 +291,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
 
     public function testAGroupUseWithATrailingCommaSkipsTheEmptyItem(): void
     {
-        $ast = $this->source->parse(new TextDocument(
+        $ast = $this->tree(new TextDocument(
             'file:///a.php',
             'php',
             1,
@@ -307,7 +315,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
         }
         PHP;
 
-        $ast = $this->source->parse(new TextDocument('file:///w.php', 'php', 1, $content));
+        $ast = $this->tree(new TextDocument('file:///w.php', 'php', 1, $content));
 
         $methods = (new NodeFinder())->findInstanceOf($ast, Stmt\ClassMethod::class);
         self::assertCount(1, $methods);
@@ -330,7 +338,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
         use Vendor\{A, B as Renamed};
         PHP;
 
-        $ast = $this->source->parse(new TextDocument('file:///a.php', 'php', 1, $content));
+        $ast = $this->tree(new TextDocument('file:///a.php', 'php', 1, $content));
 
         $ns = $ast[0];
         self::assertInstanceOf(Stmt\Namespace_::class, $ns);
@@ -339,5 +347,278 @@ final class SkeletonSyntaxSourceTest extends TestCase
             static fn ($s) => $s instanceof Stmt\Use_ || $s instanceof Stmt\GroupUse,
         ));
         self::assertCount(4, $uses, 'each import statement becomes one Use node');
+    }
+
+    /**
+     * Each extended or implemented name sits where it is written, as php-parser
+     * places it, so a positional query finds it only under the cursor.
+     */
+    #[DataProvider('parentNameFixtures')]
+    public function testParentNamesCarryTheirWrittenPositions(string $fixture): void
+    {
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+
+        self::assertSame(
+            self::describeParentNames($parsed),
+            self::describeParentNames($this->tree($document)),
+            'the skeleton must name and place each parent as php-parser does',
+        );
+    }
+
+    /**
+     * @param array<string, list<string>> $expected
+     */
+    #[DataProvider('classMemberFixtures')]
+    public function testEachClassHoldsOnlyItsOwnMembers(string $fixture, array $expected): void
+    {
+        $tree = $this->tree(new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture)));
+
+        $methods = [];
+        foreach ((new NodeFinder())->findInstanceOf($tree, Stmt\Class_::class) as $class) {
+            $methods[(string) $class->name] = array_map(
+                fn (Stmt\ClassMethod $method) => $method->name->toString(),
+                $class->getMethods(),
+            );
+        }
+
+        self::assertSame($expected, $methods, 'a class holds only the members before the next declaration');
+    }
+
+    /**
+     * @return array<string, array{string, array<string, list<string>>}>
+     */
+    public static function classMemberFixtures(): array
+    {
+        return [
+            'indented class without its own brace' => [
+                'TopLevel/truncated_class_in_braced_namespace.php',
+                ['Truncated' => ['first'], 'Following' => ['second']],
+            ],
+            'modifier on its own line' => [
+                'TopLevel/modifier_on_its_own_line.php',
+                ['SplitDeclaration' => ['first'], 'Following' => ['second']],
+            ],
+        ];
+    }
+
+    /**
+     * A class-like spans from its declaration to its closing brace, as
+     * php-parser places it: not from the blank lines before it, and not past
+     * its body when a modifier opens the declaration.
+     */
+    #[DataProvider('parentNameFixtures')]
+    public function testClassLikesSpanWhereTheyAreWritten(string $fixture): void
+    {
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+
+        self::assertSame(
+            self::describeClassLikeSpans($parsed),
+            self::describeClassLikeSpans($this->tree($document)),
+            'the skeleton must span each class-like as php-parser does',
+        );
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     * @return list<array{string, int, int}>
+     */
+    private static function describeClassLikeSpans(array $tree): array
+    {
+        return array_values(array_map(
+            fn (Stmt\ClassLike $classLike) => [
+                (string) $classLike->name,
+                $classLike->getStartFilePos(),
+                $classLike->getEndFilePos(),
+            ],
+            (new NodeFinder())->findInstanceOf($tree, Stmt\ClassLike::class),
+        ));
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function parentNameFixtures(): array
+    {
+        return [
+            'class extends' => ['src/Inheritance/ChildClass.php'],
+            'class extends and implements' => ['src/Exception/AppException.php'],
+            'interface extends a list' => ['src/Hierarchy/LeafInterface.php'],
+            'final class after a blank line' => ['src/Inheritance/FinalDescendant.php'],
+            'fully qualified parents' => ['src/Inheritance/GlobalParent.php'],
+            'namespace-relative parent' => ['src/Inheritance/RelativeParent.php'],
+        ];
+    }
+
+    /**
+     * Imports, property names, and constant names sit where they are written,
+     * as php-parser places them.
+     */
+    #[DataProvider('declarationPositionFixtures')]
+    public function testDeclarationsCarryTheirWrittenPositions(string $fixture): void
+    {
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+
+        self::assertSame(
+            self::describeDeclarationPositions($parsed),
+            self::describeDeclarationPositions($this->tree($document)),
+            'the skeleton must place each declaration as php-parser does',
+        );
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function declarationPositionFixtures(): array
+    {
+        return [
+            'imports and aliases' => ['src/IncompleteCode/AliasedImports.php'],
+            'group imports' => ['src/IncompleteCode/GroupImports.php'],
+            'properties and constants' => ['src/Inheritance/ChildClass.php'],
+        ];
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     * @return list<array{string, string, int, int}>
+     */
+    private static function describeDeclarationPositions(array $tree): array
+    {
+        $nodes = [];
+        $finder = new NodeFinder();
+        foreach ($finder->findInstanceOf($tree, Node\UseItem::class) as $item) {
+            array_push($nodes, $item, $item->name, ...($item->alias === null ? [] : [$item->alias]));
+        }
+        foreach ($finder->findInstanceOf($tree, Stmt\GroupUse::class) as $group) {
+            $nodes[] = $group->prefix;
+        }
+        foreach ($finder->findInstanceOf($tree, Node\PropertyItem::class) as $property) {
+            $nodes[] = $property->name;
+        }
+        foreach ($finder->findInstanceOf($tree, Node\Const_::class) as $constant) {
+            $nodes[] = $constant->name;
+        }
+
+        return array_map(
+            fn (Node\UseItem|Node\Name|Node\Identifier $node) => [
+                $node->getType(),
+                $node instanceof Node\UseItem ? $node->name->toString() : $node->toString(),
+                $node->getStartFilePos(),
+                $node->getEndFilePos(),
+            ],
+            $nodes,
+        );
+    }
+
+    /**
+     * The skeleton does not read a constant's value, so the value it stands in
+     * occupies no position: a cursor there finds nothing in the tree and falls
+     * through to the cursor text, as in code being typed.
+     */
+    public function testAnUnreadConstantValueOccupiesNoPosition(): void
+    {
+        $fixture = 'src/Inheritance/ChildClass.php';
+        $content = $this->loadFixture($fixture);
+        $tree = $this->tree(new TextDocument('file:///' . $fixture, 'php', 1, $content));
+        $declaration = 'CHILD_CONST =';
+        $afterEquals = strpos($content, $declaration);
+        self::assertNotFalse($afterEquals, "the fixture must declare `{$declaration}`");
+        $afterEquals += strlen($declaration);
+
+        self::assertNull(
+            (new TreeNodeLocator())->nodeAt(
+                new ParsedDocument(new TextDocument('file:///' . $fixture, 'php', 1, $content), $tree),
+                $afterEquals,
+            ),
+            'no node sits on the unread value',
+        );
+    }
+
+    #[DataProvider('nullableParameterFixtures')]
+    public function testNullableParameterTypesCarryTheirWrittenPositions(string $fixture): void
+    {
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+
+        self::assertSame(
+            self::describeNullableParameterTypes($parsed),
+            self::describeNullableParameterTypes($this->tree($document)),
+            'the `?` belongs to the nullable type, and the name after it sits where it is written',
+        );
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function nullableParameterFixtures(): array
+    {
+        return [
+            'imported class types' => ['src/TypeInference/BuiltinTypes.php'],
+            'fully qualified type' => ['src/Inheritance/GlobalParent.php'],
+            'primitive types' => ['src/TypeInference/NullablePrimitiveParameters.php'],
+        ];
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     * @return list<array{string, string, int, int, int, int}>
+     */
+    private static function describeNullableParameterTypes(array $tree): array
+    {
+        $described = [];
+        foreach ((new NodeFinder())->findInstanceOf($tree, Node\Param::class) as $param) {
+            if (
+                !$param->type instanceof Node\NullableType
+                || !$param->var instanceof Node\Expr\Variable
+                || !is_string($param->var->name)
+            ) {
+                continue;
+            }
+            $described[] = [
+                $param->var->name,
+                $param->type->type->toString(),
+                $param->type->getStartFilePos(),
+                $param->type->getEndFilePos(),
+                $param->type->type->getStartFilePos(),
+                $param->type->type->getEndFilePos(),
+            ];
+        }
+        return $described;
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     * @return list<array{string, int, int}>
+     */
+    private static function describeParentNames(array $tree): array
+    {
+        $described = [];
+        foreach ((new NodeFinder())->findInstanceOf($tree, Stmt\ClassLike::class) as $classLike) {
+            $names = match (true) {
+                $classLike instanceof Stmt\Class_ => [
+                    ...($classLike->extends === null ? [] : [$classLike->extends]),
+                    ...$classLike->implements,
+                ],
+                $classLike instanceof Stmt\Interface_ => $classLike->extends,
+                $classLike instanceof Stmt\Enum_ => $classLike->implements,
+                default => [],
+            };
+            foreach ($names as $name) {
+                $described[] = [$name->toString(), $name->getStartFilePos(), $name->getEndFilePos()];
+            }
+        }
+        return $described;
+    }
+
+    /**
+     * @return array<Stmt>
+     */
+    private function tree(TextDocument $document): array
+    {
+        $parsed = $this->source->parse($document);
+        self::assertSame($document, $parsed->document, 'the tree is paired with the document it was parsed from');
+        return $parsed->tree;
     }
 }

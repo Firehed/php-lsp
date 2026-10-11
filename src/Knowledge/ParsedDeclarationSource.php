@@ -20,7 +20,7 @@ final readonly class ParsedDeclarationSource implements DeclarationSourceInterfa
     public function declarationsIn(TextDocument $document): array
     {
         return $this->infoFactory->allIn(
-            $this->scanner->scan($this->parser->parse($document)),
+            $this->scanner->scan($this->parser->parse($document)->tree),
             FileUri::toPath($document->uri),
         );
     }

@@ -71,7 +71,7 @@ final class NameContextFactoryTest extends TestCase
     {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///t.php', 'php', 0, $content);
-        $ast = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document);
+        $ast = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
 
         self::assertEquals(
             $expected,

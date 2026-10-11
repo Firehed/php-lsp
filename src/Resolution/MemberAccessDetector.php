@@ -11,7 +11,8 @@ use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use LogicException;
@@ -26,15 +27,13 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
-use PhpParser\Node\Stmt;
 
 /**
  * Detects member-access context at a cursor position.
  *
- * Walks the tree the {@see SyntaxSourceInterface} composite returns. A cursor over
- * broken text lands on a node the cursor-text source synthesizes,
- * so instance and static access resolve through the same branches as
- * a real AST node — no separate text path. One
+ * Reads the node the {@see NodeLocatorInterface} finds at the cursor, whether
+ * the tree holds it or it was synthesized from broken text, so instance and
+ * static access resolve through the same branches — no separate text path. One
  * {@see self::visibilityBetween()} function decides the visibility a vantage
  * class has toward a target class, so instance and static branches cannot
  * disagree.
@@ -47,22 +46,20 @@ final class MemberAccessDetector
         private readonly SymbolSourceInterface $symbolSource,
         private readonly MemberResolverInterface $memberResolver,
         private readonly TypeSourceInterface $typeSource,
-        private readonly SyntaxSourceInterface $parser,
+        private readonly NodeLocatorInterface $locator,
     ) {
     }
 
-    /**
-     * @param array<Stmt> $ast
-     */
     public function detect(
-        TextDocument $document,
-        array $ast,
+        ParsedDocument $parsed,
         int $line,
         int $character,
     ): ?MemberAccessContext {
+        $document = $parsed->document;
+        $ast = $parsed->tree;
         $offset = $document->offsetAt($line, $character);
 
-        $node = $this->parser->nodeAt($ast, $document, $offset > 0 ? $offset - 1 : 0);
+        $node = $this->locator->nodeAt($parsed, $offset > 0 ? $offset - 1 : 0);
 
         if ($node === null) {
             return null;

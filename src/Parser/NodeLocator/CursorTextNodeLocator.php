@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Parser\SyntaxSource;
+namespace Firehed\PhpLsp\Parser\NodeLocator;
 
-use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\BuildsWrittenNamesTrait;
+use Firehed\PhpLsp\Parser\Lexer\LexerInterface;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
@@ -24,21 +26,21 @@ use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
-use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\UseItem;
 use PhpParser\Node\VarLikeIdentifier;
 
 /**
  * Synthesizes the member-access or call node at the cursor from the document
- * text. `parse()` yields nothing. Placed last in the composite, so it answers
- * only when every earlier member has answered null (RFC 1 §4.11).
+ * text (RFC 1 §4.11).
  *
- * The synthesized node is resolved and linked into the tree `nodeAt()` is
- * handed, so it meets the same contract as a parsed node.
+ * The synthesized node is resolved and linked into the parsed document's tree,
+ * so it meets the same contract as a parsed node.
  */
-final class CursorTextSyntaxSource implements SyntaxSourceInterface
+final class CursorTextNodeLocator implements NodeLocatorInterface
 {
+    use BuildsWrittenNamesTrait;
+
     private const string NON_FUNCTION_KEYWORD_PATTERN
         = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
 
@@ -54,25 +56,16 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
     private readonly NodeAtPosition $nodeAtPosition;
     private readonly TreeAnnotator $annotator;
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly LexerInterface $lexer,
+    ) {
         $this->nodeAtPosition = new NodeAtPosition();
         $this->annotator = new TreeAnnotator(tolerant: true);
     }
 
-    /**
-     * @return array<Stmt>
-     */
-    public function parse(TextDocument $document): array
+    public function nodeAt(ParsedDocument $parsed, int $offset): ?Node
     {
-        return [];
-    }
-
-    /**
-     * @param array<Stmt> $tree
-     */
-    public function nodeAt(array $tree, TextDocument $document, int $offset): ?Node
-    {
+        $document = $parsed->document;
         if ($offset < 0 || $offset > strlen($document->getContent())) {
             return null;
         }
@@ -83,13 +76,13 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         $content = $document->getContent();
 
         $memberNode = self::synthesizeMemberAccess($lineText, $lineStart, $offset, $line);
-        $callNode = self::synthesizeCall($content, $offset, $line, $memberNode);
+        $callNode = $this->synthesizeCall($content, $offset, $line, $memberNode);
 
         $root = $callNode ?? $memberNode;
         if ($root === null) {
             return null;
         }
-        $this->attach($root, $tree);
+        $this->attach($root, $parsed->tree);
 
         return $this->nodeAtPosition->find([$root], $offset);
     }
@@ -136,7 +129,7 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         }
         $this->annotator->annotate($namespace === null ? $body : [
             new Stmt\Namespace_($namespace->name === null ? null : new Name($namespace->name->name), $body),
-        ]);
+        ], []);
 
         $holder->setAttribute('parent', $this->nodeAtPosition->find(
             $tree,
@@ -217,13 +210,14 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
      * `$memberInside` becomes the value of the trailing {@see Arg} so a walk
      * up from the member-access still reaches the enclosing call.
      */
-    private static function synthesizeCall(
+    private function synthesizeCall(
         string $content,
         int $offset,
         int $line,
         ?Node $memberInside,
     ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
-        $parenPos = self::findUnclosedParen($content, $offset);
+        $code = $this->lexer->codeOnly(substr($content, 0, $offset));
+        $parenPos = self::findUnclosedParen($code);
         if ($parenPos === null) {
             return null;
         }
@@ -234,9 +228,9 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             return null;
         }
 
-        $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
-        $args = self::parseArgs($argsText, $parenPos + 1, $offset, $line, $memberInside);
+        [$args, $separators] = self::parseArgs($content, $code, $parenPos + 1, $line, $memberInside);
         $callNode->args = $args;
+        $callNode->setAttribute(ParsedDocument::ARGUMENT_SEPARATORS, $separators);
 
         $callStart = $callNode->getStartFilePos();
         $callNode->setAttribute('endFilePos', max($callStart, $offset));
@@ -244,11 +238,11 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
         return $callNode;
     }
 
-    private static function findUnclosedParen(string $content, int $offset): ?int
+    private static function findUnclosedParen(string $code): ?int
     {
         $depth = 0;
-        for ($i = $offset - 1; $i >= 0; $i--) {
-            $char = $content[$i];
+        for ($i = strlen($code) - 1; $i >= 0; $i--) {
+            $char = $code[$i];
             if ($char === ')') {
                 $depth++;
             } elseif ($char === '(') {
@@ -383,42 +377,42 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
      */
     private static function writtenName(string $written, int $startFilePos, int $line): Name
     {
-        $attrs = self::posAttrs($startFilePos, $startFilePos + strlen($written) - 1, $line);
-        if (str_starts_with($written, '\\')) {
-            return new FullyQualified(substr($written, 1), $attrs);
-        }
-        if (str_starts_with($written, 'namespace\\')) {
-            return new Name\Relative(substr($written, strlen('namespace\\')), $attrs);
-        }
-
-        return new Name($written, $attrs);
+        return self::nameAsWritten(
+            $written,
+            self::posAttrs($startFilePos, $startFilePos + strlen($written) - 1, $line),
+        );
     }
 
     /**
-     * @return list<Arg>
+     * The arguments from $argsStart to the cursor, split at the commas in
+     * $code and read from $content.
+     *
+     * @param string $code $content up to the cursor, as {@see LexerInterface::codeOnly()} returns it
+     * @return array{list<Arg>, list<int>} The arguments and the positions of
+     *         the commas between them
      */
     private static function parseArgs(
-        string $argsText,
+        string $content,
+        string $code,
         int $argsStart,
-        int $offset,
         int $line,
         ?Node $memberInside,
     ): array {
         $args = [];
+        $separators = [];
         $depth = 0;
-        $currentStart = 0;
-        $length = strlen($argsText);
-        for ($i = 0; $i < $length; $i++) {
-            $char = $argsText[$i];
+        $currentStart = $argsStart;
+        $offset = strlen($code);
+        for ($i = $argsStart; $i < $offset; $i++) {
+            $char = $code[$i];
             if ($char === '(' || $char === '[' || $char === '{') {
                 $depth++;
             } elseif ($char === ')' || $char === ']' || $char === '}') {
                 $depth--;
             } elseif ($char === ',' && $depth === 0) {
-                $segment = substr($argsText, $currentStart, $i - $currentStart);
-                $segStart = $argsStart + $currentStart;
-                $segEnd = $argsStart + $i - 1;
-                $arg = self::buildArg($segment, $segStart, $segEnd, $line, null);
+                $separators[] = $i;
+                $segment = substr($content, $currentStart, $i - $currentStart);
+                $arg = self::buildArg($segment, $currentStart, $i - 1, $line, null);
                 if ($arg !== null) {
                     $args[] = $arg;
                 }
@@ -426,25 +420,21 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             }
         }
 
-        $lastSegment = substr($argsText, $currentStart);
-        $lastStart = $argsStart + $currentStart;
+        $lastSegment = substr($content, $currentStart, $offset - $currentStart);
+        $lastStart = $currentStart;
         $lastEnd = $offset;
-        $trimmed = trim($lastSegment);
-        $hasNamed = $trimmed !== '' && preg_match('/^(\w+)\s*:/', $trimmed) === 1;
         // Deliberately no end-position check: a nodeAt at an earlier offset
         // inside `$var` still needs to descend into the member access.
         $inner = ($memberInside !== null && $memberInside->getStartFilePos() >= $lastStart)
             ? $memberInside
             : null;
 
-        if ($hasNamed || $inner !== null) {
-            $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
-            if ($arg !== null) {
-                $args[] = $arg;
-            }
+        $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
+        if ($arg !== null) {
+            $args[] = $arg;
         }
 
-        return $args;
+        return [$args, $separators];
     }
 
     /**
@@ -473,9 +463,11 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             return null;
         }
 
-        $value = $memberInside instanceof \PhpParser\Node\Expr
-            ? $memberInside
-            : new Variable('_', self::posAttrs($segStart, $segEnd, $line));
+        $value = match (true) {
+            $memberInside instanceof \PhpParser\Node\Expr => $memberInside,
+            $named === null => self::typedValue($segment, $segStart, $segEnd, $line),
+            default => new Variable('_', self::posAttrs($segStart, $segEnd, $line)),
+        };
 
         return new Arg(
             $value,
@@ -484,6 +476,25 @@ final class CursorTextSyntaxSource implements SyntaxSourceInterface
             self::posAttrs($segStart, $segEnd, $line),
             $named,
         );
+    }
+
+    /**
+     * A positional argument's value as typed so far, as far as completion
+     * reads it: a bare word, which may yet become a name, or a variable; any
+     * other text is a placeholder spanning the segment.
+     */
+    private static function typedValue(string $segment, int $segStart, int $segEnd, int $line): Expr
+    {
+        $trimmed = trim($segment);
+        $start = $segStart + strlen($segment) - strlen(ltrim($segment));
+        $attrs = self::posAttrs($start, $start + strlen($trimmed) - 1, $line);
+        if (preg_match('/^[A-Za-z_]\w*$/', $trimmed) === 1) {
+            return new Expr\ConstFetch(new Name($trimmed, $attrs), $attrs);
+        }
+        if (preg_match('/^\$(\w+)$/', $trimmed, $m) === 1) {
+            return new Variable($m[1], $attrs);
+        }
+        return new Variable('_', self::posAttrs($segStart, $segEnd, $line));
     }
 
     /**

@@ -24,7 +24,7 @@ final class MemoizingSyntaxSourceTest extends TestCase
         $second = $memo->parse($doc);
 
         self::assertSame(1, $inner->parseCount, 'the second call is answered from the memo');
-        self::assertSame($first, $second, 'the memo returns what the inner parse returned');
+        self::assertSame($first->tree, $second->tree, 'the memo returns the tree the inner parse returned');
     }
 
     public function testDifferingContentIsParsedSeparately(): void
@@ -44,11 +44,15 @@ final class MemoizingSyntaxSourceTest extends TestCase
         $memo = new MemoizingSyntaxSource($inner);
         $content = '<?php class Shared {}';
 
-        $first = $memo->parse(new TextDocument('file:///a.php', 'php', 1, $content));
-        $second = $memo->parse(new TextDocument('file:///b.php', 'php', 7, $content));
+        $a = new TextDocument('file:///a.php', 'php', 1, $content);
+        $b = new TextDocument('file:///b.php', 'php', 7, $content);
+        $first = $memo->parse($a);
+        $second = $memo->parse($b);
 
         self::assertSame(1, $inner->parseCount, 'identical content is parsed once, regardless of URI');
-        self::assertSame($first, $second, 'both documents get the same tree');
+        self::assertSame($first->tree, $second->tree, 'both documents get the same tree');
+        self::assertSame($a, $first->document, 'the first caller gets its own document back');
+        self::assertSame($b, $second->document, 'the second caller gets its own document, not the first');
     }
 
     public function testEndMessageForcesAReparse(): void
@@ -78,7 +82,7 @@ final class MemoizingSyntaxSourceTest extends TestCase
             $inner->parseCount,
             'an empty tree is memoized like any other, so a failure does not reparse',
         );
-        self::assertSame($first, $second, 'the second call returns the same empty list');
+        self::assertSame($first->tree, $second->tree, 'the second call returns the same empty list');
     }
 
     /**

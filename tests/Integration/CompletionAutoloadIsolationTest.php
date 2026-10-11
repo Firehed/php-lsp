@@ -56,6 +56,7 @@ final class CompletionAutoloadIsolationTest extends TestCase
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $symbolResolver = new SymbolResolver(
             $production->source,
+            $production->locator,
             $knowledge->source,
             $memberResolver,
             $typeSource,

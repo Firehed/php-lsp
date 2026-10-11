@@ -341,7 +341,7 @@ final class DeclarationScannerTest extends TestCase
         $uri = FileUri::fromPath($this->fixturePath($relativePath));
         $content = $this->loadFixture($relativePath);
 
-        $ast = $this->parser->parse(new TextDocument($uri, 'php', 0, $content));
+        $ast = $this->parser->parse(new TextDocument($uri, 'php', 0, $content))->tree;
 
         return $this->scanner->scan($ast);
     }

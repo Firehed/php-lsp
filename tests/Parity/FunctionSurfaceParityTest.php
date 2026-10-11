@@ -84,6 +84,7 @@ final class FunctionSurfaceParityTest extends TestCase
         $typeSource = new NativeTypeSource($knowledge->source, $memberResolver);
         $this->symbolResolver = new SymbolResolver(
             $parser,
+            $production->locator,
             $knowledge->source,
             $memberResolver,
             $typeSource,

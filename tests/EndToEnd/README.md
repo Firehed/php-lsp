@@ -53,6 +53,8 @@ A script file declares `namespace Firehed\PhpLsp\Tests\EndToEnd;` and names type
   - `NoAnswer()`: nothing is offered.
 - Steps name files relative to the project, and places in them by marker.
 - `CursorMarker` is the position just before a `/*|name*/` marker.
+- `LineEndAboveMarker` is the end of the line above a `/*|name*/` marker.
+  A marker after `//` would be part of the comment, so this is how a script reaches the end of a comment line.
 - `SymbolMarker` is the symbol on a line ending in `//hover:name`.
 - `VariableMarker` is the last `$var` on a line ending in `//jtd:name var`.
   A cursor marker cannot sit inside a variable name without breaking the parse.

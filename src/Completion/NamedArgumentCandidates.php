@@ -11,7 +11,8 @@ use Firehed\PhpLsp\Resolution\CodeResolverInterface;
  * Produces named-argument completion items (`name:`) for a call, skipping
  * parameters already supplied positionally or by name and variadics.
  *
- * Returns null when the position is not inside a call.
+ * Returns null when the position is not inside a call, and nothing while an
+ * argument's value is being typed, where no name fits.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
@@ -31,6 +32,9 @@ final class NamedArgumentCandidates implements CompletionSourceInterface
         );
         if ($callContext === null) {
             return null;
+        }
+        if ($callContext->inArgumentValue) {
+            return [];
         }
 
         $prefix = CompletionClassifier::argumentNamePrefix($request->textBeforeCursor());

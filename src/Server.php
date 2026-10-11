@@ -27,14 +27,10 @@ use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
-use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\CursorTextSyntaxSource;
+use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MessageScopedInterface;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
@@ -85,14 +81,9 @@ final class Server
         ServerInfo $serverInfo,
         TC $container,
         ?string $projectRoot = null,
-        SyntaxSourceInterface&MessageScopedInterface $parser = new MemoizingSyntaxSource(
-            new CompositeSyntaxSource(
-                new PhpParserSyntaxSource(new TreeAnnotator()),
-                new SkeletonSyntaxSource(),
-                new CursorTextSyntaxSource(),
-            ),
-        ),
+        (SyntaxSourceInterface&MessageScopedInterface)|null $parser = null,
     ): self {
+        $parser ??= $container->get(MemoizingSyntaxSource::class);
         if ($projectRoot === null) {
             $cwd = getcwd();
             if ($cwd === false) {
@@ -125,6 +116,7 @@ final class Server
 
         $symbolResolver = new SymbolResolver(
             $parser,
+            $container->get(NodeLocatorInterface::class),
             $symbolSource,
             $memberResolver,
             $typeSource,
