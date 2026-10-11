@@ -266,6 +266,42 @@ class CursorTextNodeLocatorTest extends TestCase
         );
     }
 
+    /**
+     * @return array<string, array{string, int}>
+     */
+    public static function literalsInArguments(): array
+    {
+        return [
+            'a comma in a string' => ['comma_in_string', 0],
+            'a paren in a string' => ['paren_in_string', 1],
+            'a brace in a string' => ['brace_in_string', 1],
+            'brackets in an interpolated string' => ['brackets_in_interpolated_string', 1],
+            'brackets in a heredoc' => ['brackets_in_heredoc', 1],
+            'a paren in a block comment' => ['paren_in_block_comment', 1],
+            'brackets in a line comment' => ['brackets_in_line_comment', 0],
+            'an unterminated string' => ['unterminated_string', 0],
+        ];
+    }
+
+    #[DataProvider('literalsInArguments')]
+    public function testStringsAndCommentsAreNotReadAsCode(string $marker, int $separators): void
+    {
+        $fixture = 'src/IncompleteCode/LiteralsInCallArguments.php';
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+        $offset = $this->markerOffset($content, $marker);
+
+        $call = self::enclosingCall((new CursorTextNodeLocator())->nodeAt(new ParsedDocument($document, []), $offset));
+
+        self::assertInstanceOf(FuncCall::class, $call, 'a bracket in a literal neither closes nor ends the call');
+        self::assertSame('literalTarget', self::funcCallName($call));
+        self::assertCount(
+            $separators,
+            ParsedDocument::argumentSeparatorsOf($call) ?? [],
+            'a comma in a literal does not separate arguments',
+        );
+    }
+
     public function testNamedArgInTrailingSegmentIsCaptured(): void
     {
         $call = self::synthesizeCallAtCursor("<?php\nfoo(name: ");
