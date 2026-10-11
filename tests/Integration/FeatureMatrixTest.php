@@ -50,7 +50,7 @@ final class FeatureMatrixTest extends TestCase
     use OpensDocumentsTrait;
     use WiresCompletionSourceTrait;
 
-    private const string BLOCKER = '/^(#\d+|RFC 1 §\d+(\.\d+)*)$/u';
+    private const string BLOCKER = '/^#\d+$/';
 
     /**
      * Cells the current stack cannot answer. Keyed `<fixture>|<marker>|<handler>`.
@@ -163,16 +163,16 @@ final class FeatureMatrixTest extends TestCase
         self::assertSame(
             [],
             self::danglingBlockers(self::NOT_APPLICABLE),
-            'a not-applicable cell must name an issue or a section',
+            'a not-applicable cell must name an issue',
         );
     }
 
-    public function testABlockerNamingNoIssueOrSectionIsReported(): void
+    public function testABlockerNamingNoIssueIsReported(): void
     {
         self::assertSame(
             ['x|y|z names S9.99'],
             self::danglingBlockers(['x|y|z' => 'S9.99']),
-            'a blocker matching no issue or section must be reported',
+            'a blocker naming no issue must be reported',
         );
     }
 

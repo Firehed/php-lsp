@@ -22,29 +22,31 @@ use PHPUnit\Framework\TestCase;
  * file never anticipated. The query axis is listed ({@see GridQuery}). Every cell
  * answers over the fixtures or names a blocker in
  * {@see NOT_APPLICABLE}; an unregistered cell fails, so does a registration on a cell
- * that answers, and so does a blocker naming neither an issue nor a section.
+ * that answers, and so does a blocker naming neither an issue nor a reason by design.
  */
 final class SymbolCoverageGridTest extends TestCase
 {
     use BuildsKnowledgeStackTrait;
     use LooksUpBackendSymbolsTrait;
 
-    /** The forms a blocker may take: an issue, or a section. */
-    private const string BLOCKER = '/^(#\d+|RFC 1 §\d+(\.\d+)*)$/u';
+    /** The forms a blocker may take: an issue, or a reason the cell is empty by design. */
+    private const string BLOCKER = '/^(#\d+|by design: \S.*)$/u';
+
+    private const string CLASS_LIKES_ONLY = 'by design: Composer maps only class-likes';
 
     /**
-     * Cells the shipped stack cannot answer, each naming an issue or an RFC
-     * section. Keyed `<backend>|<kind>|<query>`.
+     * Cells the shipped stack cannot answer, each naming an issue or a reason
+     * by design. Keyed `<backend>|<kind>|<query>`.
      *
      * @var array<string, string>
      */
     private const array NOT_APPLICABLE = [
-        'ComposerMapBackend|Function_|lookup' => 'RFC 1 §3',
-        'ComposerMapBackend|Function_|search' => 'RFC 1 §3',
-        'ComposerMapBackend|Function_|childrenOf' => 'RFC 1 §3',
-        'ComposerMapBackend|Constant|lookup' => 'RFC 1 §3',
-        'ComposerMapBackend|Constant|search' => 'RFC 1 §3',
-        'ComposerMapBackend|Constant|childrenOf' => 'RFC 1 §3',
+        'ComposerMapBackend|Function_|lookup' => self::CLASS_LIKES_ONLY,
+        'ComposerMapBackend|Function_|search' => self::CLASS_LIKES_ONLY,
+        'ComposerMapBackend|Function_|childrenOf' => self::CLASS_LIKES_ONLY,
+        'ComposerMapBackend|Constant|lookup' => self::CLASS_LIKES_ONLY,
+        'ComposerMapBackend|Constant|search' => self::CLASS_LIKES_ONLY,
+        'ComposerMapBackend|Constant|childrenOf' => self::CLASS_LIKES_ONLY,
         'BuiltinBackend|ClassLike|search' => '#23',
     ];
 
@@ -167,17 +169,17 @@ final class SymbolCoverageGridTest extends TestCase
         self::assertSame(
             [],
             self::danglingBlockers(self::NOT_APPLICABLE),
-            'a not-applicable cell must name an issue or a section: '
-                . 'a blocker nobody owns is a permanent exemption',
+            'a not-applicable cell must name an issue or a reason by design: '
+                . 'an unexplained blocker is a permanent exemption',
         );
     }
 
-    public function testABlockerNamingNoIssueOrSectionIsReported(): void
+    public function testABlockerNamingNoIssueOrReasonIsReported(): void
     {
         self::assertSame(
             ['BuiltinBackend|Constant|lookup names S9.99'],
             self::danglingBlockers(['BuiltinBackend|Constant|lookup' => 'S9.99']),
-            'a blocker matching no issue or section must be reported',
+            'a blocker matching no issue or reason by design must be reported',
         );
     }
 
