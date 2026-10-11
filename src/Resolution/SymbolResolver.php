@@ -346,6 +346,16 @@ final class SymbolResolver implements CodeResolverInterface
         return new CallContext($callable, $activeParameter, $usedNames, $positionalCount, $inArgumentValue);
     }
 
+    public function isInCallArguments(
+        TextDocument $document,
+        int $line,
+        int $character,
+    ): bool {
+        $offset = $document->offsetAt($line, $character);
+
+        return $this->callDetector->detect($this->parser->parse($document), $offset) !== null;
+    }
+
     public function getNameContext(TextDocument $document, int $line): NameContext
     {
         $ast = $this->parser->parse($document)->tree;

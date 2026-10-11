@@ -126,6 +126,16 @@ interface CodeResolverInterface
     ): ?CallContext;
 
     /**
+     * Whether the cursor is within a call's arguments, known callee or not.
+     * Used by: Completion
+     */
+    public function isInCallArguments(
+        TextDocument $document,
+        int $line,
+        int $character,
+    ): bool;
+
+    /**
      * Get the name-resolution context at a line: the enclosing namespace and the
      * import tables (`use`, `use function`, `use const`) in effect there.
      *
