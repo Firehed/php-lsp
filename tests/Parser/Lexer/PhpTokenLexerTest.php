@@ -28,6 +28,14 @@ final class PhpTokenLexerTest extends TestCase
             'a heredoc' => ['brackets_in_heredoc', 'literalTarget( , '],
             'a block comment' => ['paren_in_block_comment', 'literalTarget( 1, '],
             'a line comment' => ['brackets_in_line_comment', 'literalTarget(1 '],
+            'a binary interpolated string' => ['brackets_in_binary_string', 'literalTarget( , '],
+            'a string nested in an interpolation' => ['brackets_in_nested_string', 'literalTarget( , '],
+            'a nowdoc' => ['brackets_in_nowdoc', 'literalTarget( , '],
+            'a shell string' => ['brackets_in_shell_string', 'literalTarget( , '],
+            'a hash comment' => ['brackets_in_hash_comment', 'literalTarget(1 '],
+            'a docblock' => ['brackets_in_docblock', 'literalTarget( 1, '],
+            'an attribute, which is code' => ['attribute_in_argument', 'literalTarget(#[Attribute] fn () => 1, '],
+            'inline HTML between tags' => ['brackets_in_inline_html', 'literalTarget(1, ?> <?php '],
             'an unterminated string' => ['unterminated_string', 'literalTarget( '],
         ];
     }
