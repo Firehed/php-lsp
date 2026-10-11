@@ -455,7 +455,7 @@ class CursorTextNodeLocatorTest extends TestCase
         $call = $this->callAtMarker('TopLevel/declarations_being_typed.php', 'call_after_comment');
 
         self::assertInstanceOf(FuncCall::class, $call);
-        self::assertSame('Fixtures\TopLevel\helper', self::funcCallName($call), 'a comment is not code');
+        self::assertSame('helper', self::funcCallName($call), 'a comment is not code');
     }
 
     public function testAChainedAccessKeepsEachSegment(): void
