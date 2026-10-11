@@ -282,12 +282,7 @@ class CursorTextNodeLocatorTest extends TestCase
     #[DataProvider('literalsInArguments')]
     public function testOnlyCodeDelimitsTheCallAndItsArguments(string $marker, int $separators): void
     {
-        $fixture = 'src/IncompleteCode/LiteralsInCallArguments.php';
-        $content = $this->loadFixture($fixture);
-        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $offset = $this->markerOffset($content, $marker);
-
-        $call = self::enclosingCall(self::locator()->nodeAt(new ParsedDocument($document, []), $offset));
+        $call = $this->callBeforeLiteralMarker($marker);
 
         self::assertInstanceOf(FuncCall::class, $call, 'a bracket in a literal neither closes nor ends the call');
         self::assertSame('literalTarget', self::funcCallName($call));
@@ -296,7 +291,14 @@ class CursorTextNodeLocatorTest extends TestCase
             ParsedDocument::argumentSeparatorsOf($call) ?? [],
             'a comma in a literal does not separate arguments',
         );
-        self::assertCount(1, $call->args, 'the argument holding the literal is read from the source text');
+    }
+
+    public function testAnArgumentThatIsOnlyALiteralIsStillAnArgument(): void
+    {
+        $call = $this->callBeforeLiteralMarker('paren_in_string');
+
+        self::assertInstanceOf(FuncCall::class, $call);
+        self::assertCount(1, $call->args, 'the `\')\'` before the cursor is read from the source, not the blanked code');
     }
 
     public function testNamedArgInTrailingSegmentIsCaptured(): void
@@ -528,6 +530,17 @@ class CursorTextNodeLocatorTest extends TestCase
         self::assertNotNull($call, 'a call is synthesized at the marker');
 
         return $call;
+    }
+
+    private function callBeforeLiteralMarker(string $marker): ?Node
+    {
+        $fixture = 'src/IncompleteCode/LiteralsInCallArguments.php';
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+
+        return self::enclosingCall(
+            self::locator()->nodeAt(new ParsedDocument($document, []), $this->markerOffset($content, $marker)),
+        );
     }
 
     private static function locator(): CursorTextNodeLocator
