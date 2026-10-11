@@ -40,6 +40,13 @@ class CallbackBodies
         };
     }
 
+    public function anonymousClassProperty(): object
+    {
+        return new \ArrayObject(new class {
+            public int $value = /*|anonymous_class_property*/1;
+        });
+    }
+
     public function anonymousClassArgument(): object
     {
         return new class (/*|anonymous_class_argument*/1) {

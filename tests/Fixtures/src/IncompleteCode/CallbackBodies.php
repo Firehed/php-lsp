@@ -41,6 +41,41 @@ class CallbackBodies
         array_map(fn ($item) => $item, /*|after_arrow_argument*/
     }
 
+    public function namedArrowBody(array $items): void
+    {
+        array_map(callback: fn ($item) => /*|named_arrow_body*/
+    }
+
+    public function attributedArrowBody(array $items): void
+    {
+        array_map(#[Pure] fn ($item) => /*|attributed_arrow_body*/
+    }
+
+    public function arrowAfterOperator(?callable $callback): void
+    {
+        array_map($callback ?? fn ($item) => /*|arrow_after_operator*/
+    }
+
+    public function arrowReturnType(array $items): void
+    {
+        array_map(fn ($item): Us/*|arrow_return_type*/
+    }
+
+    public function arrowBeforeItsArrow(array $items): void
+    {
+        array_map(fn ($item) /*|arrow_before_arrow*/
+    }
+
+    public function closureUse(array $items): void
+    {
+        array_map(function ($item) use (/*|closure_use*/
+    }
+
+    public function afterClosureArgument(array $items): void
+    {
+        array_map(function ($item) { return $item; }, /*|after_closure_argument*/
+    }
+
     public function anonymousClassBody(): void
     {
         new class { public function value() { return /*|anonymous_class_body*/

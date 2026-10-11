@@ -55,6 +55,26 @@ final class PhpTokenLexerTest extends TestCase
         );
     }
 
+    /**
+     * @return array<string, array{string, bool}>
+     */
+    public static function words(): array
+    {
+        return [
+            'a language construct' => ['isset', true],
+            'a keyword in upper case' => ['MATCH', true],
+            'an arrow function' => ['fn', true],
+            'a name' => ['helper', false],
+            'a special class name, which is not reserved' => ['self', false],
+        ];
+    }
+
+    #[DataProvider('words')]
+    public function testRecognizesReservedKeywords(string $word, bool $keyword): void
+    {
+        self::assertSame($keyword, (new PhpTokenLexer())->isKeyword($word), 'PHP reserves the word or does not');
+    }
+
     public function testInlineHtmlIsBlanked(): void
     {
         $content = $this->loadFixture('ContextDetector/mixed_html_php.php');

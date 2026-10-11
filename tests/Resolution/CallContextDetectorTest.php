@@ -16,6 +16,8 @@ use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use LogicException;
+use PhpParser\Node\Arg;
+use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\StaticCall;
@@ -171,7 +173,7 @@ final class CallContextDetectorTest extends TestCase
         $detection = $this->detectAt(
             'src/Completion/EditingNamedArg.php',
             $marker,
-            new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator(new PhpTokenLexer())),
+            self::composite(),
         );
 
         self::assertNotNull($detection, 'the cursor is inside a call');
@@ -192,6 +194,7 @@ final class CallContextDetectorTest extends TestCase
             'arrow function body' => [$parsed, 'arrow_body', null],
             'call in an arrow function body' => [$parsed, 'call_in_arrow_body', 'strlen'],
             'anonymous class body' => [$parsed, 'anonymous_class_body', null],
+            'anonymous class property default' => [$parsed, 'anonymous_class_property', null],
             'anonymous class constructor argument' => [$parsed, 'anonymous_class_argument', 'new'],
             'closure body being typed' => [$typed, 'closure_body', null],
             'closure parameter being typed' => [$typed, 'closure_parameter', null],
@@ -200,8 +203,47 @@ final class CallContextDetectorTest extends TestCase
             'member access in an arrow function body being typed' => [$typed, 'arrow_body_member', null],
             'call in an arrow function body being typed' => [$typed, 'call_in_arrow_body', 'strlen'],
             'argument after an arrow function being typed' => [$typed, 'after_arrow_argument', 'array_map'],
+            'named arrow function argument being typed' => [$typed, 'named_arrow_body', null],
+            'attributed arrow function being typed' => [$typed, 'attributed_arrow_body', null],
+            'arrow function after an operator being typed' => [$typed, 'arrow_after_operator', null],
+            'arrow function return type being typed' => [$typed, 'arrow_return_type', null],
+            'arrow function head before its arrow' => [$typed, 'arrow_before_arrow', null],
+            'closure use list being typed' => [$typed, 'closure_use', null],
+            'argument after a closure being typed' => [$typed, 'after_closure_argument', 'array_map'],
             'anonymous class body being typed' => [$typed, 'anonymous_class_body', null],
         ];
+    }
+
+    /**
+     * @return array<string, array{int, bool}>
+     */
+    public static function closureEdges(): array
+    {
+        return [
+            'at the closure\'s start' => [10, true],
+            'inside the closure' => [11, false],
+        ];
+    }
+
+    /**
+     * A cursor where a closure argument begins is still at the argument.
+     */
+    #[DataProvider('closureEdges')]
+    public function testOnlyAPositionStrictlyInsideAFunctionLikeLeavesTheCall(int $offset, bool $inCall): void
+    {
+        $closure = new Closure([], ['startFilePos' => 10]);
+        $call = new FuncCall(new Name('f'), [new Arg($closure)], [ParsedDocument::ARGUMENT_SEPARATORS => []]);
+        $closure->setAttribute('parent', $call->args[0]);
+        $call->args[0]->setAttribute('parent', $call);
+        $locator = self::createStub(NodeLocatorInterface::class);
+        $locator->method('nodeAt')->willReturn($closure);
+
+        $detection = (new CallContextDetector($locator))->detect(
+            new ParsedDocument(new TextDocument('file:///f.php', 'php', 1, ''), []),
+            $offset,
+        );
+
+        self::assertSame($inCall, $detection !== null, 'the call encloses only the closure\'s start');
     }
 
     /**
@@ -214,7 +256,7 @@ final class CallContextDetectorTest extends TestCase
         $detection = $this->detectAt(
             $fixture,
             $marker,
-            new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator(new PhpTokenLexer())),
+            self::composite(),
         );
 
         $call = $detection[0] ?? null;
@@ -240,6 +282,11 @@ final class CallContextDetectorTest extends TestCase
             new ParsedDocument(new TextDocument('file:///f.php', 'php', 1, ''), []),
             0,
         );
+    }
+
+    private static function composite(): CompositeNodeLocator
+    {
+        return new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator(new PhpTokenLexer()));
     }
 
     /**

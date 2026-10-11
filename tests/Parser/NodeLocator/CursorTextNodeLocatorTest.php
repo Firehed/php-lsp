@@ -441,6 +441,10 @@ class CursorTextNodeLocatorTest extends TestCase
             'declaration split across lines' => [$declarations, 'split_declaration'],
             'closure parameter list' => ['src/IncompleteCode/CallbackBodies.php', 'closure_parameter'],
             'arrow function parameter list' => ['src/IncompleteCode/CallbackBodies.php', 'arrow_parameter'],
+            'declare' => ['TopLevel/keywords_before_parens.php', 'declare'],
+            'isset' => ['TopLevel/keywords_before_parens.php', 'isset'],
+            'a keyword in upper case' => ['TopLevel/keywords_before_parens.php', 'match_upper_case'],
+            'closure use list' => ['TopLevel/keywords_before_parens.php', 'closure_use'],
         ];
     }
 
@@ -459,13 +463,11 @@ class CursorTextNodeLocatorTest extends TestCase
     public function testAnArrowFunctionBodyIsInsideItsArgument(string $marker): void
     {
         $node = $this->nodeAtMarker($this->parsedFixture('src/IncompleteCode/CallbackBodies.php'), $marker);
+        self::assertNotNull($node);
 
-        while ($node !== null && !$node instanceof ArrowFunction) {
-            $parent = $node->getAttribute('parent');
-            $node = $parent instanceof Node ? $parent : null;
-        }
-        self::assertInstanceOf(ArrowFunction::class, $node, 'the cursor is inside an arrow function');
-        self::assertInstanceOf(Arg::class, $node->getAttribute('parent'), 'the arrow function is the argument');
+        $arrow = self::ancestorOf($node, ArrowFunction::class);
+        self::assertInstanceOf(ArrowFunction::class, $arrow, 'the cursor is inside an arrow function');
+        self::assertInstanceOf(Arg::class, $arrow->getAttribute('parent'), 'the arrow function is the argument');
     }
 
     #[DataProvider('parensThatOpenNoCall')]
