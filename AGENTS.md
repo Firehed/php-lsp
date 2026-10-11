@@ -139,9 +139,9 @@ If you encounter this scenario, stop and ask the human.
 
 Before each new change in a session, check it against the original request:
 
-- Is this change fixing something an earlier change in this session broke or exposed, rather than the request itself?
-- Is this the second fix in the same place, or has a review found the same kind of problem twice?
-- Does this change exist to get past a tool or a failing test rather than to solve the problem?
+- Proposed on its own, would this change be outside the scope of the original request?
+- Has a review or test found a new case of the same kind of problem in code you have already fixed?
+- Does this change satisfy the wording of a tool's rule or a test while doing what that rule or test exists to prevent?
 
 If any answer is yes, stop and report what is happening instead of continuing.
 When a tool such as PHPStan or deptrac blocks a change, the intent of its rule matters, not its wording: ask before working around it.
