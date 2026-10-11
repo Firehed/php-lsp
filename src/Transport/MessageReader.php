@@ -23,8 +23,9 @@ final class MessageReader
     }
 
     /**
-     * Reads one frame, reporting one of three outcomes: a usable message, a frame that could not be decoded (answer with
-     * an error and keep serving), and a clean end of stream (stop serving).
+     * Reads one frame, reporting one of three outcomes: a usable message, a
+     * frame that could not be decoded (answer with an error and keep serving),
+     * and a clean end of stream (stop serving).
      */
     public function read(): Message|MalformedFrame|EndOfStream
     {
