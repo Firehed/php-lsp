@@ -56,4 +56,10 @@ final class PhpTokenLexer implements LexerInterface
         }
         return $code;
     }
+
+    public function isKeyword(string $word): bool
+    {
+        return preg_match('/\A[a-z_][a-z0-9_]*\z/i', $word) === 1
+            && PhpToken::tokenize('<?php ' . $word)[1]->id !== T_STRING;
+    }
 }

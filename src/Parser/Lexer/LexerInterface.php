@@ -15,4 +15,10 @@ interface LexerInterface
      * result is code. Offsets are unchanged.
      */
     public function codeOnly(string $source): string;
+
+    /**
+     * Whether PHP reserves $word as a keyword, in any letter case, so that
+     * written alone it is never a name.
+     */
+    public function isKeyword(string $word): bool;
 }
