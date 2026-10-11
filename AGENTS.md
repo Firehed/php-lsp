@@ -32,6 +32,8 @@ Every service is used through an interface, even when it has one implementation.
 The interface describes what a caller can ask.
 It never says where the answer comes from, and it never takes a parser node or a reflection object where another implementation would take something else.
 
+Code decides by what a symbol can do, such as whether it can be instantiated, not by checking which kind of symbol it is.
+
 ### One wiring place
 
 Instantiating services is to occur in one wiring place: a PSR-11 container.
@@ -85,6 +87,17 @@ No other class walks the graph, so no member kind can see a different hierarchy 
 
 The raw `initialize` parameters are read once, in `src/Capability/`.
 Every decision that shapes output by client support reads `SessionCapabilities`.
+A capability the client does not declare takes its default value.
+A workaround for one editor's behavior lives in one place, outside feature logic.
+
+### Positions
+
+Positions use one encoding inside the server and are converted only where messages enter and leave it.
+
+### Robustness
+
+Bad input, from the client or from the project's files, never ends the process.
+Every request is answered correctly without background work, and background work never delays a request.
 
 ### Completion detection stays text-based
 
@@ -114,7 +127,7 @@ The editor is the only source of change events.
 Two events invalidate: `workspace/didChangeWatchedFiles` for a path, and closing a document that was open.
 Both flow through `InvalidatableInterface::invalidate`, which fans out to every invalidatable in the wiring.
 An open buffer is not an invalidation; it wins by composite order while it is open.
-Built-ins are never invalidated until the target environment can change.
+Built-in symbols should describe the PHP version the project targets; today they come from the PHP running the server, so they are never invalidated.
 
 ## Handling Design or Specification Tensions
 
@@ -135,7 +148,7 @@ When considering edits (or avoiding them), remember: the project and architectur
 ## Development Workflow
 
 - GitHub issues are the source of truth for feature specs. Confirm a feature is not already built, and resolve every open question before writing code.
-- A good issue states which service owns each fact and how the work separates concerns. Adding a feature is adding a value on an existing axis, not adding a route.
+- A good issue states which service owns each fact and how the work separates concerns. Adding a feature extends the existing route for its fact, or adds the first one; it never adds a second.
 - Debug through the test suite. Do not write ad hoc PHP scripts.
 - When creating a new issue, add the `ai-authored` label.
 
