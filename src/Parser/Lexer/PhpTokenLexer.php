@@ -20,8 +20,8 @@ final class PhpTokenLexer implements LexerInterface
     {
         $code = '';
         // What each enclosing construct opened: true for a string, false for
-        // braces inside one. Everything inside the outermost string, its
-        // interpolated expressions included, is its text.
+        // an interpolation inside one. Everything inside the outermost string,
+        // its interpolated expressions included, is its text.
         $open = [];
         foreach (PhpToken::tokenize($source) as $token) {
             $inString = $open !== [];
@@ -44,11 +44,6 @@ final class PhpTokenLexer implements LexerInterface
                 case T_CURLY_OPEN:
                 case T_DOLLAR_OPEN_CURLY_BRACES:
                     $open[] = false;
-                    break;
-                case ord('{'):
-                    if ($inString) {
-                        $open[] = false;
-                    }
                     break;
                 case ord('}'):
                     if (end($open) === false) {
