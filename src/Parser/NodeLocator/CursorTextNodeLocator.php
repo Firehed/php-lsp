@@ -214,7 +214,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         ?Node $memberInside,
     ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
         $code = $this->lexer->codeOnly(substr($content, 0, $offset));
-        $parenPos = self::findUnclosedParen($code, $offset);
+        $parenPos = self::findUnclosedParen($code);
         if ($parenPos === null) {
             return null;
         }
@@ -225,15 +225,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             return null;
         }
 
-        $argsStart = $parenPos + 1;
-        [$args, $separators] = self::parseArgs(
-            substr($content, $argsStart, $offset - $argsStart),
-            substr($code, $argsStart),
-            $argsStart,
-            $offset,
-            $line,
-            $memberInside,
-        );
+        [$args, $separators] = self::parseArgs($content, $code, $parenPos + 1, $line, $memberInside);
         $callNode->args = $args;
         $callNode->setAttribute(ParsedDocument::ARGUMENT_SEPARATORS, $separators);
 
@@ -243,10 +235,10 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         return $callNode;
     }
 
-    private static function findUnclosedParen(string $code, int $offset): ?int
+    private static function findUnclosedParen(string $code): ?int
     {
         $depth = 0;
-        for ($i = $offset - 1; $i >= 0; $i--) {
+        for ($i = strlen($code) - 1; $i >= 0; $i--) {
             $char = $code[$i];
             if ($char === ')') {
                 $depth++;
@@ -386,35 +378,35 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
     }
 
     /**
-     * @param string $argsCode $argsText as {@see LexerInterface::codeOnly()} returns it
+     * The arguments from $argsStart to the cursor, split at the commas in
+     * $code and read from $content.
+     *
+     * @param string $code $content up to the cursor, as {@see LexerInterface::codeOnly()} returns it
      * @return array{list<Arg>, list<int>} The arguments and the positions of
      *         the commas between them
      */
     private static function parseArgs(
-        string $argsText,
-        string $argsCode,
+        string $content,
+        string $code,
         int $argsStart,
-        int $offset,
         int $line,
         ?Node $memberInside,
     ): array {
         $args = [];
         $separators = [];
         $depth = 0;
-        $currentStart = 0;
-        $length = strlen($argsText);
-        for ($i = 0; $i < $length; $i++) {
-            $char = $argsCode[$i];
+        $currentStart = $argsStart;
+        $offset = strlen($code);
+        for ($i = $argsStart; $i < $offset; $i++) {
+            $char = $code[$i];
             if ($char === '(' || $char === '[' || $char === '{') {
                 $depth++;
             } elseif ($char === ')' || $char === ']' || $char === '}') {
                 $depth--;
             } elseif ($char === ',' && $depth === 0) {
-                $separators[] = $argsStart + $i;
-                $segment = substr($argsText, $currentStart, $i - $currentStart);
-                $segStart = $argsStart + $currentStart;
-                $segEnd = $argsStart + $i - 1;
-                $arg = self::buildArg($segment, $segStart, $segEnd, $line, null);
+                $separators[] = $i;
+                $segment = substr($content, $currentStart, $i - $currentStart);
+                $arg = self::buildArg($segment, $currentStart, $i - 1, $line, null);
                 if ($arg !== null) {
                     $args[] = $arg;
                 }
@@ -422,8 +414,8 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             }
         }
 
-        $lastSegment = substr($argsText, $currentStart);
-        $lastStart = $argsStart + $currentStart;
+        $lastSegment = substr($content, $currentStart, $offset - $currentStart);
+        $lastStart = $currentStart;
         $lastEnd = $offset;
         // Deliberately no end-position check: a nodeAt at an earlier offset
         // inside `$var` still needs to descend into the member access.
