@@ -135,15 +135,16 @@ This codebase is in flux, and the current state may not reflect the intended des
 Issues may have been written prior to the intended structure, and may be in tension with the goal.
 If you encounter this scenario, stop and ask the human.
 
-## Enforcement tools
+## Staying on track
 
-PHPStan rules under `tests/Architecture/`, the allowlists in `phpstan.neon`, and the layer ruleset in `deptrac.yaml` were written before the design above settled.
-Some of them cement the old shape.
-When one fires against a change that follows the design above, stop and ask the human.
-Do not route around the rule, and do not bend the design to satisfy it.
-Never edit a rule, an allowlist, a baseline, or `bin/check-baseline-shrink` yourself.
+Before each new change in a session, check it against the original request:
 
-When considering edits (or avoiding them), remember: the project and architecture goals are more important.
+- Is this change fixing something an earlier change in this session broke or exposed, rather than the request itself?
+- Is this the second fix in the same place, or has a review found the same kind of problem twice?
+- Does this change exist to get past a tool or a failing test rather than to solve the problem?
+
+If any answer is yes, stop and report what is happening instead of continuing.
+When a tool such as PHPStan or deptrac blocks a change, the intent of its rule matters, not its wording: ask before working around it.
 
 ## Development Workflow
 
