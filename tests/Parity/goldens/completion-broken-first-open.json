@@ -253,6 +253,226 @@
     ],
     "aliased_imports_new": [
         {
+            "label": "$this",
+            "kind": 6
+        },
+        {
+            "label": "ABDAY_1",
+            "kind": 21
+        },
+        {
+            "label": "ABDAY_2",
+            "kind": 21
+        },
+        {
+            "label": "ABDAY_3",
+            "kind": 21
+        },
+        {
+            "label": "ABDAY_4",
+            "kind": 21
+        },
+        {
+            "label": "ABDAY_5",
+            "kind": 21
+        },
+        {
+            "label": "ABDAY_6",
+            "kind": 21
+        },
+        {
+            "label": "ABDAY_7",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_1",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_10",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_11",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_12",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_2",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_3",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_4",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_5",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_6",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_7",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_8",
+            "kind": 21
+        },
+        {
+            "label": "ABMON_9",
+            "kind": 21
+        },
+        {
+            "label": "AF_INET",
+            "kind": 21
+        },
+        {
+            "label": "AF_INET6",
+            "kind": 21
+        },
+        {
+            "label": "AF_UNIX",
+            "kind": 21
+        },
+        {
+            "label": "AI_ADDRCONFIG",
+            "kind": 21
+        },
+        {
+            "label": "AI_ALL",
+            "kind": 21
+        },
+        {
+            "label": "AI_CANONNAME",
+            "kind": 21
+        },
+        {
+            "label": "AI_NUMERICHOST",
+            "kind": 21
+        },
+        {
+            "label": "AI_NUMERICSERV",
+            "kind": 21
+        },
+        {
+            "label": "AI_PASSIVE",
+            "kind": 21
+        },
+        {
+            "label": "AI_V4MAPPED",
+            "kind": 21
+        },
+        {
+            "label": "ALT_DIGITS",
+            "kind": 21
+        },
+        {
+            "label": "AM_STR",
+            "kind": 21
+        },
+        {
+            "label": "APACHE_MAP",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_ALL",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_ATIME",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_CTIME",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_DTIME",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_KEY",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_MEM_SIZE",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_MTIME",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_NONE",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_NUM_HITS",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_REFCOUNT",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_TTL",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_TYPE",
+            "kind": 21
+        },
+        {
+            "label": "APC_ITER_VALUE",
+            "kind": 21
+        },
+        {
+            "label": "APC_LIST_ACTIVE",
+            "kind": 21
+        },
+        {
+            "label": "APC_LIST_DELETED",
+            "kind": 21
+        },
+        {
+            "label": "ARRAY_FILTER_USE_BOTH",
+            "kind": 21
+        },
+        {
+            "label": "ARRAY_FILTER_USE_KEY",
+            "kind": 21
+        },
+        {
+            "label": "ASSERT_ACTIVE",
+            "kind": 21
+        },
+        {
+            "label": "ASSERT_BAIL",
+            "kind": 21
+        },
+        {
+            "label": "ASSERT_CALLBACK",
+            "kind": 21
+        },
+        {
+            "label": "ASSERT_EXCEPTION",
+            "kind": 21
+        },
+        {
+            "label": "ASSERT_WARNING",
+            "kind": 21
+        },
+        {
             "label": "AliasedImports",
             "kind": 7
         },
@@ -271,6 +491,62 @@
         {
             "label": "BrokenParameters",
             "kind": 7
+        },
+        {
+            "label": "CAL_DOW_DAYNO",
+            "kind": 21
+        },
+        {
+            "label": "CAL_DOW_LONG",
+            "kind": 21
+        },
+        {
+            "label": "CAL_DOW_SHORT",
+            "kind": 21
+        },
+        {
+            "label": "CAL_EASTER_ALWAYS_GREGORIAN",
+            "kind": 21
+        },
+        {
+            "label": "CAL_EASTER_ALWAYS_JULIAN",
+            "kind": 21
+        },
+        {
+            "label": "CAL_EASTER_DEFAULT",
+            "kind": 21
+        },
+        {
+            "label": "CAL_EASTER_ROMAN",
+            "kind": 21
+        },
+        {
+            "label": "CAL_FRENCH",
+            "kind": 21
+        },
+        {
+            "label": "CAL_GREGORIAN",
+            "kind": 21
+        },
+        {
+            "label": "CAL_JEWISH",
+            "kind": 21
+        },
+        {
+            "label": "CAL_JEWISH_ADD_ALAFIM",
+            "kind": 21
+        },
+        {
+            "label": "CAL_JEWISH_ADD_ALAFIM_GERESH",
+            "kind": 21
+        },
+        {
+            "label": "CAL_JEWISH_ADD_GERESHAYIM",
+            "kind": 21
+        },
+        {
+            "label": "CAL_JULIAN",
+            "kind": 21
         },
         {
             "label": "CallbackBodies",
@@ -333,19 +609,11 @@
             "kind": 7
         },
         {
-            "label": "Widget",
-            "kind": 7
-        },
-        {
-            "label": "array",
+            "label": "clone",
             "kind": 14
         },
         {
-            "label": "bool",
-            "kind": 14
-        },
-        {
-            "label": "callable",
+            "label": "empty",
             "kind": 14
         },
         {
@@ -353,19 +621,23 @@
             "kind": 14
         },
         {
-            "label": "float",
+            "label": "fn",
             "kind": 14
         },
         {
-            "label": "int",
+            "label": "isset",
             "kind": 14
         },
         {
-            "label": "iterable",
+            "label": "list",
             "kind": 14
         },
         {
-            "label": "mixed",
+            "label": "match",
+            "kind": 14
+        },
+        {
+            "label": "new",
             "kind": 14
         },
         {
@@ -373,23 +645,11 @@
             "kind": 14
         },
         {
-            "label": "object",
-            "kind": 14
-        },
-        {
-            "label": "parent",
-            "kind": 14
-        },
-        {
-            "label": "self",
-            "kind": 14
-        },
-        {
-            "label": "string",
-            "kind": 14
-        },
-        {
             "label": "true",
+            "kind": 14
+        },
+        {
+            "label": "yield",
             "kind": 14
         }
     ],
