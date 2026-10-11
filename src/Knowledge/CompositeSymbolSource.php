@@ -18,8 +18,8 @@ use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 
 /**
- * The {@see SymbolSourceInterface} composite over a fixed backend precedence
- * (RFC 1 §4.2, §5.3). Adding, removing, or reordering a backend is a change to
+ * The {@see SymbolSourceInterface} composite over a fixed backend precedence.
+ * Adding, removing, or reordering a backend is a change to
  * this constructor, with no change to any consumer.
  *
  * Precedence is fixed and positional: an open-document answer overrides the
@@ -36,7 +36,7 @@ final class CompositeSymbolSource implements SymbolSourceInterface
 {
     /**
      * @var list<SymbolSourceInterface> Backends in descending precedence.
-     *      Readable so the §5.1 coverage grid derives its rows from it.
+     *      Readable so the coverage grid derives its rows from it.
      */
     public readonly array $backends;
 

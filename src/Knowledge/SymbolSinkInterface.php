@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Document\TextDocument;
 
 /**
- * The write contract for open-document symbol state (RFC 1 §4.3, §5.2). Kept
+ * The write contract for open-document symbol state. Kept
  * separate from the read side so a read-only consumer depends only on
  * {@see SymbolSourceInterface}; one class may implement both.
  */

@@ -16,11 +16,11 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\Symbol;
 
 /**
- * The read contract for symbol knowledge (RFC 1 §4.2, §5.1): every query for symbol
+ * The read contract for symbol knowledge: every query for symbol
  * existence, metadata, and namespace enumeration is answered here, so that *where* a
- * symbol comes from is a backend concern (Section 5.3) with no change to consumers.
+ * symbol comes from is a backend concern with no change to consumers.
  *
- * Queries are FQN-based (RFC 1 §4.4): this takes an already-qualified name and never
+ * Queries are FQN-based: this takes an already-qualified name and never
  * a cursor position or a syntax tree. Turning "`Foo` in this namespace with these
  * imports" into a candidate FQN is the positional layer's job, not this interface's.
  *
@@ -37,13 +37,13 @@ interface SymbolSourceInterface
 
     /**
      * Full metadata for a class-like by its exact name, or null when nothing the
-     * source can reach declares it (RFC 1 §5.3: absence is a bare null).
+     * source can reach declares it.
      */
     public function lookupClassLike(ClasslikeName $name): ?ClassInfo;
 
     /**
      * Full metadata for a global constant by its exact name, or null when
-     * nothing the source can reach declares it (RFC 1 §5.3).
+     * nothing the source can reach declares it.
      *
      * Reach is what a name can be resolved *through*: an open document, an
      * `autoload.files` entry, or a built-in. A constant in an unopened PSR-4
@@ -57,7 +57,7 @@ interface SymbolSourceInterface
 
     /**
      * Full metadata for a standalone function by its exact name, or null when
-     * nothing the source can reach declares it (RFC 1 §5.3).
+     * nothing the source can reach declares it.
      *
      * Reach is what a name can be resolved *through*: an open document, an
      * `autoload.files` entry, or a built-in. A function in an unopened PSR-4 file

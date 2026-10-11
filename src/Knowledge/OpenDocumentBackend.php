@@ -7,11 +7,11 @@ namespace Firehed\PhpLsp\Knowledge;
 use Firehed\PhpLsp\Document\TextDocument;
 
 /**
- * The highest-precedence {@see SymbolSourceInterface}: the documents the editor has open
- * (RFC 1 §5.3). Its answers override every on-disk backend, so a user's unsaved
+ * The highest-precedence {@see SymbolSourceInterface}: the documents the editor has open.
+ * Its answers override every on-disk backend, so a user's unsaved
  * edits are honored — including edits to a vendored file opened in the editor.
  *
- * Also owns the write path for open-document symbol state (RFC 1 §4.3, §5.2).
+ * Also owns the write path for open-document symbol state.
  */
 final class OpenDocumentBackend implements SymbolSourceInterface, SymbolSinkInterface
 {
