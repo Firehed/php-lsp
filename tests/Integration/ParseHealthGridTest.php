@@ -198,6 +198,7 @@ final class ParseHealthGridTest extends TestCase
                 'getMemberAccessContext' => $this->assertMemberAccessContext($cursor, $config),
                 'getVariablesInScope' => $this->assertVariablesInScope($cursor, $config),
                 'getCallContext' => $this->assertCallContext($cursor, $config),
+                'isInCallArguments' => $this->assertInCallArguments($cursor, $config),
                 'getNameContext' => $this->assertNameContext($cursor, $config),
                 default => throw new LogicException(
                     "no dispatch for {$method} — add a case when introducing a new position-taking "
@@ -340,6 +341,21 @@ final class ParseHealthGridTest extends TestCase
             CallContext::class,
             $context,
             "getCallContext must answer inside a call in {$config['fixture']}",
+        );
+    }
+
+    /**
+     * @param array{uri: string, line: int, character: int} $cursor
+     * @param array{fixture: string, marker: string, namespace: string, class: string} $config
+     */
+    private function assertInCallArguments(array $cursor, array $config): void
+    {
+        $document = $this->documents->get($cursor['uri']);
+        self::assertNotNull($document);
+
+        self::assertTrue(
+            $this->resolver->isInCallArguments($document, $cursor['line'], $cursor['character']),
+            "isInCallArguments must answer inside a call in {$config['fixture']}",
         );
     }
 
