@@ -41,14 +41,8 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
 {
     use BuildsWrittenNamesTrait;
 
-    private const string NON_FUNCTION_KEYWORD_PATTERN
-        = '/\A(?:if|while|for|foreach|switch|catch|array|list|function|fn)\z/i';
-
-    /**
-     * An arrow function's head, through its `=>`. A parameter default may hold
-     * parentheses, so they are matched in balanced pairs.
-     */
-    private const string ARROW_FUNCTION_HEAD = '/\A\s*(?:static\s+)?fn\s*&?\s*(\((?:[^()]++|(?1))*\))[^=]*=>/i';
+    /** Where an arrow function begins; `fn` is reserved, so it is never a name. */
+    private const string ARROW_FUNCTION_START = '/(?<![\w$\\\\>:])fn\s*&?\s*\(/i';
 
     /** Text ending here makes the name that follows a declaration, not a call. */
     private const string DECLARES_NEXT_NAME_PATTERN = '/\bfunction\s*&?\s*\z/i';
@@ -228,7 +222,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             return null;
         }
 
-        $callNode = self::buildCallFrame(substr($code, 0, $parenPos), $parenPos, $line);
+        $callNode = $this->buildCallFrame(substr($code, 0, $parenPos), $parenPos, $line);
         if ($callNode === null) {
             return null;
         }
@@ -243,26 +237,41 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         return $callNode;
     }
 
+    /**
+     * The `(` the cursor is inside, unless a `;` or an unclosed `{` comes
+     * first. A body already closed, such as a closure passed before the
+     * cursor's argument, is stepped over.
+     */
     private static function findUnclosedParen(string $code): ?int
     {
         $depth = 0;
+        $closedBodies = 0;
         for ($i = strlen($code) - 1; $i >= 0; $i--) {
             $char = $code[$i];
-            if ($char === ')') {
+            if ($char === '}') {
+                $closedBodies++;
+            } elseif ($char === '{') {
+                if ($closedBodies === 0) {
+                    return null;
+                }
+                $closedBodies--;
+            } elseif ($closedBodies > 0) {
+                continue;
+            } elseif ($char === ')') {
                 $depth++;
             } elseif ($char === '(') {
                 if ($depth === 0) {
                     return $i;
                 }
                 $depth--;
-            } elseif ($char === ';' || $char === '{' || $char === '}') {
+            } elseif ($char === ';') {
                 return null;
             }
         }
         return null;
     }
 
-    private static function buildCallFrame(
+    private function buildCallFrame(
         string $textBeforeParen,
         int $parenPos,
         int $line,
@@ -360,7 +369,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             $funcName = $m[1][0];
             $funcStart = $m[1][1];
             if (
-                preg_match(self::NON_FUNCTION_KEYWORD_PATTERN, $funcName) === 1
+                $this->lexer->isKeyword($funcName)
                 || preg_match(self::DECLARES_NEXT_NAME_PATTERN, substr($text, 0, $funcStart)) === 1
             ) {
                 return null;
@@ -434,38 +443,63 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             ? $memberInside
             : null;
 
-        if (preg_match(self::ARROW_FUNCTION_HEAD, substr($code, $lastStart), $head) === 1) {
-            $bodyStart = $lastStart + strlen($head[0]);
-            $args[] = self::arrowFunctionArg($content, $lastStart, $bodyStart, $offset, $line, $inner);
+        $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
+        if ($arg === null) {
             return [$args, $separators];
         }
 
-        $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
-        if ($arg !== null) {
-            $args[] = $arg;
+        // As in a parsed tree, a cursor inside an arrow function is inside the
+        // function, which sits inside the argument.
+        $arrowStart = self::openArrowFunction(substr($code, $lastStart));
+        if ($arrowStart !== null) {
+            $arg->value = new Expr\ArrowFunction(
+                ['expr' => $arg->value],
+                self::posAttrs($lastStart + $arrowStart, $lastEnd, $line),
+            );
         }
+        $args[] = $arg;
 
         return [$args, $separators];
     }
 
     /**
-     * The argument being typed when the cursor is in an arrow function's
-     * body, which sits inside the function as it does in a parsed tree.
+     * Where in $code an arrow function begins that is still open at its end,
+     * or null when there is none.
      */
-    private static function arrowFunctionArg(
-        string $content,
-        int $start,
-        int $bodyStart,
-        int $offset,
-        int $line,
-        ?Node $memberInside,
-    ): Arg {
-        $body = $memberInside instanceof Expr
-            ? $memberInside
-            : self::typedValue(substr($content, $bodyStart, $offset - $bodyStart), $bodyStart, $offset, $line);
-        $attrs = self::posAttrs($start, $offset, $line);
+    private static function openArrowFunction(string $code): ?int
+    {
+        preg_match_all(self::ARROW_FUNCTION_START, $code, $matches, PREG_OFFSET_CAPTURE);
+        foreach ($matches[0] as [, $start]) {
+            if (self::runsToTheEnd($code, $start)) {
+                return $start;
+            }
+        }
+        return null;
+    }
 
-        return new Arg(new Expr\ArrowFunction(['expr' => $body], $attrs), false, false, $attrs);
+    /**
+     * Whether nothing in $code after $start ends the expression that begins
+     * there: a closing bracket it did not open, or a `,` outside its own
+     * brackets.
+     */
+    private static function runsToTheEnd(string $code, int $start): bool
+    {
+        $depth = 0;
+        $length = strlen($code);
+        for ($i = $start; $i < $length; $i++) {
+            $char = $code[$i];
+            if ($char === '(' || $char === '[' || $char === '{') {
+                $depth++;
+            } elseif ($char === ')' || $char === ']' || $char === '}') {
+                if ($depth === 0) {
+                    return false;
+                }
+                $depth--;
+            } elseif ($char === ',' && $depth === 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
