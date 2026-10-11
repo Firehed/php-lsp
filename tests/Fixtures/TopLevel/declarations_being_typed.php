@@ -11,3 +11,4 @@ function
     helper(/*|split_declaration*/
 // a comment that ends with the word function
 helper(/*|call_after_comment*/
+helper /* a comment */ (/*|comment_before_paren*/
