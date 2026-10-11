@@ -1,7 +1,19 @@
 {
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "php \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/drift-check.php"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "allow": [
-      "Bash(bin/check-baseline-shrink)",
       "Bash(composer deptrac *)",
       "Bash(composer install)",
       "Bash(composer phpcs *)",
@@ -16,7 +28,6 @@
       "Edit(deptrac.yaml)",
       "Edit(phpstan-baseline.neon)",
       "Edit(deptrac.baseline.yaml)",
-      "Edit(tests/Architecture/**)",
       "Edit(bin/**)",
       "Edit(.github/**)",
       "Edit(.claude/**)"
