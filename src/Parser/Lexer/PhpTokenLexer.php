@@ -59,7 +59,9 @@ final class PhpTokenLexer implements LexerInterface
 
     public function isKeyword(string $word): bool
     {
-        return preg_match('/\A[a-z_][a-z0-9_]*\z/i', $word) === 1
+        // Every keyword is letters and underscores; anything else, such as a
+        // qualified name ending in one, is not a keyword.
+        return ctype_alpha(strtr($word, '_', 'a'))
             && PhpToken::tokenize('<?php ' . $word)[1]->id !== T_STRING;
     }
 }
