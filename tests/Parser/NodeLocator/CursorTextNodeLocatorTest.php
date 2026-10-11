@@ -422,50 +422,40 @@ class CursorTextNodeLocatorTest extends TestCase
     }
 
     /**
-     * @return array<string, array{string}>
+     * @return array<string, array{string, string}>
      */
-    public static function incompleteNames(): array
+    public static function parensThatOpenNoCall(): array
     {
+        $incomplete = 'TopLevel/incomplete_names.php';
+        $declarations = 'TopLevel/declarations_being_typed.php';
+
         return [
-            'namespace prefix alone, called' => ['relative_prefix_call'],
-            'namespace prefix alone, instantiated' => ['relative_prefix_new'],
-            'namespace prefix alone, static call' => ['relative_prefix_static'],
-            'separator alone, static call' => ['separator_static'],
+            'namespace prefix alone, called' => [$incomplete, 'relative_prefix_call'],
+            'namespace prefix alone, instantiated' => [$incomplete, 'relative_prefix_new'],
+            'namespace prefix alone, static call' => [$incomplete, 'relative_prefix_static'],
+            'separator alone, static call' => [$incomplete, 'separator_static'],
+            'function declaration' => [$declarations, 'function_declaration'],
+            'method declaration' => [$declarations, 'method_declaration'],
+            'by-reference method declaration' => [$declarations, 'by_reference_declaration'],
+            'declaration split across lines' => [$declarations, 'split_declaration'],
         ];
     }
 
-    #[DataProvider('incompleteNames')]
-    public function testAnIncompleteNameSynthesizesNoCall(string $marker): void
+    #[DataProvider('parensThatOpenNoCall')]
+    public function testAParenThatOpensNoCallSynthesizesNone(string $fixture, string $marker): void
     {
-        $parsed = $this->parsedFixture('TopLevel/incomplete_names.php');
-
         self::assertNull(
-            self::enclosingCall($this->nodeAtMarker($parsed, $marker)),
-            'a name with nothing after its prefix names no callable',
+            self::enclosingCall($this->nodeAtMarker($this->parsedFixture($fixture), $marker)),
+            'neither an incomplete name nor a name being declared is a callable',
         );
     }
 
-    /**
-     * @return array<string, array{string}>
-     */
-    public static function declarationsBeingTyped(): array
+    public function testACommentEndingInAKeywordDoesNotHideACall(): void
     {
-        return [
-            'function' => ['function_declaration'],
-            'method' => ['method_declaration'],
-            'by-reference method' => ['by_reference_declaration'],
-        ];
-    }
+        $call = $this->callAtMarker('TopLevel/declarations_being_typed.php', 'call_after_comment');
 
-    #[DataProvider('declarationsBeingTyped')]
-    public function testADeclarationBeingTypedIsNotACall(string $marker): void
-    {
-        [$document, $tree] = $this->parsedFixture('TopLevel/declarations_being_typed.php');
-
-        self::assertNull(
-            self::enclosingCall($this->nodeAtMarker($document, $tree, $marker)),
-            'the name a declaration introduces is not a call',
-        );
+        self::assertInstanceOf(FuncCall::class, $call);
+        self::assertSame('Fixtures\TopLevel\helper', self::funcCallName($call), 'a comment is not code');
     }
 
     public function testAChainedAccessKeepsEachSegment(): void
