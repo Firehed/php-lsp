@@ -10,7 +10,7 @@ use Firehed\PhpLsp\Protocol\Message;
 /**
  * Handles `workspace/didChangeWatchedFiles`: the client reports on-disk changes to
  * files it watches for the server. Every change — created, changed, or deleted —
- * invalidates that file's cached workspace state (RFC 1 §5.2) so the next query
+ * invalidates that file's cached workspace state so the next query
  * re-reads disk. The change type is not inspected because the response to all
  * three is the same drop.
  */

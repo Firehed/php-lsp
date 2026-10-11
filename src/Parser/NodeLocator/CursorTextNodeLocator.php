@@ -31,7 +31,7 @@ use PhpParser\Node\VarLikeIdentifier;
 
 /**
  * Synthesizes the member-access or call node at the cursor from the document
- * text (RFC 1 §4.11).
+ * text.
  *
  * The synthesized node is resolved and linked into the parsed document's tree,
  * so it meets the same contract as a parsed node.

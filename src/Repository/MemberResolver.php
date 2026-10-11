@@ -22,7 +22,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 /**
  * Resolves class members with inheritance traversal.
  *
- * Class-like metadata is read through the {@see SymbolSourceInterface} seam (RFC 1 §4.2), so
+ * Class-like metadata is read through the {@see SymbolSourceInterface} seam, so
  * the member walk sees the same coverage — open documents overriding the workspace,
  * vendored code, and built-ins — as every other consumer of symbol knowledge.
  *

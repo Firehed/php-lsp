@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * A category of class-like member.
  *
- * RFC 1 Appendix A lists member kind as an axis switched in exactly one place;
+ * Member kind is an axis switched in exactly one place;
  * this enum is that place. Everything the hierarchy walk in
  * {@see \Firehed\PhpLsp\Repository\MemberResolver} needs that varies by kind is
  * answered here, so a new kind is a case in this file rather than another pair

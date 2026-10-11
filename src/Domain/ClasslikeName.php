@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Domain;
 /**
  * The fully-qualified name of a class-like: a {@see QualifiedName}
  * that carries its {@see NameKind} intrinsically. Not a `class-string`: text-derived
- * names (RFC 1 §5.3), fixtures, and forward references all produce a `ClasslikeName`
+ * names, fixtures, and forward references all produce a `ClasslikeName`
  * before any lookup, so the runtime existence of the class is a separate question
  * the resolution tier answers.
  */
