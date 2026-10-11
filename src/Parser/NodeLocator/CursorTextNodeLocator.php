@@ -222,8 +222,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             return null;
         }
 
-        $textBeforeParen = substr($content, 0, $parenPos);
-        $callNode = self::buildCallFrame($textBeforeParen, $parenPos, $line);
+        $callNode = self::buildCallFrame(substr($code, 0, $parenPos), $parenPos, $line);
         if ($callNode === null) {
             return null;
         }
