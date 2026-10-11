@@ -42,7 +42,13 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
     use BuildsWrittenNamesTrait;
 
     private const string NON_FUNCTION_KEYWORD_PATTERN
-        = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
+        = '/\A(?:if|while|for|foreach|switch|catch|array|list|function|fn)\z/i';
+
+    /**
+     * An arrow function's head, through its `=>`. A parameter default may hold
+     * parentheses, so they are matched in balanced pairs.
+     */
+    private const string ARROW_FUNCTION_HEAD = '/\A\s*(?:static\s+)?fn\s*&?\s*(\((?:[^()]++|(?1))*\))[^=]*=>/i';
 
     /** Text ending here makes the name that follows a declaration, not a call. */
     private const string DECLARES_NEXT_NAME_PATTERN = '/\bfunction\s*&?\s*\z/i';
@@ -428,12 +434,38 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             ? $memberInside
             : null;
 
+        if (preg_match(self::ARROW_FUNCTION_HEAD, substr($code, $lastStart), $head) === 1) {
+            $bodyStart = $lastStart + strlen($head[0]);
+            $args[] = self::arrowFunctionArg($content, $lastStart, $bodyStart, $offset, $line, $inner);
+            return [$args, $separators];
+        }
+
         $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
         if ($arg !== null) {
             $args[] = $arg;
         }
 
         return [$args, $separators];
+    }
+
+    /**
+     * The argument being typed when the cursor is in an arrow function's
+     * body, which sits inside the function as it does in a parsed tree.
+     */
+    private static function arrowFunctionArg(
+        string $content,
+        int $start,
+        int $bodyStart,
+        int $offset,
+        int $line,
+        ?Node $memberInside,
+    ): Arg {
+        $body = $memberInside instanceof Expr
+            ? $memberInside
+            : self::typedValue(substr($content, $bodyStart, $offset - $bodyStart), $bodyStart, $offset, $line);
+        $attrs = self::posAttrs($start, $offset, $line);
+
+        return new Arg(new Expr\ArrowFunction(['expr' => $body], $attrs), false, false, $attrs);
     }
 
     /**
