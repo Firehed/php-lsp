@@ -32,6 +32,8 @@ Every service is used through an interface, even when it has one implementation.
 The interface describes what a caller can ask.
 It never says where the answer comes from, and it never takes a parser node or a reflection object where another implementation would take something else.
 
+Code decides by what a symbol can do, such as whether it can be instantiated, not by checking which kind of symbol it is.
+
 ### One wiring place
 
 Instantiating services is to occur in one wiring place: a PSR-11 container.
@@ -85,6 +87,17 @@ No other class walks the graph, so no member kind can see a different hierarchy 
 
 The raw `initialize` parameters are read once, in `src/Capability/`.
 Every decision that shapes output by client support reads `SessionCapabilities`.
+A capability the client does not declare takes its default value.
+A workaround for one editor's behavior lives in one place, outside feature logic.
+
+### Positions
+
+Positions use one encoding inside the server and are converted only where messages enter and leave it.
+
+### Robustness
+
+Bad input, from the client or from the project's files, never ends the process.
+Every request is answered correctly without background work, and background work never delays a request.
 
 ### Completion detection stays text-based
 
@@ -114,7 +127,7 @@ The editor is the only source of change events.
 Two events invalidate: `workspace/didChangeWatchedFiles` for a path, and closing a document that was open.
 Both flow through `InvalidatableInterface::invalidate`, which fans out to every invalidatable in the wiring.
 An open buffer is not an invalidation; it wins by composite order while it is open.
-Built-ins are never invalidated until the target environment can change.
+Built-in symbols should describe the PHP version the project targets; today they come from the PHP running the server, so they are never invalidated.
 
 ## Handling Design or Specification Tensions
 
@@ -122,20 +135,21 @@ This codebase is in flux, and the current state may not reflect the intended des
 Issues may have been written prior to the intended structure, and may be in tension with the goal.
 If you encounter this scenario, stop and ask the human.
 
-## Enforcement tools
+## Staying on track
 
-PHPStan rules under `tests/Architecture/`, the allowlists in `phpstan.neon`, and the layer ruleset in `deptrac.yaml` were written before the design above settled.
-Some of them cement the old shape.
-When one fires against a change that follows the design above, stop and ask the human.
-Do not route around the rule, and do not bend the design to satisfy it.
-Never edit a rule, an allowlist, a baseline, or `bin/check-baseline-shrink` yourself.
+Before each new change in a session, check it against the original request:
 
-When considering edits (or avoiding them), remember: the project and architecture goals are more important.
+- Proposed on its own, would this change be outside the scope of the original request?
+- Has a review or test found a new case of the same kind of problem in code you have already fixed?
+- Does this change satisfy the wording of a tool's rule or a test while doing what that rule or test exists to prevent?
+
+If any answer is yes, stop and report what is happening instead of continuing.
+When a tool such as PHPStan or deptrac blocks a change, the intent of its rule matters, not its wording: ask before working around it.
 
 ## Development Workflow
 
 - GitHub issues are the source of truth for feature specs. Confirm a feature is not already built, and resolve every open question before writing code.
-- A good issue states which service owns each fact and how the work separates concerns. Adding a feature is adding a value on an existing axis, not adding a route.
+- A good issue states which service owns each fact and how the work separates concerns. Adding a feature extends the existing route for its fact, or adds the first one; it never adds a second.
 - Debug through the test suite. Do not write ad hoc PHP scripts.
 - When creating a new issue, add the `ai-authored` label.
 
