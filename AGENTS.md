@@ -81,10 +81,23 @@ Its implementation walks used traits, then the parent chain, then interfaces.
 No other class walks the graph, so no member kind can see a different hierarchy than another.
 `TypeGraphParityTest` checks the reported members against PHP's runtime reflection.
 
+Code decides by what a symbol can do, such as whether it can be instantiated, not by checking which kind of symbol it is.
+
 ### Client capabilities
 
 The raw `initialize` parameters are read once, in `src/Capability/`.
 Every decision that shapes output by client support reads `SessionCapabilities`.
+A capability the client does not declare takes its default value.
+A workaround for one editor's behavior lives in one place, outside feature logic.
+
+### Positions
+
+Positions use one encoding inside the server and are converted only where messages enter and leave it.
+
+### Robustness
+
+Bad input, from the client or from the project's files, never ends the process.
+Every request is answered correctly without background work, and background work never delays a request.
 
 ### Completion detection stays text-based
 
@@ -114,7 +127,7 @@ The editor is the only source of change events.
 Two events invalidate: `workspace/didChangeWatchedFiles` for a path, and closing a document that was open.
 Both flow through `InvalidatableInterface::invalidate`, which fans out to every invalidatable in the wiring.
 An open buffer is not an invalidation; it wins by composite order while it is open.
-Built-ins are never invalidated until the target environment can change.
+Built-ins are never invalidated, since they come from the PHP running the server; #401 tracks reading the project's PHP version instead.
 
 ## Handling Design or Specification Tensions
 
@@ -135,7 +148,7 @@ When considering edits (or avoiding them), remember: the project and architectur
 ## Development Workflow
 
 - GitHub issues are the source of truth for feature specs. Confirm a feature is not already built, and resolve every open question before writing code.
-- A good issue states which service owns each fact and how the work separates concerns. Adding a feature is adding a value on an existing axis, not adding a route.
+- A good issue states which service owns each fact and how the work separates concerns. Adding a feature extends an existing route; it does not add a second one.
 - Debug through the test suite. Do not write ad hoc PHP scripts.
 - When creating a new issue, add the `ai-authored` label.
 
