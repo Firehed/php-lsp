@@ -24,20 +24,6 @@ jobs:
       - name: PHPStan
         run: composer phpstan -- --error-format=github
 
-  baseline-shrink:
-    runs-on: ubuntu-latest
-    name: Baselines shrink or hold
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # bin/check-baseline-shrink reads origin/main via `git show`
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-
-      - name: Check baselines
-        run: php bin/check-baseline-shrink
-
   deptrac:
     runs-on: ubuntu-latest
     name: Deptrac

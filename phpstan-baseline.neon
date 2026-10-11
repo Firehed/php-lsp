@@ -1,18 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 1
-			path: src/Domain/ClassInfo.php
-
-		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 1
-			path: src/Domain/EnumCaseInfo.php
-
-		-
 			message: '''
 				#^Call to method union\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
@@ -20,18 +8,6 @@ parameters:
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 1
-			path: src/Domain/EnumImplicits.php
-
-		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 1
-			path: src/Domain/EnumImplicits.php
-
-		-
-			message: '#^new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 3
 			path: src/Domain/EnumImplicits.php
 
 		-
@@ -55,12 +31,6 @@ parameters:
 			path: src/Knowledge/DeclarationSymbolInfoFactory.php
 
 		-
-			message: '#^new PrimitiveType is confined to TypeFactory; use TypeFactory methods instead\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 1
-			path: src/Knowledge/DeclarationSymbolInfoFactory.php
-
-		-
 			message: '''
 				#^Call to method union\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
@@ -71,18 +41,6 @@ parameters:
 			path: src/Resolution/ExpressionResolver.php
 
 		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 5
-			path: src/Resolution/ExpressionResolver.php
-
-		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 3
-			path: src/Resolution/MemberAccessDetector.php
-
-		-
 			message: '''
 				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
@@ -91,12 +49,6 @@ parameters:
 			identifier: staticMethod.deprecatedClass
 			count: 1
 			path: src/Resolution/ParameterTyping.php
-
-		-
-			message: '#^new ClasslikeType is confined to TypeFactory; use TypeFactory methods instead\.$#'
-			identifier: phpLsp.typeConstruction
-			count: 1
-			path: src/Resolution/SymbolResolver.php
 
 		-
 			message: '''
