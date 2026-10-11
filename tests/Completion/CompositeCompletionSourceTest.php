@@ -63,6 +63,20 @@ final class CompositeCompletionSourceTest extends TestCase
         self::assertNotContains('namespace', $labels, 'only expression keywords are offered');
     }
 
+    public function testAnExpressionInsideACallToAnUnknownCalleeOffersAllButArgumentNames(): void
+    {
+        $labels = self::labelsAfter('foo(n', self::everySymbolKind(), self::insideAnUnresolvedCall());
+
+        foreach (['$variable', 'null', 'Widget', 'Mixin', 'strlen', 'PHP_VERSION'] as $label) {
+            self::assertContains(
+                $label,
+                $labels,
+                "{$label}: variables, expression keywords, and every symbol kind are offered",
+            );
+        }
+        self::assertNotContains('name:', $labels, 'argument names need the callee');
+    }
+
     /**
      * @return iterable<string, array{string}>
      */
@@ -302,8 +316,19 @@ final class CompositeCompletionSourceTest extends TestCase
         $callable->method('getParameters')->willReturn([
             new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
         ]);
-        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver = self::insideAnUnresolvedCall();
         $codeResolver->method('getCallContext')->willReturn(new CallContext($callable, 0, []));
+
+        return $codeResolver;
+    }
+
+    /**
+     * A resolver that places the cursor in a call whose callee is unknown, with `$variable` in scope.
+     */
+    private static function insideAnUnresolvedCall(): CodeResolverInterface&Stub
+    {
+        $codeResolver = self::createStub(CodeResolverInterface::class);
+        $codeResolver->method('isInCallArguments')->willReturn(true);
         $codeResolver->method('getVariablesInScope')->willReturn([
             new ResolvedVariable('variable', new PrimitiveType('string')),
         ]);
