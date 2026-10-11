@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Domain\UnionType;
 
 /**
  * A component constructing TypeInterface implementations directly instead of through
- * TypeFactory, which RFC 1 §4.6 forbids.
+ * TypeFactory, which the rule forbids.
  */
 final class ConstructsTypeOutsideFactory
 {

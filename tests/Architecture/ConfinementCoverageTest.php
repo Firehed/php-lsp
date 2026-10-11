@@ -10,7 +10,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
 /**
- * The §8.1 rules name what they confine in hand-written lists, so each rule is
+ * The architecture rules name what they confine in hand-written lists, so each rule is
  * a consumer of the axis it guards: add an implementation and forget the list,
  * and analysis still passes. An omission and a satisfied rule are the same
  * observation, so only this test can tell them apart.
@@ -74,7 +74,7 @@ final class ConfinementCoverageTest extends TestCase
                 self::implementationsOf(ResolvedSymbolInterface::class),
                 self::ruleConstant(KindInspectionRule::class, 'CONFINED_RESOLVED_IMPLS'),
             )),
-            'an unconfined ResolvedSymbolInterface implementation may be instanceof-inspected anywhere (RFC 1 §4.5)',
+            'an unconfined ResolvedSymbolInterface implementation may be instanceof-inspected anywhere',
         );
     }
 
@@ -86,7 +86,7 @@ final class ConfinementCoverageTest extends TestCase
                 self::implementationsOf(TypeInterface::class),
                 self::ruleConstant(KindInspectionRule::class, 'CONFINED_TYPE_IMPLS'),
             )),
-            'an unconfined TypeInterface implementation may be instanceof-inspected anywhere (RFC 1 §4.5)',
+            'an unconfined TypeInterface implementation may be instanceof-inspected anywhere',
         );
     }
 
@@ -98,7 +98,7 @@ final class ConfinementCoverageTest extends TestCase
                 self::implementationsOf(TypeInterface::class),
                 self::ruleConstant(TypeConstructionRule::class, 'CONFINED_TYPES'),
             )),
-            'an unconfined TypeInterface implementation may be constructed outside TypeFactory (RFC 1 §4.6)',
+            'an unconfined TypeInterface implementation may be constructed outside TypeFactory',
         );
     }
 

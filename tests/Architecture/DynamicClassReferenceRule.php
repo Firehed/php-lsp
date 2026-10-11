@@ -17,7 +17,7 @@ use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
 
 /**
- * The RFC 1 §8.1 rules read the class a reference names, so a name computed at
+ * The architecture rules read the class a reference names, so a name computed at
  * runtime is a door around every one of them: `new $type` constructs a TypeInterface
  * outside the factory, `$value instanceof $wanted` inspects a concrete kind,
  * and `$value::class` asks the runtime what a value is, all unreported.

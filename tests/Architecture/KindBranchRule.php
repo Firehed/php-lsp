@@ -21,7 +21,7 @@ use PHPStan\Type\ObjectType;
 use PHPStan\Type\TypeCombinator;
 
 /**
- * The RFC 1 §8.1 mechanism for §4.5: consumers MUST NOT branch on a
+ * Consumers MUST NOT branch on a
  * symbol-kind enum. Every form that compares a kind is a branch: `match`,
  * `switch`, the four equality operators, and the array searches — including
  * when the compared value is a case's backing value or name rather than the

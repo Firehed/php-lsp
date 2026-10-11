@@ -13,12 +13,12 @@ use PHPStan\Rules\RestrictedUsage\RestrictedUsage;
 use ReflectionClass;
 
 /**
- * The RFC 1 §8.1 mechanism for §4.2 (Symbol Discovery Authority): symbol existence,
+ * Symbol existence,
  * metadata, and namespace enumeration are answered through the SymbolSourceInterface /
  * SymbolSinkInterface seam, so the concrete index, repository, autoload map, and reflection
  * that back it are reachable only within a backend.
  *
- * §4.2 forbids the *dependency*, not a particular spelling of it. A
+ * The rule forbids the *dependency*, not a particular spelling of it. A
  * `RestrictedClassNameUsageExtension` is the seam PHPStan provides for exactly this:
  * PHPStan resolves every class-name reference — an `use` import, a group-use, a
  * fully-qualified name, a `new`, a static call, an `instanceof`, an `extends` /
@@ -27,13 +27,13 @@ use ReflectionClass;
  * only the policy (which classes are confined, which namespaces compose them); the
  * framework owns detection, so no spelling can slip past.
  *
- * That coupling is the one §4.2 forbids, and the one removed from `SymbolCandidates`, `SymbolResolver`, and
+ * That coupling is the one the rule forbids, and the one removed from `SymbolCandidates`, `SymbolResolver`, and
  * `TextDocumentSyncHandler`.
  */
 final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsageExtension
 {
     /**
-     * The symbol-discovery collaborators §4.2 confines to a backend: a concrete index,
+     * The symbol-discovery collaborators confined to a backend: a concrete index,
      * autoload map, and reflection (`ReflectionClass` is a global class, so it
      * has no namespace prefix). Class-like lookup is now served entirely by the
      * {@see \Firehed\PhpLsp\Knowledge\SymbolBackendInterface}s, so `ClassRepository` is gone;
@@ -57,9 +57,9 @@ final class SymbolDiscoveryAuthorityExtension implements RestrictedClassNameUsag
     private const string COMPOSITION_ROOT_NAMESPACE = 'Firehed\PhpLsp';
 
     /**
-     * The backend packages (RFC 1 §5.3) are where the collaborators legitimately
+     * The backend packages are where the collaborators legitimately
      * compose, and tests are not production consumers — the parity suites use
-     * reflection as the §4.7 oracle by design. A namespace equal to or nested under one
+     * reflection as the oracle by design. A namespace equal to or nested under one
      * of these is exempt.
      *
      * Adding an entry loosens (human only). Removing one tightens.

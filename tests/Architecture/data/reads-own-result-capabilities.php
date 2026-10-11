@@ -8,8 +8,8 @@ use Firehed\PhpLsp\Protocol\InitializeResult;
 
 /**
  * Reading the server's *own* advertised capabilities off a typed
- * `InitializeResult` is not a read of the raw `initialize` parameters, so RFC 1
- * §4.8 does not forbid it. The key name is the same; the provenance is not.
+ * `InitializeResult` is not a read of the raw `initialize` parameters, so the
+ * rule does not forbid it. The key name is the same; the provenance is not.
  */
 final class ReadsOwnResultCapabilities
 {

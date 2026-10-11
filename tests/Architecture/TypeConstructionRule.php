@@ -12,7 +12,7 @@ use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
 
 /**
- * The RFC 1 §8.1 mechanism for §4.6: TypeInterface objects MUST be constructed through
+ * TypeInterface objects MUST be constructed through
  * the type factory.
  *
  * @implements Rule<New_>

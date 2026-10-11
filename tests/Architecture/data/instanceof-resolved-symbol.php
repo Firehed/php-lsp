@@ -10,7 +10,7 @@ use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 
 /**
  * A consumer deciding suitability by instanceof against concrete ResolvedSymbolInterface
- * implementations, which RFC 1 §4.5 forbids.
+ * implementations, which the rule forbids.
  */
 final class InstanceofResolvedSymbol
 {

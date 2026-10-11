@@ -8,8 +8,8 @@ use Firehed\PhpLsp\Protocol\Message;
 
 /**
  * A component outside the negotiation package re-inspecting the raw
- * `initialize` `general` parameters (position encoding), which RFC 1 §4.9
- * confines to the negotiation component.
+ * `initialize` `general` parameters (position encoding), which are
+ * confined to the negotiation component.
  */
 final class ReadsRawGeneral
 {

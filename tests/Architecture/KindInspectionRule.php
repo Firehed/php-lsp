@@ -14,7 +14,7 @@ use PHPStan\Rules\Rule;
 use PHPStan\Rules\RuleErrorBuilder;
 
 /**
- * The RFC 1 §8.1 mechanism for §4.5: consumers MUST NOT use `instanceof`
+ * Consumers MUST NOT use `instanceof`
  * against a concrete TypeInterface or ResolvedSymbolInterface implementation to decide
  * suitability.
  *
