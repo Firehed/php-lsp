@@ -229,6 +229,30 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
+    /**
+     * @return array<string, array{string, bool}>
+     */
+    public static function callArgumentPositions(): array
+    {
+        return [
+            'in a call' => ['second_param', true],
+            'outside a call' => ['outside_call', false],
+        ];
+    }
+
+    #[DataProvider('callArgumentPositions')]
+    public function testInCallArgumentsWithoutResolvingTheCallee(string $marker, bool $expected): void
+    {
+        [$document, $line, $character] = $this->signatureHelpCursor($marker);
+
+        self::assertSame(
+            $expected,
+            self::parsingResolver(self::createStub(SymbolSourceInterface::class))
+                ->isInCallArguments($document, $line, $character),
+            'whether a call encloses the cursor does not depend on the callee resolving',
+        );
+    }
+
     public function testVariablesInScopeAreThoseBoundBeforeTheCursor(): void
     {
         [$document, $line, $character] = $this->signatureHelpCursor('assigned_var');
