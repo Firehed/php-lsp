@@ -186,7 +186,7 @@ parameters:
             function:
                 - 'token_get_all()'
                 - 'token_name()'
-            message: 'lexing outside the parser is the token rim: ContextDetector'
+            message: 'lex through Parser\Lexer\LexerInterface'
             allowIn:
                 - src/Completion/ContextDetector.php
                 - tests/*
@@ -278,8 +278,9 @@ parameters:
     disallowedStaticCalls:
         -
             method: 'PhpToken::tokenize()'
-            message: 'lexing outside the parser is the token rim: ContextDetector'
+            message: 'lex through Parser\Lexer\LexerInterface'
             allowIn:
+                - src/Parser/Lexer/PhpTokenLexer.php
                 - tests/*
         -
             method: 'Firehed\PhpLsp\Domain\DocblockParser::extractDescription()'

@@ -273,6 +273,10 @@
             "kind": 7
         },
         {
+            "label": "CallbackBodies",
+            "kind": 7
+        },
+        {
             "label": "ChainedAccess",
             "kind": 7
         },
@@ -302,6 +306,10 @@
         },
         {
             "label": "IncompleteCollidingNew",
+            "kind": 7
+        },
+        {
+            "label": "LiteralsInCallArguments",
             "kind": 7
         },
         {

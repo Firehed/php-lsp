@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\NodeLocator;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\Lexer\PhpTokenLexer;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
@@ -14,6 +15,7 @@ use Firehed\PhpLsp\Tests\Parser\DescribesSyntaxTreesTrait;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
+use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\ConstFetch;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -37,7 +39,7 @@ class CursorTextNodeLocatorTest extends TestCase
 
     public function testNodeAtRejectsAnOffsetOutsideTheDocument(): void
     {
-        $source = new CursorTextNodeLocator();
+        $source = self::locator();
         $document = new TextDocument('file:///doc.php', 'php', 1, '<?php $this->');
         $parsed = new ParsedDocument($document, []);
 
@@ -50,7 +52,7 @@ class CursorTextNodeLocatorTest extends TestCase
 
     public function testAFullyQualifiedStaticAccessBecomesAFullyQualifiedReceiver(): void
     {
-        $source = new CursorTextNodeLocator();
+        $source = self::locator();
         $content = "<?php\n\\Foo::";
         $document = new TextDocument('file:///fq.php', 'php', 1, $content);
         $fooOffset = strpos($content, 'Foo');
@@ -143,7 +145,7 @@ class CursorTextNodeLocatorTest extends TestCase
     {
         // `if (` is a control structure, not a call. `nodeAt` returns null,
         // so no consumer walks up to a FuncCall it wasn't invoking.
-        $source = new CursorTextNodeLocator();
+        $source = self::locator();
         $content = '<?php if (';
         $document = new TextDocument('file:///kw.php', 'php', 1, $content);
 
@@ -156,7 +158,7 @@ class CursorTextNodeLocatorTest extends TestCase
     {
         // The `;` between `foo(` and the cursor ends the scan: the paren
         // belongs to a prior statement, so nothing is unclosed at the cursor.
-        $source = new CursorTextNodeLocator();
+        $source = self::locator();
         $content = "<?php\nfoo(); \$this->";
         $document = new TextDocument('file:///stmt.php', 'php', 1, $content);
         $offset = strlen($content);
@@ -170,7 +172,7 @@ class CursorTextNodeLocatorTest extends TestCase
 
     public function testUnclosedParenScanStopsAtOpenBrace(): void
     {
-        $source = new CursorTextNodeLocator();
+        $source = self::locator();
         $content = "<?php\nclass X { public function m() { foo";
         $document = new TextDocument('file:///brace.php', 'php', 1, $content);
 
@@ -236,7 +238,7 @@ class CursorTextNodeLocatorTest extends TestCase
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
 
         $offset = $this->markerOffset($content, $marker);
-        $call = self::enclosingCall((new CursorTextNodeLocator())->nodeAt(new ParsedDocument($document, []), $offset));
+        $call = self::enclosingCall(self::locator()->nodeAt(new ParsedDocument($document, []), $offset));
 
         self::assertNotNull($call, 'the cursor is inside an unclosed call');
         $value = $call->args[0]->value ?? null;
@@ -256,7 +258,7 @@ class CursorTextNodeLocatorTest extends TestCase
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $offset = $this->markerOffset($content, 'nested_brackets');
 
-        $call = self::enclosingCall((new CursorTextNodeLocator())->nodeAt(new ParsedDocument($document, []), $offset));
+        $call = self::enclosingCall(self::locator()->nodeAt(new ParsedDocument($document, []), $offset));
 
         self::assertNotNull($call, 'the cursor is inside an unclosed call');
         self::assertSame(
@@ -264,6 +266,40 @@ class CursorTextNodeLocatorTest extends TestCase
             $call->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS),
             'only the comma after the nested call is the call\'s own',
         );
+    }
+
+    /**
+     * @return array<string, array{string, int}>
+     */
+    public static function literalsInArguments(): array
+    {
+        return [
+            'a comma in a string' => ['comma_in_string', 0],
+            'a paren in a string' => ['paren_in_string', 1],
+            'a brace in a string' => ['brace_in_string', 1],
+        ];
+    }
+
+    #[DataProvider('literalsInArguments')]
+    public function testOnlyCodeDelimitsTheCallAndItsArguments(string $marker, int $separators): void
+    {
+        $call = $this->callBeforeLiteralMarker($marker);
+
+        self::assertInstanceOf(FuncCall::class, $call, 'a bracket in a literal neither closes nor ends the call');
+        self::assertSame('literalTarget', self::funcCallName($call));
+        self::assertCount(
+            $separators,
+            ParsedDocument::argumentSeparatorsOf($call) ?? [],
+            'a comma in a literal does not separate arguments',
+        );
+    }
+
+    public function testAnArgumentThatIsOnlyALiteralIsStillAnArgument(): void
+    {
+        $call = $this->callBeforeLiteralMarker('paren_in_string');
+
+        self::assertInstanceOf(FuncCall::class, $call);
+        self::assertCount(1, $call->args, 'the argument is read from the source, not the blanked code');
     }
 
     public function testNamedArgInTrailingSegmentIsCaptured(): void
@@ -387,27 +423,78 @@ class CursorTextNodeLocatorTest extends TestCase
     }
 
     /**
-     * @return array<string, array{string}>
+     * @return array<string, array{string, string}>
      */
-    public static function incompleteNames(): array
+    public static function parensThatOpenNoCall(): array
     {
+        $incomplete = 'TopLevel/incomplete_names.php';
+        $declarations = 'TopLevel/declarations_being_typed.php';
+
         return [
-            'namespace prefix alone, called' => ['relative_prefix_call'],
-            'namespace prefix alone, instantiated' => ['relative_prefix_new'],
-            'namespace prefix alone, static call' => ['relative_prefix_static'],
-            'separator alone, static call' => ['separator_static'],
+            'namespace prefix alone, called' => [$incomplete, 'relative_prefix_call'],
+            'namespace prefix alone, instantiated' => [$incomplete, 'relative_prefix_new'],
+            'namespace prefix alone, static call' => [$incomplete, 'relative_prefix_static'],
+            'separator alone, static call' => [$incomplete, 'separator_static'],
+            'function declaration' => [$declarations, 'function_declaration'],
+            'method declaration' => [$declarations, 'method_declaration'],
+            'by-reference method declaration' => [$declarations, 'by_reference_declaration'],
+            'declaration split across lines' => [$declarations, 'split_declaration'],
+            'closure parameter list' => ['src/IncompleteCode/CallbackBodies.php', 'closure_parameter'],
+            'arrow function parameter list' => ['src/IncompleteCode/CallbackBodies.php', 'arrow_parameter'],
         ];
     }
 
-    #[DataProvider('incompleteNames')]
-    public function testAnIncompleteNameSynthesizesNoCall(string $marker): void
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function arrowFunctionBodies(): array
     {
-        $parsed = $this->parsedFixture('TopLevel/incomplete_names.php');
+        return [
+            'empty body' => ['arrow_body'],
+            'member access in the body' => ['arrow_body_member'],
+        ];
+    }
 
+    #[DataProvider('arrowFunctionBodies')]
+    public function testAnArrowFunctionBodyIsInsideItsArgument(string $marker): void
+    {
+        $node = $this->nodeAtMarker($this->parsedFixture('src/IncompleteCode/CallbackBodies.php'), $marker);
+
+        while ($node !== null && !$node instanceof ArrowFunction) {
+            $parent = $node->getAttribute('parent');
+            $node = $parent instanceof Node ? $parent : null;
+        }
+        self::assertInstanceOf(ArrowFunction::class, $node, 'the cursor is inside an arrow function');
+        self::assertInstanceOf(Arg::class, $node->getAttribute('parent'), 'the arrow function is the argument');
+    }
+
+    #[DataProvider('parensThatOpenNoCall')]
+    public function testAParenThatOpensNoCallSynthesizesNone(string $fixture, string $marker): void
+    {
         self::assertNull(
-            self::enclosingCall($this->nodeAtMarker($parsed, $marker)),
-            'a name with nothing after its prefix names no callable',
+            self::enclosingCall($this->nodeAtMarker($this->parsedFixture($fixture), $marker)),
+            'neither an incomplete name nor a name being declared is a callable',
         );
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function commentsAroundACall(): array
+    {
+        return [
+            'a comment ending in a keyword before the name' => ['call_after_comment'],
+            'a comment between the name and its paren' => ['comment_before_paren'],
+        ];
+    }
+
+    #[DataProvider('commentsAroundACall')]
+    public function testACommentDoesNotHideACall(string $marker): void
+    {
+        $call = $this->callAtMarker('TopLevel/declarations_being_typed.php', $marker);
+
+        self::assertInstanceOf(FuncCall::class, $call);
+        self::assertSame('helper', self::funcCallName($call), 'a comment is not code');
     }
 
     public function testAChainedAccessKeepsEachSegment(): void
@@ -483,7 +570,7 @@ class CursorTextNodeLocatorTest extends TestCase
 
     private function nodeAtMarker(ParsedDocument $parsed, string $marker): ?Node
     {
-        return (new CursorTextNodeLocator())->nodeAt(
+        return self::locator()->nodeAt(
             $parsed,
             $this->markerOffset($parsed->document->getContent(), $marker),
         );
@@ -497,9 +584,25 @@ class CursorTextNodeLocatorTest extends TestCase
         return $call;
     }
 
+    private function callBeforeLiteralMarker(string $marker): ?Node
+    {
+        $fixture = 'src/IncompleteCode/LiteralsInCallArguments.php';
+        $content = $this->loadFixture($fixture);
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
+
+        return self::enclosingCall(
+            self::locator()->nodeAt(new ParsedDocument($document, []), $this->markerOffset($content, $marker)),
+        );
+    }
+
+    private static function locator(): CursorTextNodeLocator
+    {
+        return new CursorTextNodeLocator(new PhpTokenLexer());
+    }
+
     private static function synthesizeCallAtCursor(string $content): ?Node
     {
-        $source = new CursorTextNodeLocator();
+        $source = self::locator();
         $document = new TextDocument('file:///call.php', 'php', 1, $content);
         return self::enclosingCall($source->nodeAt(new ParsedDocument($document, []), strlen($content)));
     }

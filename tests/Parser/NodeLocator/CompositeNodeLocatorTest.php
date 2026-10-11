@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\NodeLocator;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\Lexer\PhpTokenLexer;
 use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
@@ -57,7 +58,7 @@ final class CompositeNodeLocatorTest extends TestCase
 
     private static function composite(): CompositeNodeLocator
     {
-        return new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator());
+        return new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator(new PhpTokenLexer()));
     }
 
     private function document(): TextDocument

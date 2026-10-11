@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser\NodeLocator;
 
 use Firehed\PhpLsp\Parser\BuildsWrittenNamesTrait;
+use Firehed\PhpLsp\Parser\Lexer\LexerInterface;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -41,7 +42,16 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
     use BuildsWrittenNamesTrait;
 
     private const string NON_FUNCTION_KEYWORD_PATTERN
-        = '/\A(?:if|while|for|foreach|switch|catch|array|list)\z/i';
+        = '/\A(?:if|while|for|foreach|switch|catch|array|list|function|fn)\z/i';
+
+    /**
+     * An arrow function's head, through its `=>`. A parameter default may hold
+     * parentheses, so they are matched in balanced pairs.
+     */
+    private const string ARROW_FUNCTION_HEAD = '/\A\s*(?:static\s+)?fn\s*&?\s*(\((?:[^()]++|(?1))*\))[^=]*=>/i';
+
+    /** Text ending here makes the name that follows a declaration, not a call. */
+    private const string DECLARES_NEXT_NAME_PATTERN = '/\bfunction\s*&?\s*\z/i';
 
     /**
      * A name as written: optionally fully qualified, never empty, never ending
@@ -52,8 +62,9 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
     private readonly NodeAtPosition $nodeAtPosition;
     private readonly TreeAnnotator $annotator;
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly LexerInterface $lexer,
+    ) {
         $this->nodeAtPosition = new NodeAtPosition();
         $this->annotator = new TreeAnnotator(tolerant: true);
     }
@@ -71,7 +82,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         $content = $document->getContent();
 
         $memberNode = self::synthesizeMemberAccess($lineText, $lineStart, $offset, $line);
-        $callNode = self::synthesizeCall($content, $offset, $line, $memberNode);
+        $callNode = $this->synthesizeCall($content, $offset, $line, $memberNode);
 
         $root = $callNode ?? $memberNode;
         if ($root === null) {
@@ -205,25 +216,24 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
      * `$memberInside` becomes the value of the trailing {@see Arg} so a walk
      * up from the member-access still reaches the enclosing call.
      */
-    private static function synthesizeCall(
+    private function synthesizeCall(
         string $content,
         int $offset,
         int $line,
         ?Node $memberInside,
     ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
-        $parenPos = self::findUnclosedParen($content, $offset);
+        $code = $this->lexer->codeOnly(substr($content, 0, $offset));
+        $parenPos = self::findUnclosedParen($code);
         if ($parenPos === null) {
             return null;
         }
 
-        $textBeforeParen = substr($content, 0, $parenPos);
-        $callNode = self::buildCallFrame($textBeforeParen, $parenPos, $line);
+        $callNode = self::buildCallFrame(substr($code, 0, $parenPos), $parenPos, $line);
         if ($callNode === null) {
             return null;
         }
 
-        $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
-        [$args, $separators] = self::parseArgs($argsText, $parenPos + 1, $offset, $line, $memberInside);
+        [$args, $separators] = self::parseArgs($content, $code, $parenPos + 1, $line, $memberInside);
         $callNode->args = $args;
         $callNode->setAttribute(ParsedDocument::ARGUMENT_SEPARATORS, $separators);
 
@@ -233,11 +243,11 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         return $callNode;
     }
 
-    private static function findUnclosedParen(string $content, int $offset): ?int
+    private static function findUnclosedParen(string $code): ?int
     {
         $depth = 0;
-        for ($i = $offset - 1; $i >= 0; $i--) {
-            $char = $content[$i];
+        for ($i = strlen($code) - 1; $i >= 0; $i--) {
+            $char = $code[$i];
             if ($char === ')') {
                 $depth++;
             } elseif ($char === '(') {
@@ -349,7 +359,10 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         ) {
             $funcName = $m[1][0];
             $funcStart = $m[1][1];
-            if (preg_match(self::NON_FUNCTION_KEYWORD_PATTERN, $funcName) === 1) {
+            if (
+                preg_match(self::NON_FUNCTION_KEYWORD_PATTERN, $funcName) === 1
+                || preg_match(self::DECLARES_NEXT_NAME_PATTERN, substr($text, 0, $funcStart)) === 1
+            ) {
                 return null;
             }
             return new FuncCall(
@@ -376,33 +389,35 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
     }
 
     /**
+     * The arguments from $argsStart to the cursor, split at the commas in
+     * $code and read from $content.
+     *
+     * @param string $code $content up to the cursor, as {@see LexerInterface::codeOnly()} returns it
      * @return array{list<Arg>, list<int>} The arguments and the positions of
      *         the commas between them
      */
     private static function parseArgs(
-        string $argsText,
+        string $content,
+        string $code,
         int $argsStart,
-        int $offset,
         int $line,
         ?Node $memberInside,
     ): array {
         $args = [];
         $separators = [];
         $depth = 0;
-        $currentStart = 0;
-        $length = strlen($argsText);
-        for ($i = 0; $i < $length; $i++) {
-            $char = $argsText[$i];
+        $currentStart = $argsStart;
+        $offset = strlen($code);
+        for ($i = $argsStart; $i < $offset; $i++) {
+            $char = $code[$i];
             if ($char === '(' || $char === '[' || $char === '{') {
                 $depth++;
             } elseif ($char === ')' || $char === ']' || $char === '}') {
                 $depth--;
             } elseif ($char === ',' && $depth === 0) {
-                $separators[] = $argsStart + $i;
-                $segment = substr($argsText, $currentStart, $i - $currentStart);
-                $segStart = $argsStart + $currentStart;
-                $segEnd = $argsStart + $i - 1;
-                $arg = self::buildArg($segment, $segStart, $segEnd, $line, null);
+                $separators[] = $i;
+                $segment = substr($content, $currentStart, $i - $currentStart);
+                $arg = self::buildArg($segment, $currentStart, $i - 1, $line, null);
                 if ($arg !== null) {
                     $args[] = $arg;
                 }
@@ -410,8 +425,8 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             }
         }
 
-        $lastSegment = substr($argsText, $currentStart);
-        $lastStart = $argsStart + $currentStart;
+        $lastSegment = substr($content, $currentStart, $offset - $currentStart);
+        $lastStart = $currentStart;
         $lastEnd = $offset;
         // Deliberately no end-position check: a nodeAt at an earlier offset
         // inside `$var` still needs to descend into the member access.
@@ -419,12 +434,38 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             ? $memberInside
             : null;
 
+        if (preg_match(self::ARROW_FUNCTION_HEAD, substr($code, $lastStart), $head) === 1) {
+            $bodyStart = $lastStart + strlen($head[0]);
+            $args[] = self::arrowFunctionArg($content, $lastStart, $bodyStart, $offset, $line, $inner);
+            return [$args, $separators];
+        }
+
         $arg = self::buildArg($lastSegment, $lastStart, $lastEnd, $line, $inner);
         if ($arg !== null) {
             $args[] = $arg;
         }
 
         return [$args, $separators];
+    }
+
+    /**
+     * The argument being typed when the cursor is in an arrow function's
+     * body, which sits inside the function as it does in a parsed tree.
+     */
+    private static function arrowFunctionArg(
+        string $content,
+        int $start,
+        int $bodyStart,
+        int $offset,
+        int $line,
+        ?Node $memberInside,
+    ): Arg {
+        $body = $memberInside instanceof Expr
+            ? $memberInside
+            : self::typedValue(substr($content, $bodyStart, $offset - $bodyStart), $bodyStart, $offset, $line);
+        $attrs = self::posAttrs($start, $offset, $line);
+
+        return new Arg(new Expr\ArrowFunction(['expr' => $body], $attrs), false, false, $attrs);
     }
 
     /**

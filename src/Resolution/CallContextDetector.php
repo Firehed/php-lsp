@@ -16,6 +16,8 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\FunctionLike;
+use PhpParser\Node\Stmt\ClassLike;
 
 /**
  * Detects call context (function/method/constructor calls) at a cursor
@@ -47,6 +49,11 @@ final class CallContextDetector
         // Walk parents until an enclosing call is found. The tree annotator sets
         // the parent attribute, so this is a pointer walk, not a traversal.
         while ($node !== null && !self::isCallLike($node)) {
+            // Code inside a function-like or class-like runs on its own, so it
+            // is not an argument of a call the whole is passed to.
+            if (($node instanceof FunctionLike || $node instanceof ClassLike) && $offset > $node->getStartFilePos()) {
+                return null;
+            }
             $parent = $node->getAttribute('parent');
             $node = $parent instanceof Node ? $parent : null;
         }

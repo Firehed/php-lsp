@@ -25,6 +25,9 @@ return [
     Parser\SyntaxSource\SyntaxSourceInterface::class => Parser\SyntaxSource\MemoizingSyntaxSource::class,
     Parser\SyntaxSource\MessageScopedInterface::class => Parser\SyntaxSource\MemoizingSyntaxSource::class,
 
+    Parser\Lexer\PhpTokenLexer::class,
+    Parser\Lexer\LexerInterface::class => Parser\Lexer\PhpTokenLexer::class,
+
     Parser\NodeLocator\TreeNodeLocator::class,
     Parser\NodeLocator\CursorTextNodeLocator::class,
     Parser\NodeLocator\CompositeNodeLocator::class,
