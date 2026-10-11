@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\ParsedDeclarationSource;
+use Firehed\PhpLsp\Parser\Lexer\PhpTokenLexer;
 use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
@@ -45,7 +46,10 @@ final readonly class ProductionSyntaxSource
             ),
         );
         $this->source = new MemoizingSyntaxSource($this->counter);
-        $this->locator = new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator());
+        $this->locator = new CompositeNodeLocator(
+            new TreeNodeLocator(),
+            new CursorTextNodeLocator(new PhpTokenLexer()),
+        );
         $this->reader = new SourceFileReader();
         $this->declarations = new ParsedDeclarationSource(
             $this->source,

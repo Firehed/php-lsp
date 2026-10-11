@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\Lexer\PhpTokenLexer;
 use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
@@ -170,7 +171,7 @@ final class CallContextDetectorTest extends TestCase
         $detection = $this->detectAt(
             'src/Completion/EditingNamedArg.php',
             $marker,
-            new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator()),
+            new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator(new PhpTokenLexer())),
         );
 
         self::assertNotNull($detection, 'the cursor is inside a call');

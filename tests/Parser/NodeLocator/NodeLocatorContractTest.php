@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Parser\NodeLocator;
 
 use Closure;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\Lexer\PhpTokenLexer;
 use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
@@ -40,7 +41,7 @@ final class NodeLocatorContractTest extends TestCase
     public static function locatedNodes(): iterable
     {
         $tree = new TreeNodeLocator();
-        $cursorText = new CursorTextNodeLocator();
+        $cursorText = new CursorTextNodeLocator(new PhpTokenLexer());
         $parser = new PhpParserSyntaxSource(new TreeAnnotator());
         $skeleton = new SkeletonSyntaxSource();
 
@@ -119,7 +120,7 @@ final class NodeLocatorContractTest extends TestCase
             'the parsed tree must hold nothing here, or this case never reaches the cursor text',
         );
 
-        $composite = new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator());
+        $composite = new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator(new PhpTokenLexer()));
         $node = $composite->nodeAt($parsed, $offset);
 
         self::assertNotNull($node, 'the cursor text answers where the parsed tree does not');

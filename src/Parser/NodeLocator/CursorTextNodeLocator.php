@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser\NodeLocator;
 
 use Firehed\PhpLsp\Parser\BuildsWrittenNamesTrait;
+use Firehed\PhpLsp\Parser\Lexer\LexerInterface;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -52,8 +53,9 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
     private readonly NodeAtPosition $nodeAtPosition;
     private readonly TreeAnnotator $annotator;
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly LexerInterface $lexer,
+    ) {
         $this->nodeAtPosition = new NodeAtPosition();
         $this->annotator = new TreeAnnotator(tolerant: true);
     }
@@ -71,7 +73,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         $content = $document->getContent();
 
         $memberNode = self::synthesizeMemberAccess($lineText, $lineStart, $offset, $line);
-        $callNode = self::synthesizeCall($content, $offset, $line, $memberNode);
+        $callNode = $this->synthesizeCall($content, $offset, $line, $memberNode);
 
         $root = $callNode ?? $memberNode;
         if ($root === null) {
@@ -205,13 +207,14 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
      * `$memberInside` becomes the value of the trailing {@see Arg} so a walk
      * up from the member-access still reaches the enclosing call.
      */
-    private static function synthesizeCall(
+    private function synthesizeCall(
         string $content,
         int $offset,
         int $line,
         ?Node $memberInside,
     ): FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute|null {
-        $parenPos = self::findUnclosedParen($content, $offset);
+        $code = $this->lexer->codeOnly(substr($content, 0, $offset));
+        $parenPos = self::findUnclosedParen($code, $offset);
         if ($parenPos === null) {
             return null;
         }
@@ -222,8 +225,15 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
             return null;
         }
 
-        $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
-        [$args, $separators] = self::parseArgs($argsText, $parenPos + 1, $offset, $line, $memberInside);
+        $argsStart = $parenPos + 1;
+        [$args, $separators] = self::parseArgs(
+            substr($content, $argsStart, $offset - $argsStart),
+            substr($code, $argsStart),
+            $argsStart,
+            $offset,
+            $line,
+            $memberInside,
+        );
         $callNode->args = $args;
         $callNode->setAttribute(ParsedDocument::ARGUMENT_SEPARATORS, $separators);
 
@@ -233,11 +243,11 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         return $callNode;
     }
 
-    private static function findUnclosedParen(string $content, int $offset): ?int
+    private static function findUnclosedParen(string $code, int $offset): ?int
     {
         $depth = 0;
         for ($i = $offset - 1; $i >= 0; $i--) {
-            $char = $content[$i];
+            $char = $code[$i];
             if ($char === ')') {
                 $depth++;
             } elseif ($char === '(') {
@@ -376,11 +386,13 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
     }
 
     /**
+     * @param string $argsCode $argsText as {@see LexerInterface::codeOnly()} returns it
      * @return array{list<Arg>, list<int>} The arguments and the positions of
      *         the commas between them
      */
     private static function parseArgs(
         string $argsText,
+        string $argsCode,
         int $argsStart,
         int $offset,
         int $line,
@@ -392,7 +404,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         $currentStart = 0;
         $length = strlen($argsText);
         for ($i = 0; $i < $length; $i++) {
-            $char = $argsText[$i];
+            $char = $argsCode[$i];
             if ($char === '(' || $char === '[' || $char === '{') {
                 $depth++;
             } elseif ($char === ')' || $char === ']' || $char === '}') {
