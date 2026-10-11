@@ -178,6 +178,57 @@ final class CallContextDetectorTest extends TestCase
         self::assertSame($expected, $detection[4], 'whether a value, where no argument name fits, is being typed');
     }
 
+    /**
+     * @return array<string, array{string, string, ?string}>
+     */
+    public static function callbackPositions(): array
+    {
+        $parsed = 'src/Resolution/CallbackBodies.php';
+        $typed = 'src/IncompleteCode/CallbackBodies.php';
+
+        return [
+            'closure body' => [$parsed, 'closure_body', null],
+            'closure parameter' => [$parsed, 'closure_parameter', null],
+            'arrow function body' => [$parsed, 'arrow_body', null],
+            'call in an arrow function body' => [$parsed, 'call_in_arrow_body', 'strlen'],
+            'anonymous class body' => [$parsed, 'anonymous_class_body', null],
+            'anonymous class constructor argument' => [$parsed, 'anonymous_class_argument', 'new'],
+            'closure body being typed' => [$typed, 'closure_body', null],
+            'closure parameter being typed' => [$typed, 'closure_parameter', null],
+            'arrow function parameter being typed' => [$typed, 'arrow_parameter', null],
+            'arrow function body being typed' => [$typed, 'arrow_body', null],
+            'member access in an arrow function body being typed' => [$typed, 'arrow_body_member', null],
+            'call in an arrow function body being typed' => [$typed, 'call_in_arrow_body', 'strlen'],
+            'argument after an arrow function being typed' => [$typed, 'after_arrow_argument', 'array_map'],
+            'anonymous class body being typed' => [$typed, 'anonymous_class_body', null],
+        ];
+    }
+
+    /**
+     * Code inside a function-like or class-like runs on its own, so it is not
+     * an argument of a call the function-like or class-like is passed to.
+     */
+    #[DataProvider('callbackPositions')]
+    public function testABodyPassedToACallIsNotInItsArguments(string $fixture, string $marker, ?string $callee): void
+    {
+        $detection = $this->detectAt(
+            $fixture,
+            $marker,
+            new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator(new PhpTokenLexer())),
+        );
+
+        $call = $detection[0] ?? null;
+        self::assertSame(
+            $callee,
+            match (true) {
+                $call instanceof FuncCall && $call->name instanceof Name => $call->name->toString(),
+                $call instanceof New_ => 'new',
+                default => null,
+            },
+            'only a call whose arguments hold the cursor directly encloses it',
+        );
+    }
+
     public function testRejectsACallWithoutItsArgumentSeparators(): void
     {
         $locator = self::createStub(NodeLocatorInterface::class);

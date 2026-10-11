@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Tests\Parser\DescribesSyntaxTreesTrait;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
+use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\ConstFetch;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -438,7 +439,33 @@ class CursorTextNodeLocatorTest extends TestCase
             'method declaration' => [$declarations, 'method_declaration'],
             'by-reference method declaration' => [$declarations, 'by_reference_declaration'],
             'declaration split across lines' => [$declarations, 'split_declaration'],
+            'closure parameter list' => ['src/IncompleteCode/CallbackBodies.php', 'closure_parameter'],
+            'arrow function parameter list' => ['src/IncompleteCode/CallbackBodies.php', 'arrow_parameter'],
         ];
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function arrowFunctionBodies(): array
+    {
+        return [
+            'empty body' => ['arrow_body'],
+            'member access in the body' => ['arrow_body_member'],
+        ];
+    }
+
+    #[DataProvider('arrowFunctionBodies')]
+    public function testAnArrowFunctionBodyIsInsideItsArgument(string $marker): void
+    {
+        $node = $this->nodeAtMarker($this->parsedFixture('src/IncompleteCode/CallbackBodies.php'), $marker);
+
+        while ($node !== null && !$node instanceof ArrowFunction) {
+            $parent = $node->getAttribute('parent');
+            $node = $parent instanceof Node ? $parent : null;
+        }
+        self::assertInstanceOf(ArrowFunction::class, $node, 'the cursor is inside an arrow function');
+        self::assertInstanceOf(Arg::class, $node->getAttribute('parent'), 'the arrow function is the argument');
     }
 
     #[DataProvider('parensThatOpenNoCall')]
