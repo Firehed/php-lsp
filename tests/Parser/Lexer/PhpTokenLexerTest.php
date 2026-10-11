@@ -65,6 +65,7 @@ final class PhpTokenLexerTest extends TestCase
             'a keyword in upper case' => ['MATCH', true],
             'an arrow function' => ['fn', true],
             'a name' => ['helper', false],
+            'a qualified name ending in a keyword' => ['Foo\isset', false],
             'a special class name, which is not reserved' => ['self', false],
         ];
     }
