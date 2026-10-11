@@ -49,9 +49,11 @@ final class PhpTokenLexerTest extends TestCase
 
     public function testInlineHtmlIsBlanked(): void
     {
+        $content = $this->loadFixture('ContextDetector/mixed_html_php.php');
+
         self::assertSame(
             ' <?php echo $foo; ?> ',
-            self::collapseSpace((new PhpTokenLexer())->codeOnly($this->loadFixture('ContextDetector/mixed_html_php.php'))),
+            self::collapseSpace((new PhpTokenLexer())->codeOnly($content)),
             'only the text between PHP tags remains',
         );
     }
