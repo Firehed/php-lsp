@@ -32,7 +32,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 1 §4.11: on input that parses, the cursor-text source and the parsed-tree
+ * On input that parses, the cursor-text source and the parsed-tree
  * path must land on nodes of the same class carrying the same receiver and name,
  * so signature help and member resolution never resolve against a different
  * callable or receiver in the empty-parse path than in the parsed path.
@@ -64,8 +64,7 @@ final class AstTextAgreementTest extends TestCase
      * cursor-text source alone must land on a call node of the same class at
      * the cursor. Diverging call classes would mean the empty-parse path and
      * the parsed-tree path resolve signature help against different callables
-     * — the M×N the cursor-text source exists to prevent (RFC 1
-     * §4.11).
+     * — the M×N the cursor-text source exists to prevent.
      *
      * @param class-string<FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute> $expectedNodeClass
      */
@@ -213,7 +212,7 @@ final class AstTextAgreementTest extends TestCase
      * the same receiver and name at the cursor. Diverging shapes at the cursor
      * would mean the empty-parse path and the parsed-tree path resolve a member
      * against different receivers — the M×N the cursor-text source exists to
-     * prevent (RFC 1 §4.11).
+     * prevent.
      */
     #[DataProvider('memberAccessFixtures')]
     public function testMemberAccessCursorAgreement(

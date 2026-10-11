@@ -19,8 +19,6 @@ use PHPUnit\Framework\TestCase;
  * golden queries only namespaces with no internal (reflected) symbols, whose
  * output is therefore stable across the 8.3/8.4/8.5 CI matrix; the built-in
  * reflection source is version-fragile and is covered by a subset assertion.
- *
- * See RFC 1 §4.2, §5.1.
  */
 final class ChildrenOfParityTest extends TestCase
 {
@@ -97,8 +95,7 @@ final class ChildrenOfParityTest extends TestCase
         // in it would leave the golden green. This pins both the open-document
         // symbol enumeration (`Unsaved` under `Fixtures\Model\OpenOnly`) and its
         // child-namespace derivation (`Fixtures\Model\OpenOnly` under
-        // `Fixtures\Model`). RFC 1 §4.2 (enumeration is served by every backend),
-        // §5.2 (open-document state must surface).
+        // `Fixtures\Model`).
         $stack->sink->openDocument(new TextDocument(
             'file:///virtual/OpenOnly/Unsaved.php',
             'php',

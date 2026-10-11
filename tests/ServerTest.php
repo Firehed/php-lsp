@@ -74,7 +74,7 @@ class ServerTest extends TestCase
         self::assertSame(
             ErrorCode::ServerNotInitialized,
             $this->errorCode($this->responseWithId($responses, 5)),
-            'a request before initialize gets ServerNotInitialized (RFC 1 §4.8)',
+            'a request before initialize gets ServerNotInitialized',
         );
     }
 
@@ -101,13 +101,13 @@ class ServerTest extends TestCase
         self::assertSame(
             ErrorCode::InvalidRequest,
             $this->errorCode($this->responseWithId($responses, 5)),
-            'a request after shutdown gets InvalidRequest (RFC 1 §4.8)',
+            'a request after shutdown gets InvalidRequest',
         );
     }
 
     /**
      * A gated message must be answered with the lifecycle error *and* never
-     * reach a handler (RFC 1 §4.8; LSP "Server lifecycle" requires pre-
+     * reach a handler (LSP "Server lifecycle" requires pre-
      * `initialize` notifications be dropped). Asserting the response code alone
      * cannot tell enforcement from theatre: a server that dispatches the
      * message and then overwrites the result with the gate error emits byte-
@@ -367,7 +367,7 @@ class ServerTest extends TestCase
 
     /**
      * A handler failure must be answered with InternalError rather than taking
-     * down the read loop (RFC 1 §9): an editor session that dies on one failed
+     * down the read loop: an editor session that dies on one failed
      * request loses all unsaved server state. The later shutdown proves the loop
      * survived, not merely that one response was written.
      *
@@ -443,13 +443,13 @@ class ServerTest extends TestCase
         self::assertSame(
             ErrorCode::InternalError,
             $this->errorCode($this->responseWithId($responses, 7)),
-            'a throwing handler yields InternalError (RFC 1 §9)',
+            'a throwing handler yields InternalError',
         );
     }
 
     /**
      * `supports()` is part of the handler contract, so a failure there is a
-     * handler failure too (RFC 1 §9). It runs during handler lookup, which sat
+     * handler failure too. It runs during handler lookup, which sat
      * outside the dispatch try/catch.
      */
     public function testFailureSelectingAHandlerYieldsInternalError(): void
@@ -490,7 +490,7 @@ class ServerTest extends TestCase
         self::assertSame(
             ErrorCode::InternalError,
             $this->errorCode($this->responseWithId($responses, 7)),
-            'a throwing supports() yields InternalError (RFC 1 §9)',
+            'a throwing supports() yields InternalError',
         );
         self::assertArrayHasKey(
             'result',
@@ -505,7 +505,7 @@ class ServerTest extends TestCase
      * `handle()` — outside the dispatch try/catch. Any hover or completion
      * carrying text lifted from a file that is not valid UTF-8 (a Latin-1
      * docblock, say) reaches the writer this way, so the read loop must
-     * survive it (RFC 1 §9).
+     * survive it.
      */
     public function testUnencodableResultYieldsInternalErrorAndKeepsRunning(): void
     {
@@ -542,7 +542,7 @@ class ServerTest extends TestCase
         self::assertSame(
             ErrorCode::InternalError,
             $this->errorCode($this->responseWithId($responses, 7)),
-            'a result that cannot be encoded yields InternalError (RFC 1 §9)',
+            'a result that cannot be encoded yields InternalError',
         );
         self::assertArrayHasKey(
             'result',
@@ -565,7 +565,7 @@ class ServerTest extends TestCase
     }
 
     /**
-     * The §8.1 mechanism for RFC 1 §9: a malformed frame is answered with an
+     * A malformed frame is answered with an
      * error response and the read loop keeps going. The id-less ParseError is
      * JSON-RPC's answer when the id cannot be recovered from the bad frame.
      */

@@ -6,7 +6,7 @@ namespace Fixtures\Encoding;
 
 /**
  * Content mixing ASCII with multibyte codepoints of every UTF-8 width, for the
- * position round-trip corpus (RFC 1 §4.9): "é" is two bytes and one UTF-16 unit,
+ * position round-trip corpus: "é" is two bytes and one UTF-16 unit,
  * "€" and "中" are three bytes and one unit, and "😀" is four bytes and a UTF-16
  * surrogate pair (two units). The variety across several lines makes the boundary
  * conversion a bijection worth sweeping in full.

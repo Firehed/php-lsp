@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The built-in backend is the lowest-precedence source (RFC 1 §5.3): it reflects the
+ * The built-in backend is the lowest-precedence source: it reflects the
  * symbols the server runtime has loaded. These prove lookup via reflection, its
  * caching, absence for an unknown name, the empty class-like prefix search, and
  * that namespace enumeration reads the same internal-symbol index the prefix
@@ -54,7 +54,7 @@ final class BuiltinBackendTest extends TestCase
     {
         self::assertNull(
             self::classLikeIn($this->backend, 'No\Such\Builtin'),
-            'a name reflection cannot load is absent from this backend (RFC 1 §5.3)',
+            'a name reflection cannot load is absent from this backend',
         );
     }
 
@@ -107,8 +107,7 @@ final class BuiltinBackendTest extends TestCase
         // its own dependencies declare. Those are not the project's, and answering
         // for one would report a function the user's code cannot call. The backend
         // enumerates only internal functions (BuiltinFunctionParityTest), so lookup
-        // must agree or a name resolves on hover yet never appears in completion
-        // (RFC 1 §4.2).
+        // must agree or a name resolves on hover yet never appears in completion.
         require_once dirname(__DIR__) . '/Domain/Fixtures/documented_function.php';
 
         self::assertNull(
@@ -121,7 +120,7 @@ final class BuiltinBackendTest extends TestCase
     {
         self::assertNull(
             self::functionIn($this->backend, 'no_such_builtin'),
-            'a name reflection cannot load is absent from this backend (RFC 1 §5.3)',
+            'a name reflection cannot load is absent from this backend',
         );
     }
 
@@ -271,7 +270,7 @@ final class BuiltinBackendTest extends TestCase
     ): void {
         self::assertNull(
             self::symbolOfKindIn($this->backend, $fqn, $kind),
-            'a name reflection cannot load for this kind is absent (RFC 1 §5.3)',
+            'a name reflection cannot load for this kind is absent',
         );
     }
 

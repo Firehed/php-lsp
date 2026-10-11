@@ -27,7 +27,7 @@ use ReflectionClass;
 use ReflectionMethod;
 
 /**
- * The parse-health grid (RFC 1 §4.11).
+ * The parse-health grid.
  *
  * Every position-taking method on {@see CodeResolverInterface} — derived by reflection so
  * a new method is a new row without an edit to the test — is exercised at one

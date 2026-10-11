@@ -16,8 +16,6 @@ use PHPUnit\Framework\TestCase;
  * per kind. A fixed set of workspace documents is registered, then a curated set
  * of per-kind prefix queries is frozen. All inputs are in-repo, so the golden is
  * deterministic.
- *
- * See RFC 1 §4.2, §5.1.
  */
 final class PrefixSearchParityTest extends TestCase
 {

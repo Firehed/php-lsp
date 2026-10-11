@@ -19,7 +19,7 @@ function getConfig(): Config
 
 // A polyfill declares itself only where the runtime lacks it, so the declaration is
 // nested rather than top-level. It is still a name this file declares, and the
-// completion surface must offer it (RFC 1 §4.2).
+// completion surface must offer it.
 if (!function_exists(__NAMESPACE__ . '\calculateProduct')) {
     /**
      * Multiplies two numbers.

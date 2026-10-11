@@ -70,7 +70,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     {
         self::assertNull(
             $this->build('Fixtures\Helpers\notDeclaredHere', NameKind::Function_),
-            'a name the declarations do not carry is absent (RFC 1 §5.3)',
+            'a name the declarations do not carry is absent',
         );
     }
 
@@ -183,7 +183,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
             ) => ['conflictMethod']],
             $info->traitExclusions,
             'an insteadof adaptation must record the losing trait under the class-like identity key, '
-                . 'so a case-different `use` still matches (RFC 1 §5.6)',
+                . 'so a case-different `use` still matches',
         );
     }
 
@@ -230,7 +230,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     {
         // php-parser recovers `private $)` by attaching an Error node as the
         // parameter's var. The extractor must skip it rather than crash on
-        // reading a non-string name (RFC 1 §9 tolerance for broken input).
+        // reading a non-string name.
         $info = $this->buildClassInfoFromFixture(
             'src/IncompleteCode/BrokenParameters.php',
             'Fixtures\IncompleteCode\BrokenPromotedProperty',

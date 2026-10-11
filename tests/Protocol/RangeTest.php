@@ -30,7 +30,7 @@ class RangeTest extends TestCase
     {
         // "café" is four codepoints but five UTF-8 bytes; the range is measured in
         // the negotiated encoding's code units, so it starts four columns back, not
-        // five (RFC 1 §4.9).
+        // five.
         $range = Range::forPrefix(0, 4, 'café', PositionEncoding::Utf16);
 
         self::assertSame(

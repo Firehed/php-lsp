@@ -47,7 +47,7 @@ trait LoadsFixturesTrait
      * {@see locateCursor()} returns a byte column, which coincides with the wire
      * column only for ASCII; a fixture with multibyte content before the cursor
      * needs the true wire column to exercise the boundary conversion the interior
-     * relies on (RFC 1 §4.9).
+     * relies on.
      *
      * @param string $cursorName The marker name (without delimiters)
      * @return array{line: int, character: int}

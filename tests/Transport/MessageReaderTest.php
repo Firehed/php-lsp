@@ -125,8 +125,8 @@ class MessageReaderTest extends TestCase
     }
 
     /**
-     * RFC 1 §9: "A message lacking a required header MUST be distinguishable
-     * from end of stream." Both used to surface as null, so a truncated or
+     * A message lacking a required header must be distinguishable
+     * from end of stream. Both used to surface as null, so a truncated or
      * unframed write looked exactly like the client hanging up.
      */
     public function testFrameWithoutContentLengthIsNotEndOfStream(): void
@@ -201,8 +201,8 @@ class MessageReaderTest extends TestCase
 
     /**
      * Per [LSP] "Base Protocol" the Content-Length value is a byte count, and
-     * "the structure of header fields conforms to the HTTP semantic"
-     * ([RFC 7230] §3.2) — so §3.3.2's `Content-Length = 1*DIGIT`. A bare (int)
+     * "the structure of header fields conforms to the HTTP semantic".
+     * A bare (int)
      * cast accepted anything: "abc" became 0, and "-5" became a negative
      * length, which makes substr() consume from the wrong end of the buffer.
      *
@@ -232,8 +232,8 @@ class MessageReaderTest extends TestCase
      * the frame costs exactly one error and its bytes are consumed. Left in the
      * buffer they would be re-read as the next frame's header block, letting
      * bytes the sender chose inside a body declare the Content-Length of the
-     * frame behind them — the framing desync [RFC 7230] §3.3.3 treats as
-     * unrecoverable, and a frame-injection primitive besides.
+     * frame behind them — an unrecoverable framing desync, and a
+     * frame-injection primitive besides.
      */
     public function testUnusableContentLengthWithUnrecoverableBodyCostsOneError(): void
     {
@@ -275,11 +275,6 @@ class MessageReaderTest extends TestCase
         yield 'whitespace separated' => ['4 0'];
     }
 
-    /**
-     * [RFC 7230] §3.3.2 is `1*DIGIT`, which permits leading zeros, and §3.2.4
-     * allows optional whitespace around a field value. Neither makes the length
-     * unusable, so both frame normally.
-     */
     #[DataProvider('usableContentLengthSpellings')]
     public function testContentLengthSpellingsThatStillFrame(string $template): void
     {
@@ -335,7 +330,7 @@ class MessageReaderTest extends TestCase
     }
 
     /**
-     * [RFC 7230] §3.3.3 treats conflicting Content-Length values as an
+     * Conflicting Content-Length values are an
      * unrecoverable framing error, and taking the first silently is the worst
      * of the options — it is what lets two readers of the same bytes disagree
      * about where a frame ends. Neither value is trusted; the decoder judges
@@ -419,7 +414,7 @@ class MessageReaderTest extends TestCase
         self::assertSame(
             ErrorCode::ParseError,
             $result->error->code,
-            'unparseable JSON yields ParseError (RFC 1 §9)',
+            'unparseable JSON yields ParseError',
         );
     }
 
@@ -530,7 +525,7 @@ class MessageReaderTest extends TestCase
      * a request the server sent — e.g. `client/registerCapability`. JSON-RPC 2.0
      * §4.1 forbids replying to it, and the server does not correlate its outbound
      * requests, so it is consumed and dropped rather than answered as a
-     * method-less malformed frame; the frame behind it still reads (RFC 1 §5.2).
+     * method-less malformed frame; the frame behind it still reads.
      *
      * @param array<string, mixed> $response
      */
@@ -567,7 +562,7 @@ class MessageReaderTest extends TestCase
     /**
      * The frame is consumed even when it cannot be decoded, so one bad message
      * does not desynchronize the stream: the server answers it with an error and
-     * keeps serving (RFC 1 §9).
+     * keeps serving.
      */
     public function testReaderRecoversAfterAMalformedFrame(): void
     {

@@ -39,8 +39,6 @@ use PHPUnit\Framework\TestCase;
  * query can freeze that (the prefixes narrow enough to be stable match one half or
  * the other, never both), so it is asserted separately in
  * {@see testDocumentFunctionsPrecedeBuiltins}.
- *
- * See RFC 1 §4.2.
  */
 final class FunctionSurfaceParityTest extends TestCase
 {
@@ -103,7 +101,7 @@ final class FunctionSurfaceParityTest extends TestCase
             // lifted from its docblock.
             'document|calc' => [$with, $withNs, 'calc', false],
             // The same query with snippet support declared, which is the only
-            // capability that reshapes an item on this surface (RFC 1 §4.8).
+            // capability that reshapes an item on this surface.
             'document|calc+snippet' => [$with, $withNs, 'calc', true],
             // Prefix matching is case-insensitive; a case-sensitive regression
             // returns nothing here.

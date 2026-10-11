@@ -10,10 +10,6 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 
 /**
- * RFC 1 §5.4: "The absence of a client capability MUST resolve to a safe default
- * that is the value's own default state, not a special-cased branch at the point
- * of use."
- *
  * This test verifies that every SessionCapabilities property has a default value
  * in the constructor, so a minimal client (one that declares no capabilities) is
  * served by the defaults without a branch.
@@ -43,7 +39,7 @@ final class SessionCapabilitiesDefaultsTest extends TestCase
         self::assertSame(
             [],
             $missingDefaults,
-            'Every SessionCapabilities property must have a default value (RFC 1 §5.4). '
+            'Every SessionCapabilities property must have a default value. '
             . 'Missing defaults: ' . implode(', ', $missingDefaults),
         );
     }
@@ -70,7 +66,7 @@ final class SessionCapabilitiesDefaultsTest extends TestCase
             self::assertNotNull(
                 $value,
                 sprintf(
-                    'Property %s has a null default; RFC 1 §5.4 requires explicit safe defaults',
+                    'Property %s has a null default; explicit safe defaults are required',
                     $property->getName(),
                 ),
             );

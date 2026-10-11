@@ -45,7 +45,7 @@ class StreamTransportTest extends TestCase
     /**
      * The transport that `bin/php-lsp` actually constructs must pass a
      * malformed frame through as its own outcome, not collapse it into
-     * EndOfStream — RFC 1 §9 requires the two be distinguishable, and a
+     * EndOfStream — the two must be distinguishable, and a
      * collapse would silently end the session on one bad frame.
      */
     public function testPassesAMalformedFrameThroughDistinctFromEndOfStream(): void

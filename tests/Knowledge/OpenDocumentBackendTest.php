@@ -19,13 +19,12 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The open-document backend is the highest-precedence source (RFC 1 §5.3): a
+ * The open-document backend is the highest-precedence source: a
  * document event parses the buffer and registers its declarations, and the lookup
  * store, namespace enumeration and prefix search all answer from one map of
  * {@see \Firehed\PhpLsp\Domain\DeclaredSymbol}s per document. These prove each
  * query, that a document's registration is replaced on update and dropped on
- * close, and that a malformed document contributes nothing rather than crashing
- * (RFC 1 §9).
+ * close, and that a malformed document contributes nothing rather than crashing.
  */
 final class OpenDocumentBackendTest extends TestCase
 {
@@ -67,7 +66,7 @@ final class OpenDocumentBackendTest extends TestCase
     {
         self::assertNull(
             self::classLikeIn($this->backend, 'V\Absent'),
-            'a name no open document declares is absent from this backend (RFC 1 §5.3)',
+            'a name no open document declares is absent from this backend',
         );
     }
 
@@ -152,7 +151,7 @@ final class OpenDocumentBackendTest extends TestCase
     {
         self::assertNull(
             self::functionIn($this->backend, 'V\absent'),
-            'a name no open document declares is absent from this backend (RFC 1 §5.3)',
+            'a name no open document declares is absent from this backend',
         );
     }
 
@@ -242,7 +241,7 @@ final class OpenDocumentBackendTest extends TestCase
     {
         // A conditionally declared polyfill is a name the file validly declares, and
         // the on-disk backends resolve one. An open document must agree, or opening
-        // a file would make a name that already resolved disappear (RFC 1 §4.2).
+        // a file would make a name that already resolved disappear.
         $content = "<?php\nif (!function_exists('polyfill')) {\n    function polyfill(): void {}\n}\n";
 
         $this->backend->openDocument(new TextDocument('file:///polyfill.php', 'php', 1, $content));
@@ -272,7 +271,7 @@ final class OpenDocumentBackendTest extends TestCase
     {
         // A file may declare one name twice (an unguarded declaration plus a guarded
         // twin). PHP defines the first one executed, and the on-disk backends return
-        // the first declaration found — the open document must agree (RFC 1 §4.2).
+        // the first declaration found — the open document must agree.
         $uri = 'file:///DuplicateDeclarations.php';
         $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
         $this->backend->openDocument(new TextDocument($uri, 'php', 1, $content));
@@ -515,7 +514,7 @@ final class OpenDocumentBackendTest extends TestCase
     {
         // The skeleton source in the composite recovers a mid-edit document's
         // structural shape, so the write path feeds `DeclarationScanner` a tree even
-        // when php-parser alone would produce none (RFC 1 §5.3). Completion of
+        // when php-parser alone would produce none. Completion of
         // `$this->` on a class the user is still typing must still find its members.
         $uri = 'file:///Broken.php';
         $content = $this->loadFixture('src/IncompleteCode/VeryBroken.php');

@@ -17,7 +17,7 @@ use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\TestCase;
 
 /**
- * RFC 1 §8.1's mechanism for §5.1: a backend × kind × query grid whose backend and
+ * A backend × kind × query grid whose backend and
  * kind axes are derived rather than listed, so a new kind or backend adds cells this
  * file never anticipated. The query axis is listed ({@see GridQuery}). Every cell
  * answers over the fixtures or names a blocker in
@@ -122,7 +122,7 @@ final class SymbolCoverageGridTest extends TestCase
             [],
             $unregistered,
             'every backend x kind x query cell must answer or be registered not-applicable '
-                . 'against a named blocker (RFC 1 §5.1, §8.1)',
+                . 'against a named blocker',
         );
         self::assertSame(
             [],

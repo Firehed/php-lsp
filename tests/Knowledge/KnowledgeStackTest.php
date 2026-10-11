@@ -94,7 +94,7 @@ final class KnowledgeStackTest extends TestCase
     }
 
     /**
-     * RFC 1 §4.2: lookup and enumeration are distinct operations that must draw on
+     * Lookup and enumeration are distinct operations that must draw on
      * the same backends, so their coverage is identical. A `files`-declared name
      * that resolved on hover while being absent from namespace completion is exactly
      * the per-surface split this series exists to prevent.

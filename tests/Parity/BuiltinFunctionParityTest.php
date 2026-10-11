@@ -32,8 +32,6 @@ use PHPUnit\Framework\TestCase;
  * carries (an extension may declare namespaced functions) and answers one
  * namespace at a time. A name filed under the wrong namespace, or dropped while
  * indexing, fails here.
- *
- * See RFC 1 §4.2, §4.7, §5.3.
  */
 final class BuiltinFunctionParityTest extends TestCase
 {

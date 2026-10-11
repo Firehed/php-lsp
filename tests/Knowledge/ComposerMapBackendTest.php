@@ -89,7 +89,7 @@ final class ComposerMapBackendTest extends TestCase
     {
         self::assertNull(
             self::classLikeIn($this->backend(), 'Fixtures\Does\Not\Exist'),
-            'a name the autoload map cannot locate is absent from this backend (RFC 1 §5.3)',
+            'a name the autoload map cannot locate is absent from this backend',
         );
     }
 
@@ -241,7 +241,7 @@ final class ComposerMapBackendTest extends TestCase
             self::assertContains(
                 'Fixtures\Domain\Ephemeral',
                 self::fqnsOfSearch($backend->search('Ephemeral', NameKind::ClassLike)),
-                'a file added after the walk must appear after invalidation (RFC 1 §5.2)',
+                'a file added after the walk must appear after invalidation',
             );
             self::assertContains(
                 'Fixtures\Domain\Ephemeral',
