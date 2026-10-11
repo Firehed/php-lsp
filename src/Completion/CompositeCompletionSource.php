@@ -49,7 +49,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
         }
 
         // Inside a call context, offer named arguments + variables + expressions.
-        if ($this->codeResolver->getCallContext($request->document, $request->line, $request->character) !== null) {
+        if ($this->codeResolver->isInCallArguments($request->document, $request->line, $request->character)) {
             return $this->deduplicate($this->callContextItems($request));
         }
 
