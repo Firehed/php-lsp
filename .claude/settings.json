@@ -14,6 +14,7 @@
   },
   "permissions": {
     "allow": [
+      "Bash(bin/check-baseline-shrink)",
       "Bash(composer deptrac *)",
       "Bash(composer install)",
       "Bash(composer phpcs *)",
@@ -28,6 +29,7 @@
       "Edit(deptrac.yaml)",
       "Edit(phpstan-baseline.neon)",
       "Edit(deptrac.baseline.yaml)",
+      "Edit(tests/Architecture/**)",
       "Edit(bin/**)",
       "Edit(.github/**)",
       "Edit(.claude/**)"
