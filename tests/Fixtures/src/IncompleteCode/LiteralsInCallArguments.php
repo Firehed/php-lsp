@@ -51,7 +51,7 @@ class LiteralsInCallArguments
 
     public function bracketsInNestedString(array $value): void
     {
-        literalTarget("{$value["}, ("]}", /*|brackets_in_nested_string*/
+        literalTarget("{$value["{$value[0]}, ("]}", /*|brackets_in_nested_string*/
     }
 
     public function bracketsInNowdoc(): void
