@@ -116,4 +116,14 @@ return [
         'expression_in_second_arg',
         new Expectation\Offers('array_map'),
     ),
+    'argument position of an unknown function offers functions' => $complete(
+        $named,
+        'expression_in_unknown_function',
+        new Expectation\Offers('array_map'),
+    ),
+    'argument position of a call on an untyped receiver offers functions' => $complete(
+        $named,
+        'expression_in_untyped_receiver',
+        new Expectation\Offers('array_map'),
+    ),
 ];

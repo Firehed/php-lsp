@@ -83,6 +83,16 @@ class NamedArguments
         $this->multipleParams('test', arr/*|expression_in_second_arg*/
     }
 
+    public function testExpressionInUnknownFunctionCall(string $value): void
+    {
+        unknownFunction($value, arr/*|expression_in_unknown_function*/
+    }
+
+    public function testExpressionInUntypedReceiverCall($untyped): void
+    {
+        $untyped->anything(arr/*|expression_in_untyped_receiver*/
+    }
+
     public function testAfterNamedArgColon(): void
     {
         $this->multipleParams(name: /*|after_colon*/
