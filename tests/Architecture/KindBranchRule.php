@@ -98,7 +98,7 @@ final class KindBranchRule implements Rule
                         continue;
                     }
                     $message = sprintf(
-                        '%s on %s branches per symbol kind; use predicates (RFC 1 §4.5).',
+                        '%s on %s branches per symbol kind; use predicates.',
                         $form,
                         $this->shortName($kindEnum),
                     );

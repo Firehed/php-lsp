@@ -131,7 +131,7 @@ final class KindInspectionRule implements Rule
         }
 
         $message = sprintf(
-            'instanceof %s branches on concrete %s; use predicates (RFC 1 §4.5).',
+            'instanceof %s branches on concrete %s; use predicates.',
             $this->shortName($className),
             $interface,
         );

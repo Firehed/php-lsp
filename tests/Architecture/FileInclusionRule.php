@@ -45,7 +45,7 @@ final class FileInclusionRule implements Rule
         }
 
         $message = sprintf(
-            '%s reads a file; filesystem access is confined (RFC 1 §8.1).',
+            '%s reads a file; filesystem access is confined.',
             self::KEYWORDS[$node->type],
         );
 

@@ -19,22 +19,22 @@ class KindInspectionRuleTest extends RuleTestCase
             [
                 [
                     'instanceof MethodInfo branches on concrete ResolvedSymbolInterface; '
-                        . 'use predicates (RFC 1 §4.5).',
+                        . 'use predicates.',
                     19,
                 ],
                 [
                     'instanceof MethodInfo branches on concrete ResolvedSymbolInterface; '
-                        . 'use predicates (RFC 1 §4.5).',
+                        . 'use predicates.',
                     26,
                 ],
                 [
                     'instanceof MethodInfo branches on concrete ResolvedSymbolInterface; '
-                        . 'use predicates (RFC 1 §4.5).',
+                        . 'use predicates.',
                     32,
                 ],
                 [
                     'instanceof PropertyInfo branches on concrete ResolvedSymbolInterface; '
-                        . 'use predicates (RFC 1 §4.5).',
+                        . 'use predicates.',
                     33,
                 ],
             ],
@@ -48,7 +48,7 @@ class KindInspectionRuleTest extends RuleTestCase
             [
                 [
                     'instanceof ClasslikeType branches on concrete TypeInterface; '
-                        . 'use predicates (RFC 1 §4.5).',
+                        . 'use predicates.',
                     18,
                 ],
             ],

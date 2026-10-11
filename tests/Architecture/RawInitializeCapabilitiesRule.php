@@ -62,7 +62,7 @@ final class RawInitializeCapabilitiesRule implements Rule
         }
 
         $message = sprintf(
-            'Raw initialize %s must not be read outside %s; query SessionCapabilities instead (RFC 1 §4.8).',
+            'Raw initialize %s must not be read outside %s; query SessionCapabilities instead.',
             $dim->value,
             self::NEGOTIATION_NAMESPACE,
         );

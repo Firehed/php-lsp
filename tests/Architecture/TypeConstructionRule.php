@@ -68,7 +68,7 @@ final class TypeConstructionRule implements Rule
 
         $shortName = $this->shortName($className);
         $message = sprintf(
-            'new %s is confined to TypeFactory; use TypeFactory methods instead (RFC 1 §4.6).',
+            'new %s is confined to TypeFactory; use TypeFactory methods instead.',
             $shortName,
         );
 

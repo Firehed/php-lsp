@@ -53,7 +53,7 @@ final class DynamicClassReferenceRule implements Rule
         }
 
         $message = sprintf(
-            '%s on a computed class name; name the class literally (RFC 1 §4.5).',
+            '%s on a computed class name; name the class literally.',
             $form,
         );
 
