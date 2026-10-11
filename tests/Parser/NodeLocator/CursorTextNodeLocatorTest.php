@@ -450,9 +450,21 @@ class CursorTextNodeLocatorTest extends TestCase
         );
     }
 
-    public function testACommentEndingInAKeywordDoesNotHideACall(): void
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function commentsAroundACall(): array
     {
-        $call = $this->callAtMarker('TopLevel/declarations_being_typed.php', 'call_after_comment');
+        return [
+            'a comment ending in a keyword before the name' => ['call_after_comment'],
+            'a comment between the name and its paren' => ['comment_before_paren'],
+        ];
+    }
+
+    #[DataProvider('commentsAroundACall')]
+    public function testACommentDoesNotHideACall(string $marker): void
+    {
+        $call = $this->callAtMarker('TopLevel/declarations_being_typed.php', $marker);
 
         self::assertInstanceOf(FuncCall::class, $call);
         self::assertSame('helper', self::funcCallName($call), 'a comment is not code');
