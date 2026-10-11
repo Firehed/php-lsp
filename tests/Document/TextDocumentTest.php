@@ -88,8 +88,8 @@ class TextDocumentTest extends TestCase
     /**
      * "é" is one UTF-16 code unit but two UTF-8 bytes; "😀" is two UTF-16 units
      * (a surrogate pair) but four bytes. The interior works in byte offsets, so
-     * a UTF-16 character column must be converted, not read as a byte column
-     * (issue #192). Line 1 is `$s = 'é😀';`.
+     * a UTF-16 character column must be converted, not read as a byte column.
+     * Line 1 is `$s = 'é😀';`.
      *
      * @param int<0, max> $character
      * @param int<0, max> $byteOffset

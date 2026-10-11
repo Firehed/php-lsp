@@ -1142,7 +1142,7 @@ final class SymbolResolverTest extends TestCase
 
     /**
      * Variable member access resolves correctly on a line carrying a multibyte
-     * character before the cursor, where the wire column trails the byte column
+     * character before the cursor, where the wire column trails the byte column.
      * A regression net over the variable-access surface the wire
      * column feeds.
      */
