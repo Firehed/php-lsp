@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-// PostToolUse hook: every EVERY file edits in a session, asks the agent to run
-// the "Staying on track" check in AGENTS.md before continuing.
+// PostToolUse hook: after every 15 file edits in a session, asks the agent to
+// run the "Staying on track" check in AGENTS.md before continuing.
 
 const EVERY = 15;
 
