@@ -456,7 +456,36 @@ class CursorTextNodeLocatorTest extends TestCase
         return [
             'empty body' => ['arrow_body'],
             'member access in the body' => ['arrow_body_member'],
+            'a named argument' => ['named_arrow_body'],
+            'after an attribute' => ['attributed_arrow_body'],
+            'after an operator' => ['arrow_after_operator'],
+            'the return type' => ['arrow_return_type'],
+            'before the arrow' => ['arrow_before_arrow'],
         ];
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function argumentsPastACallback(): array
+    {
+        return [
+            'an arrow function a comma ended' => ['after_arrow_in_array'],
+            'an arrow function a paren closed' => ['after_parenthesized_arrow'],
+            'a closure whose body closed' => ['after_closure_argument'],
+        ];
+    }
+
+    #[DataProvider('argumentsPastACallback')]
+    public function testAnArgumentPastACallbackIsTheCallsAlone(string $marker): void
+    {
+        $node = $this->nodeAtMarker($this->parsedFixture('src/IncompleteCode/CallbackBodies.php'), $marker);
+        self::assertNotNull($node);
+
+        self::assertNull(self::ancestorOf($node, ArrowFunction::class), 'the callback ended before the cursor');
+        $call = self::enclosingCall($node);
+        self::assertInstanceOf(FuncCall::class, $call);
+        self::assertSame('array_map', self::funcCallName($call), 'the call is still found past the callback');
     }
 
     #[DataProvider('arrowFunctionBodies')]

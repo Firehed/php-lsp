@@ -208,6 +208,8 @@ final class CallContextDetectorTest extends TestCase
             'arrow function after an operator being typed' => [$typed, 'arrow_after_operator', null],
             'arrow function return type being typed' => [$typed, 'arrow_return_type', null],
             'arrow function head before its arrow' => [$typed, 'arrow_before_arrow', null],
+            'past an arrow function a comma ended' => [$typed, 'after_arrow_in_array', 'array_map'],
+            'past an arrow function a paren closed' => [$typed, 'after_parenthesized_arrow', 'array_map'],
             'closure use list being typed' => [$typed, 'closure_use', null],
             'argument after a closure being typed' => [$typed, 'after_closure_argument', 'array_map'],
             'anonymous class body being typed' => [$typed, 'anonymous_class_body', null],

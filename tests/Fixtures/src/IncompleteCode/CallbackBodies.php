@@ -66,6 +66,16 @@ class CallbackBodies
         array_map(fn ($item) /*|arrow_before_arrow*/
     }
 
+    public function afterArrowInArray(array $items): void
+    {
+        array_map([fn ($item) => 1, /*|after_arrow_in_array*/
+    }
+
+    public function afterParenthesizedArrow(array $items): void
+    {
+        array_map((fn ($item) => 1) . /*|after_parenthesized_arrow*/
+    }
+
     public function closureUse(array $items): void
     {
         array_map(function ($item) use (/*|closure_use*/
