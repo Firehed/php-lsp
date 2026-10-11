@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Protocol\PositionEncoding;
 
 /**
  * The client's declared capabilities, resolved once during `initialize` into an
- * immutable value (RFC 1 §4.8, §5.4).
+ * immutable value.
  *
  * Every capability the client did not declare resolves to this value's own
  * default state, so a minimal or older client is served by the default

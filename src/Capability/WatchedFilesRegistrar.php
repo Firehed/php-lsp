@@ -9,10 +9,10 @@ use Firehed\PhpLsp\Client\ClientConnectionInterface;
 /**
  * Registers the server for `workspace/didChangeWatchedFiles` events once the
  * session is initialized, so the client reports on-disk changes used to invalidate
- * cached workspace state (RFC 1 §5.2, §5.3). The feature has no static server
+ * cached workspace state. The feature has no static server
  * capability, so it can only be registered dynamically ([LSP] Register Capability),
- * and only when the client declared support (RFC 1 §4.8); a client that did not is
- * left on the §7 fallback (no invalidation until a file is opened and closed).
+ * and only when the client declared support; a client that did not is
+ * left on the fallback (no invalidation until a file is opened and closed).
  */
 final class WatchedFilesRegistrar implements InitializedListenerInterface
 {

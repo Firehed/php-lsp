@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Capability;
 
 /**
  * Read-only access to the resolved {@see SessionCapabilities} for the components
- * that shape output by client support (RFC 1 §4.8, §5.4).
+ * that shape output by client support.
  *
  * Output-shaping components are constructed before `initialize` runs, so they
  * cannot receive the resolved value directly; they depend on this interface and
