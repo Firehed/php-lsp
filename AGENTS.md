@@ -127,7 +127,7 @@ The editor is the only source of change events.
 Two events invalidate: `workspace/didChangeWatchedFiles` for a path, and closing a document that was open.
 Both flow through `InvalidatableInterface::invalidate`, which fans out to every invalidatable in the wiring.
 An open buffer is not an invalidation; it wins by composite order while it is open.
-Built-ins are never invalidated, since they come from the PHP running the server; #401 tracks reading the project's PHP version instead.
+Built-in symbols should describe the PHP version the project targets; today they come from the PHP running the server, so they are never invalidated.
 
 ## Handling Design or Specification Tensions
 
