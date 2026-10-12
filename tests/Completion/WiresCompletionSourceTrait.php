@@ -29,15 +29,15 @@ trait WiresCompletionSourceTrait
         CodeResolverInterface $codeResolver,
         SessionCapabilitiesProviderInterface $capabilities,
     ): CompositeCompletionSource {
-        $items = new CompletionItemFactory();
+        $itemFactory = new CompletionItemFactory();
         return new CompositeCompletionSource(
             $codeResolver,
-            new SymbolCandidates($symbolSource, $codeResolver, $capabilities, $items),
-            new KeywordCandidates($items),
-            new VariableCandidates($codeResolver, $items),
-            new MemberCandidates($codeResolver, $capabilities, $items),
-            new NamedArgumentCandidates($codeResolver, $items),
-            new BuiltinTypeCandidates($items),
+            new SymbolCandidates($symbolSource, $codeResolver, $capabilities, $itemFactory),
+            new KeywordCandidates($itemFactory),
+            new VariableCandidates($codeResolver, $itemFactory),
+            new MemberCandidates($codeResolver, $capabilities, $itemFactory),
+            new NamedArgumentCandidates($codeResolver, $itemFactory),
+            new BuiltinTypeCandidates($itemFactory),
         );
     }
 }

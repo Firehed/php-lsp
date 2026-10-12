@@ -124,7 +124,7 @@ final class Server
         );
 
         $negotiator = new CapabilityNegotiator($serverInfo);
-        $completionItems = $container->get(CompletionItemFactory::class);
+        $itemFactory = $container->get(CompletionItemFactory::class);
 
         // Watched-file events are registered dynamically after `initialized` (there
         // is no static server capability for them), gated on the client declaring
@@ -156,12 +156,12 @@ final class Server
                 $documents,
                 new CompositeCompletionSource(
                     $symbolResolver,
-                    new SymbolCandidates($symbolSource, $symbolResolver, $negotiator, $completionItems),
-                    new KeywordCandidates($completionItems),
-                    new VariableCandidates($symbolResolver, $completionItems),
-                    new MemberCandidates($symbolResolver, $negotiator, $completionItems),
-                    new NamedArgumentCandidates($symbolResolver, $completionItems),
-                    new BuiltinTypeCandidates($completionItems),
+                    new SymbolCandidates($symbolSource, $symbolResolver, $negotiator, $itemFactory),
+                    new KeywordCandidates($itemFactory),
+                    new VariableCandidates($symbolResolver, $itemFactory),
+                    new MemberCandidates($symbolResolver, $negotiator, $itemFactory),
+                    new NamedArgumentCandidates($symbolResolver, $itemFactory),
+                    new BuiltinTypeCandidates($itemFactory),
                 ),
             ),
         ];

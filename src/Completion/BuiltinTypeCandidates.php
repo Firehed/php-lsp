@@ -25,7 +25,7 @@ final class BuiltinTypeCandidates
     ];
 
     public function __construct(
-        private readonly CompletionItemFactory $items,
+        private readonly CompletionItemFactory $itemFactory,
     ) {
     }
 
@@ -38,7 +38,7 @@ final class BuiltinTypeCandidates
         $items = [];
         foreach ($this->typesFor($context) as $type) {
             if (PrefixMatcher::matches($type, $prefix)) {
-                $items[] = $this->items->forBuiltinType($type);
+                $items[] = $this->itemFactory->forBuiltinType($type);
             }
         }
 

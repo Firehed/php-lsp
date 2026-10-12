@@ -52,7 +52,7 @@ final class KeywordCandidates
     ];
 
     public function __construct(
-        private readonly CompletionItemFactory $items,
+        private readonly CompletionItemFactory $itemFactory,
     ) {
     }
 
@@ -69,7 +69,7 @@ final class KeywordCandidates
         $items = [];
         foreach ($this->keywordsFor($group) as $keyword) {
             if (PrefixMatcher::matches($keyword, $prefix)) {
-                $items[] = $this->items->forKeyword($keyword);
+                $items[] = $this->itemFactory->forKeyword($keyword);
             }
         }
 

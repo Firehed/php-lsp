@@ -21,7 +21,7 @@ final class VariableCandidates implements CompletionSourceInterface
 {
     public function __construct(
         private readonly CodeResolverInterface $codeResolver,
-        private readonly CompletionItemFactory $items,
+        private readonly CompletionItemFactory $itemFactory,
     ) {
     }
 
@@ -36,7 +36,7 @@ final class VariableCandidates implements CompletionSourceInterface
         $items = [];
         foreach ($variables as $variable) {
             if (PrefixMatcher::matches($variable->getName(), $prefix)) {
-                $items[] = $this->items->forVariable($variable);
+                $items[] = $this->itemFactory->forVariable($variable);
             }
         }
 

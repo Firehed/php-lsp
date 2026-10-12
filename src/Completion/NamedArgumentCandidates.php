@@ -20,7 +20,7 @@ final class NamedArgumentCandidates implements CompletionSourceInterface
 {
     public function __construct(
         private readonly CodeResolverInterface $codeResolver,
-        private readonly CompletionItemFactory $items,
+        private readonly CompletionItemFactory $itemFactory,
     ) {
     }
 
@@ -60,7 +60,7 @@ final class NamedArgumentCandidates implements CompletionSourceInterface
             }
 
             if (PrefixMatcher::matches($param->name, $prefix)) {
-                $items[] = $this->items->forNamedArgument($param);
+                $items[] = $this->itemFactory->forNamedArgument($param);
             }
         }
 
