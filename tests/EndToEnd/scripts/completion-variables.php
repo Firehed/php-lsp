@@ -22,14 +22,14 @@ return [
     'parameter with its type' => $complete(
         $variables,
         'param_prefix',
-        new Expectation\Details('$name', 'string'),
+        new Expectation\Details('$name', 'string $name'),
         new Expectation\Withholds('$age'),
     ),
     'local variable' => $complete($variables, 'local_prefix', new Expectation\Offers('$logger')),
     '$this with its class' => $complete(
         $variables,
         'this_prefix',
-        new Expectation\Details('$this', 'Fixtures\\Completion\\Variables'),
+        new Expectation\Details('$this', 'Fixtures\\Completion\\Variables $this'),
     ),
     'closure local' => $complete($variables, 'closure_local', new Expectation\Offers('$localVar')),
     'foreach value' => $complete($variables, 'foreach_prefix', new Expectation\Offers('$item')),
