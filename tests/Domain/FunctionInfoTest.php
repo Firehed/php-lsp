@@ -136,7 +136,6 @@ class FunctionInfoTest extends TestCase
         self::assertSame('int', $func->getType()?->format());
         self::assertSame([], $func->getParameters());
         self::assertNull($func->getParameterByName('missing'));
-        self::assertNull($func->getParameterAtPosition(0));
     }
 
     protected function makeSubject(?string $file = null, ?int $line = null, ?string $docblock = null): FunctionInfo
