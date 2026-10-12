@@ -54,7 +54,7 @@
             "@phpstan",
             "@deptrac",
             "@layer-coverage",
-            "@unit --testsuite unit,integration",
+            "@unit --exclude-testsuite end-to-end",
             "@e2e",
             "@phpcs"
         ]
