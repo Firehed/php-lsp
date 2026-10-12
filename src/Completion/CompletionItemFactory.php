@@ -9,9 +9,9 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Protocol\Range;
-use Firehed\PhpLsp\Resolution\PresentedSymbol;
-use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 
 /**
@@ -34,6 +34,11 @@ use Firehed\PhpLsp\Resolution\ResolvedVariable;
  */
 final class CompletionItemFactory
 {
+    public function __construct(
+        private readonly ResolvedSymbolPresenterInterface $presenter,
+    ) {
+    }
+
     /**
      * @return CompletionItem
      */
@@ -47,7 +52,7 @@ final class CompletionItemFactory
             MemberKind::EnumCase => CompletionItemKind::EnumMember,
         };
 
-        $presented = ResolvedSymbolPresenter::present($member);
+        $presented = $this->presenter->present($member);
         $item = [
             'label' => $member->getName()->name,
             'kind' => $itemKind->value,
@@ -75,7 +80,7 @@ final class CompletionItemFactory
         Range $replaceRange,
         bool $snippetSupport = false,
         ?string $filterText = null,
-        ?PresentedSymbol $presented = null,
+        ?ResolvedSymbolInterface $symbol = null,
     ): array {
         $itemKind = match ($kind) {
             NameKind::ClassLike => CompletionItemKind::Class_,
@@ -83,6 +88,7 @@ final class CompletionItemFactory
             NameKind::Constant => CompletionItemKind::Constant,
         };
 
+        $presented = $symbol === null ? null : $this->presenter->present($symbol);
         $item = [
             'label' => $reference,
             'kind' => $itemKind->value,
@@ -169,7 +175,7 @@ final class CompletionItemFactory
         return [
             'label' => '$' . $variable->getName(),
             'kind' => CompletionItemKind::Variable->value,
-            'detail' => ResolvedSymbolPresenter::present($variable)->signature,
+            'detail' => $this->presenter->present($variable)->signature,
         ];
     }
 
@@ -182,7 +188,7 @@ final class CompletionItemFactory
         return [
             'label' => $label,
             'kind' => CompletionItemKind::Field->value,
-            'detail' => ResolvedSymbolPresenter::present($parameter)->signature,
+            'detail' => $this->presenter->present($parameter)->signature,
             // This promotes named args to the top of the list in case it gets
             // capped, since ! sorts alphabetically before the string
             'sortText' => '!' . $label,

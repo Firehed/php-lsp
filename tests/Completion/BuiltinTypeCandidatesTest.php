@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Completion;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\TypeHintContext;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -37,7 +38,7 @@ final class BuiltinTypeCandidatesTest extends TestCase
     #[DataProvider('contexts')]
     public function testOffersTheTypesValidInThePosition(TypeHintContext $context, array $expected): void
     {
-        $candidates = new BuiltinTypeCandidates(new CompletionItemFactory());
+        $candidates = new BuiltinTypeCandidates(new CompletionItemFactory(new ResolvedSymbolPresenter()));
 
         self::assertSame(
             $expected,
@@ -48,7 +49,7 @@ final class BuiltinTypeCandidatesTest extends TestCase
 
     public function testFiltersByThePrefix(): void
     {
-        $candidates = new BuiltinTypeCandidates(new CompletionItemFactory());
+        $candidates = new BuiltinTypeCandidates(new CompletionItemFactory(new ResolvedSymbolPresenter()));
 
         self::assertSame(
             ['string'],

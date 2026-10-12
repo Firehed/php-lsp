@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
@@ -99,11 +100,12 @@ final class FeatureMatrixTest extends TestCase
         $capabilities = self::createStub(SessionCapabilitiesProviderInterface::class);
         $capabilities->method('getSessionCapabilities')
             ->willReturn(new SessionCapabilities());
+        $presenter = new ResolvedSymbolPresenter();
 
         $this->handlers = [
             DefinitionHandler::class => new DefinitionHandler($documents, $symbolResolver),
-            HoverHandler::class => new HoverHandler($documents, $symbolResolver, $capabilities),
-            SignatureHelpHandler::class => new SignatureHelpHandler($documents, $symbolResolver),
+            HoverHandler::class => new HoverHandler($documents, $symbolResolver, $capabilities, $presenter),
+            SignatureHelpHandler::class => new SignatureHelpHandler($documents, $symbolResolver, $presenter),
             CompletionHandler::class => new CompletionHandler(
                 $documents,
                 self::completionSourceFor($knowledge->source, $symbolResolver, $capabilities),

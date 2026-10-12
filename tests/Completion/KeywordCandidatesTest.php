@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -65,7 +66,7 @@ final class KeywordCandidatesTest extends TestCase
         $doc = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
         $request = new CompletionRequest($doc, 1, strlen($line));
 
-        $items = (new KeywordCandidates(new CompletionItemFactory()))->find($request, $group);
+        $items = self::candidates()->find($request, $group);
 
         self::assertNotNull($items, 'a keyword position offers keywords');
         self::assertSame(
@@ -85,8 +86,13 @@ final class KeywordCandidatesTest extends TestCase
         $request = new CompletionRequest($doc, 1, 6);
 
         self::assertNull(
-            (new KeywordCandidates(new CompletionItemFactory()))->find($request, KeywordGroup::Expression),
+            self::candidates()->find($request, KeywordGroup::Expression),
             'a variable prefix inside a call does not offer expression keywords',
         );
+    }
+
+    private static function candidates(): KeywordCandidates
+    {
+        return new KeywordCandidates(new CompletionItemFactory(new ResolvedSymbolPresenter()));
     }
 }

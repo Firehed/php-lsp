@@ -18,9 +18,10 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Protocol\Range;
-use Firehed\PhpLsp\Resolution\PresentedSymbol;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -40,7 +41,7 @@ final class CompletionItemFactoryTest extends TestCase
                 'detail' => 'int $count = 0',
                 'sortText' => '!count:',
             ],
-            (new CompletionItemFactory())->forNamedArgument($parameter),
+            self::factory()->forNamedArgument($parameter),
             'a named argument shows its signature and sorts first, so a capped list keeps it',
         );
     }
@@ -54,7 +55,7 @@ final class CompletionItemFactoryTest extends TestCase
                 'detail' => 'builtin type',
                 'sortText' => '!string',
             ],
-            (new CompletionItemFactory())->forBuiltinType('string'),
+            self::factory()->forBuiltinType('string'),
             'a built-in type sorts first, so a capped list keeps it',
         );
     }
@@ -63,7 +64,7 @@ final class CompletionItemFactoryTest extends TestCase
     {
         self::assertSame(
             ['label' => 'foreach', 'kind' => CompletionItemKind::Keyword->value],
-            (new CompletionItemFactory())->forKeyword('foreach'),
+            self::factory()->forKeyword('foreach'),
             'a keyword carries no detail',
         );
     }
@@ -81,7 +82,7 @@ final class CompletionItemFactoryTest extends TestCase
                 'kind' => CompletionItemKind::Variable->value,
                 'detail' => 'Fixtures\Domain\User',
             ],
-            (new CompletionItemFactory())->forVariable($variable),
+            self::factory()->forVariable($variable),
             'a variable is labelled with its sigil and shows its presented signature',
         );
     }
@@ -94,7 +95,7 @@ final class CompletionItemFactoryTest extends TestCase
                 'kind' => CompletionItemKind::Constant->value,
                 'detail' => 'string (fully qualified class name)',
             ],
-            (new CompletionItemFactory())->forClassConstant(),
+            self::factory()->forClassConstant(),
             '::class holds the fully qualified name',
         );
     }
@@ -112,7 +113,7 @@ final class CompletionItemFactoryTest extends TestCase
                     'newText' => 'Models\User',
                 ],
             ],
-            (new CompletionItemFactory())->forSymbol(
+            self::factory()->forSymbol(
                 'Models\User',
                 'App\Models\User',
                 NameKind::ClassLike,
@@ -152,7 +153,7 @@ final class CompletionItemFactoryTest extends TestCase
         int $itemKind,
         array $inserted,
     ): void {
-        $item = (new CompletionItemFactory())->forSymbol(
+        $item = self::factory()->forSymbol(
             'wrap',
             'Lib\wrap',
             $kind,
@@ -184,7 +185,7 @@ final class CompletionItemFactoryTest extends TestCase
             line: null,
         );
 
-        $item = (new CompletionItemFactory())->forResolvedMember($method, snippetSupport: true);
+        $item = self::factory()->forResolvedMember($method, snippetSupport: true);
 
         self::assertSame(CompletionItemKind::Method->value, $item['kind'] ?? null, 'a method is a method item');
         self::assertSame('Persists the user.', $item['documentation'] ?? null, 'the docblock description is shown');
@@ -209,7 +210,7 @@ final class CompletionItemFactoryTest extends TestCase
             line: null,
         );
 
-        $item = (new CompletionItemFactory())->forResolvedMember($property, snippetSupport: true);
+        $item = self::factory()->forResolvedMember($property, snippetSupport: true);
 
         self::assertSame(
             [null, null],
@@ -231,22 +232,26 @@ final class CompletionItemFactoryTest extends TestCase
                     'newText' => 'Http\\',
                 ],
             ],
-            (new CompletionItemFactory())->forNamespace('Http', 'Psr\Http', Range::onLine(2, 4, 6)),
+            self::factory()->forNamespace('Http', 'Psr\Http', Range::onLine(2, 4, 6)),
             'the inserted text carries the separator, so accepting it is ready for the next segment',
         );
     }
 
-    public function testPresentedSymbolShowsItsSignatureAndDocumentation(): void
+    public function testResolvedSymbolShowsItsSignatureAndDocumentation(): void
     {
-        $item = (new CompletionItemFactory())->forSymbol(
+        $symbol = self::createStub(ResolvedSymbolInterface::class);
+        $symbol->method('format')->willReturn('class User');
+        $symbol->method('getDocumentation')->willReturn("/**\n * A person who signs in.\n */");
+
+        $item = self::factory()->forSymbol(
             'User',
             'App\Models\User',
             NameKind::ClassLike,
             Range::onLine(0, 0, 0),
-            presented: new PresentedSymbol('class User', 'A person who signs in.'),
+            symbol: $symbol,
         );
 
-        self::assertSame('class User', $item['detail'] ?? null, 'the presented signature replaces the full name');
+        self::assertSame('class User', $item['detail'] ?? null, 'the symbol\'s signature replaces the full name');
         self::assertSame('A person who signs in.', $item['documentation'] ?? null, 'the description is documentation');
     }
 
@@ -266,8 +271,13 @@ final class CompletionItemFactoryTest extends TestCase
                 'kind' => CompletionItemKind::EnumMember->value,
                 'detail' => 'case Low = 1',
             ],
-            (new CompletionItemFactory())->forResolvedMember($case),
+            self::factory()->forResolvedMember($case),
             'a member shows its signature as the detail',
         );
+    }
+
+    private static function factory(): CompletionItemFactory
+    {
+        return new CompletionItemFactory(new ResolvedSymbolPresenter());
     }
 }

@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
-use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 
 /**
  * @phpstan-type ParameterInfoShape array{label: string}
@@ -26,6 +26,7 @@ final class SignatureHelpHandler implements DocumentFeatureHandlerInterface
     public function __construct(
         private readonly DocumentSourceInterface $documents,
         private readonly CodeResolverInterface $codeResolver,
+        private readonly ResolvedSymbolPresenterInterface $presenter,
     ) {
     }
 
@@ -63,12 +64,12 @@ final class SignatureHelpHandler implements DocumentFeatureHandlerInterface
     private function formatSignatureHelp(CallContext $context): array
     {
         $callable = $context->callable;
-        $presented = ResolvedSymbolPresenter::present($callable);
+        $presented = $this->presenter->present($callable);
 
         $signature = [
             'label' => $presented->signature,
             'parameters' => array_map(
-                fn($p) => ['label' => ResolvedSymbolPresenter::present($p)->signature],
+                fn($p) => ['label' => $this->presenter->present($p)->signature],
                 $callable->getParameters(),
             ),
         ];

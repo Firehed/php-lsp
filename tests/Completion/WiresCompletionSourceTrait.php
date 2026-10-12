@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
 /**
  * Builds the production-shaped completion composite for tests. The same
@@ -29,7 +30,7 @@ trait WiresCompletionSourceTrait
         CodeResolverInterface $codeResolver,
         SessionCapabilitiesProviderInterface $capabilities,
     ): CompositeCompletionSource {
-        $itemFactory = new CompletionItemFactory();
+        $itemFactory = new CompletionItemFactory(new ResolvedSymbolPresenter());
         return new CompositeCompletionSource(
             $codeResolver,
             new SymbolCandidates($symbolSource, $codeResolver, $capabilities, $itemFactory),

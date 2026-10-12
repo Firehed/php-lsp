@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -44,7 +45,7 @@ final class VariableCandidatesTest extends TestCase
         ]);
         $document = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
 
-        $candidates = new VariableCandidates($resolver, new CompletionItemFactory());
+        $candidates = new VariableCandidates($resolver, new CompletionItemFactory(new ResolvedSymbolPresenter()));
         $items = $candidates->find(new CompletionRequest($document, 1, strlen($line)));
 
         self::assertSame(
