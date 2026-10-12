@@ -31,4 +31,7 @@ return [
     Parser\NodeLocator\CursorTextNodeLocator::class,
     Parser\NodeLocator\CompositeNodeLocator::class,
     Parser\NodeLocator\NodeLocatorInterface::class => Parser\NodeLocator\CompositeNodeLocator::class,
+
+    Resolution\ResolvedSymbolPresenter::class,
+    Resolution\ResolvedSymbolPresenterInterface::class => Resolution\ResolvedSymbolPresenter::class,
 ];

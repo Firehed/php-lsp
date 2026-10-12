@@ -19,6 +19,7 @@ use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -130,7 +131,7 @@ final class MemberCandidatesTest extends TestCase
         return new MemberCandidates(
             $codeResolver,
             self::capabilitiesProvider(new SessionCapabilities(snippetSupport: $snippetSupport)),
-            new CompletionItemFactory(),
+            new CompletionItemFactory(new ResolvedSymbolPresenter()),
         );
     }
 

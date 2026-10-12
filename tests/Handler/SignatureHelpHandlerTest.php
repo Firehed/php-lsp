@@ -11,6 +11,7 @@ use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -30,6 +31,7 @@ class SignatureHelpHandlerTest extends TestCase
         $handler = new SignatureHelpHandler(
             self::createStub(DocumentSourceInterface::class),
             self::createStub(CodeResolverInterface::class),
+            new ResolvedSymbolPresenter(),
         );
 
         self::assertTrue(
@@ -49,7 +51,7 @@ class SignatureHelpHandlerTest extends TestCase
         $codeResolver = $this->createMock(CodeResolverInterface::class);
         $codeResolver->expects($this->never())->method('getCallContext');
 
-        $handler = new SignatureHelpHandler($documents, $codeResolver);
+        $handler = new SignatureHelpHandler($documents, $codeResolver, new ResolvedSymbolPresenter());
         $result = $handler->handle($this->request(self::METHOD, ['textDocument' => 'not-an-object']));
 
         self::assertNull($result, 'a malformed textDocument shape short-circuits before any resolver call');
@@ -66,7 +68,7 @@ class SignatureHelpHandlerTest extends TestCase
         $codeResolver = $this->createMock(CodeResolverInterface::class);
         $codeResolver->expects($this->never())->method('getCallContext');
 
-        $handler = new SignatureHelpHandler($documents, $codeResolver);
+        $handler = new SignatureHelpHandler($documents, $codeResolver, new ResolvedSymbolPresenter());
         $result = $handler->handle($this->positionRequest(self::METHOD, self::URI));
 
         self::assertNull($result, 'an unopened document short-circuits before resolution');
@@ -84,7 +86,7 @@ class SignatureHelpHandlerTest extends TestCase
             ->with($document, 3, 7)
             ->willReturn(null);
 
-        $handler = new SignatureHelpHandler($documents, $codeResolver);
+        $handler = new SignatureHelpHandler($documents, $codeResolver, new ResolvedSymbolPresenter());
         $result = $handler->handle($this->positionRequest(self::METHOD, self::URI, line: 3, character: 7));
 
         self::assertNull($result, 'a cursor outside any call yields no signature help');
@@ -104,6 +106,7 @@ class SignatureHelpHandlerTest extends TestCase
         $handler = new SignatureHelpHandler(
             $this->documentsReturning(new TextDocument(self::URI, 'php', 1, '<?php ')),
             $this->codeResolverReturning($context),
+            new ResolvedSymbolPresenter(),
         );
         $result = $handler->handle($this->positionRequest(self::METHOD, self::URI));
 
@@ -133,6 +136,7 @@ class SignatureHelpHandlerTest extends TestCase
         $handler = new SignatureHelpHandler(
             $this->documentsReturning(new TextDocument(self::URI, 'php', 1, '<?php ')),
             $this->codeResolverReturning($context),
+            new ResolvedSymbolPresenter(),
         );
         $result = $handler->handle($this->positionRequest(self::METHOD, self::URI));
 

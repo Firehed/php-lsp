@@ -18,7 +18,7 @@ use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\PresentedSymbol;
 use Firehed\PhpLsp\Resolution\Reference;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;
-use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 
 /**
  * The one source of symbol completions. For an unqualified prefix it does flat
@@ -49,6 +49,7 @@ final class SymbolCandidates
         private readonly CodeResolverInterface $codeResolver,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
         private readonly CompletionItemFactory $itemFactory,
+        private readonly ResolvedSymbolPresenterInterface $presenter,
     ) {
     }
 
@@ -476,7 +477,7 @@ final class SymbolCandidates
     private function presentFunction(string $fqn): ?PresentedSymbol
     {
         $info = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($fqn));
-        return $info === null ? null : ResolvedSymbolPresenter::present($info);
+        return $info === null ? null : $this->presenter->present($info);
     }
 
     private function acceptsClassLike(string $fqn, ClassCandidateFilter $filter): bool

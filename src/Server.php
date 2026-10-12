@@ -38,6 +38,7 @@ use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
 use Firehed\PhpLsp\Protocol\ServerInfo;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Transport\EndOfStream;
@@ -125,6 +126,7 @@ final class Server
 
         $negotiator = new CapabilityNegotiator($serverInfo);
         $itemFactory = $container->get(CompletionItemFactory::class);
+        $presenter = $container->get(ResolvedSymbolPresenterInterface::class);
 
         // Watched-file events are registered dynamically after `initialized` (there
         // is no static server capability for them), gated on the client declaring
@@ -147,16 +149,18 @@ final class Server
                 $documents,
                 $symbolResolver,
                 $negotiator,
+                $presenter,
             ),
             new SignatureHelpHandler(
                 $documents,
                 $symbolResolver,
+                $presenter,
             ),
             new CompletionHandler(
                 $documents,
                 new CompositeCompletionSource(
                     $symbolResolver,
-                    new SymbolCandidates($symbolSource, $symbolResolver, $negotiator, $itemFactory),
+                    new SymbolCandidates($symbolSource, $symbolResolver, $negotiator, $itemFactory, $presenter),
                     new KeywordCandidates($itemFactory),
                     new VariableCandidates($symbolResolver, $itemFactory),
                     new MemberCandidates($symbolResolver, $negotiator, $itemFactory),

@@ -14,9 +14,9 @@ use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
  * docblock. `getDocumentation()` itself still returns the raw text, which
  * {@see ExpressionResolver} reads for `foreach` element-type inference.
  */
-final class ResolvedSymbolPresenter
+final class ResolvedSymbolPresenter implements ResolvedSymbolPresenterInterface
 {
-    public static function present(ResolvedSymbolInterface $symbol): PresentedSymbol
+    public function present(ResolvedSymbolInterface $symbol): PresentedSymbol
     {
         $docblock = $symbol->getDocumentation();
         $description = $docblock === null ? '' : DocblockParser::extractDescription($docblock);

@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -50,6 +51,7 @@ class HoverHandlerTest extends TestCase
             $documents,
             $codeResolver,
             $this->capabilitiesFor(MarkupKind::PlainText),
+            new ResolvedSymbolPresenter(),
         );
         $result = $handler->handle(
             $this->request(self::METHOD, ['textDocument' => 'not-an-object']),
@@ -73,6 +75,7 @@ class HoverHandlerTest extends TestCase
             $documents,
             $codeResolver,
             $this->capabilitiesFor(MarkupKind::PlainText),
+            new ResolvedSymbolPresenter(),
         );
         $result = $handler->handle($this->positionRequest(self::METHOD, self::URI));
 
@@ -85,6 +88,7 @@ class HoverHandlerTest extends TestCase
             $this->documentsReturning(new TextDocument(self::URI, 'php', 1, '<?php ')),
             $this->resolverReturning(null),
             $this->capabilitiesFor(MarkupKind::PlainText),
+            new ResolvedSymbolPresenter(),
         );
 
         $result = $handler->handle($this->positionRequest(self::METHOD, self::URI));
@@ -109,6 +113,7 @@ class HoverHandlerTest extends TestCase
             $this->documentsReturning(new TextDocument(self::URI, 'php', 1, '<?php ')),
             $this->resolverReturning($symbol),
             $this->capabilitiesFor($kind),
+            new ResolvedSymbolPresenter(),
         );
 
         $result = $handler->handle($this->positionRequest(self::METHOD, self::URI));
@@ -166,6 +171,7 @@ class HoverHandlerTest extends TestCase
             self::createStub(DocumentSourceInterface::class),
             self::createStub(CodeResolverInterface::class),
             $this->capabilitiesFor($kind),
+            new ResolvedSymbolPresenter(),
         );
     }
 

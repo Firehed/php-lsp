@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
-use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 
 /**
  * @phpstan-import-type LspMarkupContent from MarkupContent
@@ -25,6 +25,7 @@ final class HoverHandler implements DocumentFeatureHandlerInterface
         private readonly DocumentSourceInterface $documents,
         private readonly CodeResolverInterface $codeResolver,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
+        private readonly ResolvedSymbolPresenterInterface $presenter,
     ) {
     }
 
@@ -60,7 +61,7 @@ final class HoverHandler implements DocumentFeatureHandlerInterface
 
     private function formatHover(ResolvedSymbolInterface $symbol, MarkupKind $kind): string
     {
-        $presented = ResolvedSymbolPresenter::present($symbol);
+        $presented = $this->presenter->present($symbol);
         $parts = [];
 
         if ($presented->documentation !== null) {

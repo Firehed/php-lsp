@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -34,8 +35,7 @@ final class NamedArgumentCandidatesTest extends TestCase
         ));
         $doc = new TextDocument('file:///t.php', 'php', 0, '');
 
-        $candidates = new NamedArgumentCandidates($codeResolver, new CompletionItemFactory());
-        $items = $candidates->find(new CompletionRequest($doc, 0, 0));
+        $items = self::candidates($codeResolver)->find(new CompletionRequest($doc, 0, 0));
 
         self::assertSame([], $items, 'a value is being typed, so no argument name fits');
     }
@@ -76,8 +76,7 @@ final class NamedArgumentCandidatesTest extends TestCase
             ->willReturn(new CallContext($callable, 0, $usedNames, $positionallyFilled));
         $doc = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
 
-        $candidates = new NamedArgumentCandidates($codeResolver, new CompletionItemFactory());
-        $items = $candidates->find(new CompletionRequest($doc, 1, strlen($line)));
+        $items = self::candidates($codeResolver)->find(new CompletionRequest($doc, 1, strlen($line)));
 
         self::assertNotNull($items, 'a position inside a call offers named arguments');
         self::assertSame(
@@ -98,8 +97,13 @@ final class NamedArgumentCandidatesTest extends TestCase
         $request = new CompletionRequest($doc, 0, 8);
 
         self::assertNull(
-            (new NamedArgumentCandidates($codeResolver, new CompletionItemFactory()))->find($request),
+            self::candidates($codeResolver)->find($request),
             'a position outside any call offers no named arguments',
         );
+    }
+
+    private static function candidates(CodeResolverInterface $codeResolver): NamedArgumentCandidates
+    {
+        return new NamedArgumentCandidates($codeResolver, new CompletionItemFactory(new ResolvedSymbolPresenter()));
     }
 }

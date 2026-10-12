@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
@@ -192,7 +193,8 @@ final class FunctionSurfaceParityTest extends TestCase
             $this->symbolSource,
             $this->symbolResolver,
             $capabilities,
-            new CompletionItemFactory(),
+            new CompletionItemFactory(new ResolvedSymbolPresenter()),
+            new ResolvedSymbolPresenter(),
         );
     }
 

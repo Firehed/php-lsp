@@ -24,6 +24,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\NameContext;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -463,7 +464,8 @@ final class SymbolCandidatesTest extends TestCase
             $symbols,
             $resolver,
             self::capabilitiesProvider($capabilities),
-            new CompletionItemFactory(),
+            new CompletionItemFactory(new ResolvedSymbolPresenter()),
+            new ResolvedSymbolPresenter(),
         );
     }
 

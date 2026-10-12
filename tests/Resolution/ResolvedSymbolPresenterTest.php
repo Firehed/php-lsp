@@ -34,7 +34,7 @@ final class ResolvedSymbolPresenterTest extends TestCase
 
         self::assertSame(
             $expected,
-            ResolvedSymbolPresenter::present($symbol)->documentation,
+            (new ResolvedSymbolPresenter())->present($symbol)->documentation,
             'every surface shows the description without tags, or nothing',
         );
     }
@@ -46,7 +46,7 @@ final class ResolvedSymbolPresenterTest extends TestCase
 
         self::assertSame(
             'function double(int $value): int',
-            ResolvedSymbolPresenter::present($symbol)->signature,
+            (new ResolvedSymbolPresenter())->present($symbol)->signature,
             'the signature is the symbol as it formats itself',
         );
     }
