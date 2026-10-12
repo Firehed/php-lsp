@@ -241,7 +241,7 @@ final class CompletionItemFactoryTest extends TestCase
     {
         $symbol = self::createStub(ResolvedSymbolInterface::class);
         $symbol->method('format')->willReturn('class User');
-        $symbol->method('getDocumentation')->willReturn('/** A person who signs in. */');
+        $symbol->method('getDocumentation')->willReturn("/**\n * A person who signs in.\n */");
 
         $item = self::factory()->forSymbol(
             'User',
