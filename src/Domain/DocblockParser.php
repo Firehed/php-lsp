@@ -90,7 +90,7 @@ final class DocblockParser
         foreach ($lines as $line) {
             $line = trim($line);
             $line = preg_replace('/^\/\*\*\s*/', '', $line) ?? '';
-            $line = preg_replace('/^\*\/\s*$/', '', $line) ?? '';
+            $line = preg_replace('/\s*\*\/$/', '', $line) ?? '';
             $line = preg_replace('/^\*\s?/', '', $line) ?? '';
 
             // Stop at @param, @return, etc.
