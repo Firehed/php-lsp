@@ -33,12 +33,18 @@ jobs:
           --coverage-clover coverage.xml
           --log-junit junit-unit.xml
 
-      - name: Run integration and end-to-end tests
+      - name: Run integration tests
         if: ${{ !cancelled() }}
         run: composer unit
           --
-          --testsuite integration,end-to-end
-          --log-junit junit-other.xml
+          --testsuite integration
+          --log-junit junit-integration.xml
+
+      - name: Run end-to-end tests
+        if: ${{ !cancelled() }}
+        run: composer e2e
+          --
+          --log-junit junit-e2e.xml
 
       - name: Upload coverage reports to Codecov
         if: ${{ !cancelled() }}
@@ -54,5 +60,5 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
-          files: junit-unit.xml,junit-other.xml
+          files: junit-unit.xml,junit-integration.xml,junit-e2e.xml
           disable_search: true
