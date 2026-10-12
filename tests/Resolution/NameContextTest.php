@@ -76,6 +76,32 @@ final class NameContextTest extends TestCase
         yield 'constants use the constant table' => [NameKind::Constant, 'Other\\FOO'];
     }
 
+    #[DataProvider('provideNamespacePaths')]
+    public function testResolveNamespacePath(string $namespace, string $path, string $expected): void
+    {
+        $context = new NameContext($namespace, classImports: ['Http' => 'Psr\\Http']);
+
+        self::assertSame(
+            $expected,
+            $context->resolveNamespacePath($path),
+            'a namespace path resolves its first segment through the class imports, else the current namespace',
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function provideNamespacePaths(): iterable
+    {
+        yield 'imported alias' => ['App', 'Http', 'Psr\\Http'];
+        yield 'imported alias in another case' => ['App', 'http', 'Psr\\Http'];
+        yield 'deeper path under an alias' => ['App', 'Http\\Message', 'Psr\\Http\\Message'];
+        yield 'unimported segment' => ['App', 'Model', 'App\\Model'];
+        yield 'segment spelled like a special class name' => ['App', 'Parent', 'App\\Parent'];
+        yield 'global namespace' => ['', 'Model', 'Model'];
+    }
+
     /**
      * Every input the golden covers. Keeping them in one place makes it clear
      * which shapes the golden pins.
