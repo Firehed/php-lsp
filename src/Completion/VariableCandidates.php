@@ -35,10 +35,7 @@ final class VariableCandidates implements CompletionSourceInterface
         $items = [];
         foreach ($variables as $variable) {
             if (PrefixMatcher::matches($variable->getName(), $prefix)) {
-                $items[] = CompletionItemFactory::forVariable(
-                    $variable->getName(),
-                    $variable->getType()?->format() ?? 'mixed',
-                );
+                $items[] = CompletionItemFactory::forVariable($variable);
             }
         }
 

@@ -23,7 +23,7 @@ return [
     ),
     'nullsafe method call' => $hover('setName_nullsafe', new Expectation\Shows('setName', 'Updates the user')),
     'nullsafe property fetch' => $hover('manager_nullsafe', new Expectation\Shows('$manager', 'User')),
-    'typed variable' => $hover('variable_typed', new Expectation\Shows('$typed', 'User')),
+    'typed variable' => $hover('variable_typed', new Expectation\Shows('User')),
     'promoted property' => $hover('promoted_property', new Expectation\Shows('$id', 'string', 'readonly')),
     'trait method' => $hover('markCreated', new Expectation\Shows('markCreated')),
     'trait property' => $hover('trait_property_consumer', new Expectation\Shows('$createdAt', 'DateTimeImmutable')),

@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\PresentedSymbol;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
+use Firehed\PhpLsp\Resolution\ResolvedVariable;
 
 /**
  * Builds LSP completion items. Centralizing construction here keeps item shape,
@@ -163,12 +164,12 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forVariable(string $name, string $typeLabel): array
+    public static function forVariable(ResolvedVariable $variable): array
     {
         return [
-            'label' => '$' . $name,
+            'label' => '$' . $variable->getName(),
             'kind' => CompletionItemKind::Variable->value,
-            'detail' => $typeLabel,
+            'detail' => ResolvedSymbolPresenter::present($variable)->signature,
         ];
     }
 
@@ -181,7 +182,7 @@ final class CompletionItemFactory
         return [
             'label' => $label,
             'kind' => CompletionItemKind::Field->value,
-            'detail' => ParameterInfo::signature($parameter),
+            'detail' => ResolvedSymbolPresenter::present($parameter)->signature,
             // This promotes named args to the top of the list in case it gets
             // capped, since ! sorts alphabetically before the string
             'sortText' => '!' . $label,

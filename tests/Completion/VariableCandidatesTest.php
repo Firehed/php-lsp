@@ -48,7 +48,7 @@ final class VariableCandidatesTest extends TestCase
         self::assertSame(
             $expected,
             array_column($items, 'detail', 'label'),
-            'each matching variable is offered with its type, or mixed when untyped',
+            'each matching variable is described the same way hover describes it',
         );
     }
 }

@@ -390,7 +390,7 @@ final class SymbolResolverTest extends TestCase
         $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
 
         self::assertInstanceOf(ResolvedVariable::class, $result);
-        self::assertStringContainsString('typed', $result->format());
+        self::assertSame('typed', $result->getName(), 'the hovered variable is resolved');
     }
 
     public function testResolvesParameterDeclaration(): void
@@ -995,7 +995,7 @@ final class SymbolResolverTest extends TestCase
 
         // Hovering on $name in $$name resolves the variable $name
         self::assertInstanceOf(ResolvedVariable::class, $result);
-        self::assertStringContainsString('name', $result->format());
+        self::assertSame('name', $result->getName(), 'the inner variable of $$name is resolved');
     }
 
     public function testResolveAtPositionReturnsNullForOuterVariableVariable(): void
@@ -1022,7 +1022,7 @@ final class SymbolResolverTest extends TestCase
 
         // Hovering on $prop in $this->$prop resolves the variable $prop
         self::assertInstanceOf(ResolvedVariable::class, $result);
-        self::assertStringContainsString('prop', $result->format());
+        self::assertSame('prop', $result->getName(), 'the variable naming the property is resolved');
     }
 
     /**
