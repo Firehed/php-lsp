@@ -39,14 +39,24 @@ final class DocblockParserTest extends TestCase
         self::assertSame($expected, DocblockParser::arrayElementType($docblock));
     }
 
-    public function testExtractDescriptionStopsAtFirstTag(): void
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function descriptionProvider(): iterable
     {
-        $docblock = "/**\n * Line one.\n * Line two.\n * @var string\n */";
-        self::assertSame("Line one.\nLine two.", DocblockParser::extractDescription($docblock));
+        yield 'stops at first tag' => ["/**\n * Line one.\n * Line two.\n * @var string\n */", "Line one.\nLine two."];
+        yield 'only tags' => ['/** @var string */', ''];
+        yield 'single line' => ['/** Static method documentation. */', 'Static method documentation.'];
+        yield 'single line without space before terminator' => ['/** Docs.*/', 'Docs.'];
     }
 
-    public function testExtractDescriptionReturnsEmptyWhenOnlyTags(): void
+    #[DataProvider('descriptionProvider')]
+    public function testExtractDescription(string $docblock, string $expected): void
     {
-        self::assertSame('', DocblockParser::extractDescription('/** @var string */'));
+        self::assertSame(
+            $expected,
+            DocblockParser::extractDescription($docblock),
+            'the description is the prose before any tag, without comment markers',
+        );
     }
 }
