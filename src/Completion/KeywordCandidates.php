@@ -51,6 +51,11 @@ final class KeywordCandidates
         'true', 'false', 'null',
     ];
 
+    public function __construct(
+        private readonly CompletionItemFactory $items,
+    ) {
+    }
+
     /**
      * @return list<CompletionItem>|null
      */
@@ -64,7 +69,7 @@ final class KeywordCandidates
         $items = [];
         foreach ($this->keywordsFor($group) as $keyword) {
             if (PrefixMatcher::matches($keyword, $prefix)) {
-                $items[] = CompletionItemFactory::forKeyword($keyword);
+                $items[] = $this->items->forKeyword($keyword);
             }
         }
 

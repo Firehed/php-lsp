@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
@@ -33,7 +34,8 @@ final class NamedArgumentCandidatesTest extends TestCase
         ));
         $doc = new TextDocument('file:///t.php', 'php', 0, '');
 
-        $items = (new NamedArgumentCandidates($codeResolver))->find(new CompletionRequest($doc, 0, 0));
+        $candidates = new NamedArgumentCandidates($codeResolver, new CompletionItemFactory());
+        $items = $candidates->find(new CompletionRequest($doc, 0, 0));
 
         self::assertSame([], $items, 'a value is being typed, so no argument name fits');
     }
@@ -74,7 +76,8 @@ final class NamedArgumentCandidatesTest extends TestCase
             ->willReturn(new CallContext($callable, 0, $usedNames, $positionallyFilled));
         $doc = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
 
-        $items = (new NamedArgumentCandidates($codeResolver))->find(new CompletionRequest($doc, 1, strlen($line)));
+        $candidates = new NamedArgumentCandidates($codeResolver, new CompletionItemFactory());
+        $items = $candidates->find(new CompletionRequest($doc, 1, strlen($line)));
 
         self::assertNotNull($items, 'a position inside a call offers named arguments');
         self::assertSame(
@@ -95,7 +98,7 @@ final class NamedArgumentCandidatesTest extends TestCase
         $request = new CompletionRequest($doc, 0, 8);
 
         self::assertNull(
-            (new NamedArgumentCandidates($codeResolver))->find($request),
+            (new NamedArgumentCandidates($codeResolver, new CompletionItemFactory()))->find($request),
             'a position outside any call offers no named arguments',
         );
     }

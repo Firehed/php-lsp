@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
@@ -43,7 +44,8 @@ final class VariableCandidatesTest extends TestCase
         ]);
         $document = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
 
-        $items = (new VariableCandidates($resolver))->find(new CompletionRequest($document, 1, strlen($line)));
+        $candidates = new VariableCandidates($resolver, new CompletionItemFactory());
+        $items = $candidates->find(new CompletionRequest($document, 1, strlen($line)));
 
         self::assertSame(
             $expected,

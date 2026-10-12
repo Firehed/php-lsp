@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Parity;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\ClassCandidateFilter;
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
@@ -191,6 +192,7 @@ final class FunctionSurfaceParityTest extends TestCase
             $this->symbolSource,
             $this->symbolResolver,
             $capabilities,
+            new CompletionItemFactory(),
         );
     }
 

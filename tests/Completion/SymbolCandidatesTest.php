@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Completion;
 use Closure;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Completion\ClassCandidateFilter;
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
@@ -458,7 +459,12 @@ final class SymbolCandidatesTest extends TestCase
             $resolver->method('isInstantiable')->willReturnCallback($isInstantiable);
         }
 
-        return new SymbolCandidates($symbols, $resolver, self::capabilitiesProvider($capabilities));
+        return new SymbolCandidates(
+            $symbols,
+            $resolver,
+            self::capabilitiesProvider($capabilities),
+            new CompletionItemFactory(),
+        );
     }
 
     /**

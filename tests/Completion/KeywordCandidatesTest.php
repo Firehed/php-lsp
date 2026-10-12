@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\KeywordGroup;
@@ -64,7 +65,7 @@ final class KeywordCandidatesTest extends TestCase
         $doc = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
         $request = new CompletionRequest($doc, 1, strlen($line));
 
-        $items = (new KeywordCandidates())->find($request, $group);
+        $items = (new KeywordCandidates(new CompletionItemFactory()))->find($request, $group);
 
         self::assertNotNull($items, 'a keyword position offers keywords');
         self::assertSame(
@@ -84,7 +85,7 @@ final class KeywordCandidatesTest extends TestCase
         $request = new CompletionRequest($doc, 1, 6);
 
         self::assertNull(
-            (new KeywordCandidates())->find($request, KeywordGroup::Expression),
+            (new KeywordCandidates(new CompletionItemFactory()))->find($request, KeywordGroup::Expression),
             'a variable prefix inside a call does not offer expression keywords',
         );
     }

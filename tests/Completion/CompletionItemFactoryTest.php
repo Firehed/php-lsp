@@ -40,7 +40,7 @@ final class CompletionItemFactoryTest extends TestCase
                 'detail' => 'int $count = 0',
                 'sortText' => '!count:',
             ],
-            CompletionItemFactory::forNamedArgument($parameter),
+            (new CompletionItemFactory())->forNamedArgument($parameter),
             'a named argument shows its signature and sorts first, so a capped list keeps it',
         );
     }
@@ -54,7 +54,7 @@ final class CompletionItemFactoryTest extends TestCase
                 'detail' => 'builtin type',
                 'sortText' => '!string',
             ],
-            CompletionItemFactory::forBuiltinType('string'),
+            (new CompletionItemFactory())->forBuiltinType('string'),
             'a built-in type sorts first, so a capped list keeps it',
         );
     }
@@ -63,7 +63,7 @@ final class CompletionItemFactoryTest extends TestCase
     {
         self::assertSame(
             ['label' => 'foreach', 'kind' => CompletionItemKind::Keyword->value],
-            CompletionItemFactory::forKeyword('foreach'),
+            (new CompletionItemFactory())->forKeyword('foreach'),
             'a keyword carries no detail',
         );
     }
@@ -81,7 +81,7 @@ final class CompletionItemFactoryTest extends TestCase
                 'kind' => CompletionItemKind::Variable->value,
                 'detail' => 'Fixtures\Domain\User',
             ],
-            CompletionItemFactory::forVariable($variable),
+            (new CompletionItemFactory())->forVariable($variable),
             'a variable is labelled with its sigil and shows its presented signature',
         );
     }
@@ -94,7 +94,7 @@ final class CompletionItemFactoryTest extends TestCase
                 'kind' => CompletionItemKind::Constant->value,
                 'detail' => 'string (fully qualified class name)',
             ],
-            CompletionItemFactory::forClassConstant(),
+            (new CompletionItemFactory())->forClassConstant(),
             '::class holds the fully qualified name',
         );
     }
@@ -112,7 +112,7 @@ final class CompletionItemFactoryTest extends TestCase
                     'newText' => 'Models\User',
                 ],
             ],
-            CompletionItemFactory::forSymbol(
+            (new CompletionItemFactory())->forSymbol(
                 'Models\User',
                 'App\Models\User',
                 NameKind::ClassLike,
@@ -152,7 +152,13 @@ final class CompletionItemFactoryTest extends TestCase
         int $itemKind,
         array $inserted,
     ): void {
-        $item = CompletionItemFactory::forSymbol('wrap', 'Lib\wrap', $kind, Range::onLine(0, 0, 0), $snippetSupport);
+        $item = (new CompletionItemFactory())->forSymbol(
+            'wrap',
+            'Lib\wrap',
+            $kind,
+            Range::onLine(0, 0, 0),
+            $snippetSupport,
+        );
 
         self::assertSame($itemKind, $item['kind'] ?? null, 'the item kind follows the symbol kind');
         self::assertSame(
@@ -178,7 +184,7 @@ final class CompletionItemFactoryTest extends TestCase
             line: null,
         );
 
-        $item = CompletionItemFactory::forResolvedMember($method, snippetSupport: true);
+        $item = (new CompletionItemFactory())->forResolvedMember($method, snippetSupport: true);
 
         self::assertSame(CompletionItemKind::Method->value, $item['kind'] ?? null, 'a method is a method item');
         self::assertSame('Persists the user.', $item['documentation'] ?? null, 'the docblock description is shown');
@@ -203,7 +209,7 @@ final class CompletionItemFactoryTest extends TestCase
             line: null,
         );
 
-        $item = CompletionItemFactory::forResolvedMember($property, snippetSupport: true);
+        $item = (new CompletionItemFactory())->forResolvedMember($property, snippetSupport: true);
 
         self::assertSame(
             [null, null],
@@ -225,14 +231,14 @@ final class CompletionItemFactoryTest extends TestCase
                     'newText' => 'Http\\',
                 ],
             ],
-            CompletionItemFactory::forNamespace('Http', 'Psr\Http', Range::onLine(2, 4, 6)),
+            (new CompletionItemFactory())->forNamespace('Http', 'Psr\Http', Range::onLine(2, 4, 6)),
             'the inserted text carries the separator, so accepting it is ready for the next segment',
         );
     }
 
     public function testPresentedSymbolShowsItsSignatureAndDocumentation(): void
     {
-        $item = CompletionItemFactory::forSymbol(
+        $item = (new CompletionItemFactory())->forSymbol(
             'User',
             'App\Models\User',
             NameKind::ClassLike,
@@ -260,7 +266,7 @@ final class CompletionItemFactoryTest extends TestCase
                 'kind' => CompletionItemKind::EnumMember->value,
                 'detail' => 'case Low = 1',
             ],
-            CompletionItemFactory::forResolvedMember($case),
+            (new CompletionItemFactory())->forResolvedMember($case),
             'a member shows its signature as the detail',
         );
     }

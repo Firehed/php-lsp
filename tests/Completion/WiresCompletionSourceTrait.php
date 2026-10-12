@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -28,14 +29,15 @@ trait WiresCompletionSourceTrait
         CodeResolverInterface $codeResolver,
         SessionCapabilitiesProviderInterface $capabilities,
     ): CompositeCompletionSource {
+        $items = new CompletionItemFactory();
         return new CompositeCompletionSource(
             $codeResolver,
-            new SymbolCandidates($symbolSource, $codeResolver, $capabilities),
-            new KeywordCandidates(),
-            new VariableCandidates($codeResolver),
-            new MemberCandidates($codeResolver, $capabilities),
-            new NamedArgumentCandidates($codeResolver),
-            new BuiltinTypeCandidates(),
+            new SymbolCandidates($symbolSource, $codeResolver, $capabilities, $items),
+            new KeywordCandidates($items),
+            new VariableCandidates($codeResolver, $items),
+            new MemberCandidates($codeResolver, $capabilities, $items),
+            new NamedArgumentCandidates($codeResolver, $items),
+            new BuiltinTypeCandidates($items),
         );
     }
 }

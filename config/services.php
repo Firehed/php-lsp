@@ -7,6 +7,8 @@ namespace Firehed\PhpLsp;
 use Firehed\Container\TypedContainerInterface as TC;
 
 return [
+    Completion\CompletionItemFactory::class,
+
     Document\CompositeDocumentSource::class,
     Document\DocumentManager::class,
     Document\DocumentManagerInterface::class => Document\DocumentManager::class,

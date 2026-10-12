@@ -25,6 +25,7 @@ final class MemberCandidates implements CompletionSourceInterface
     public function __construct(
         private readonly CodeResolverInterface $codeResolver,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
+        private readonly CompletionItemFactory $items,
     ) {
     }
 
@@ -59,12 +60,12 @@ final class MemberCandidates implements CompletionSourceInterface
         $items = [];
         foreach ($members as $member) {
             if ($context->accepts($member) && PrefixMatcher::matches($member->getName()->name, $context->prefix)) {
-                $items[] = CompletionItemFactory::forResolvedMember($member, $snippetSupport);
+                $items[] = $this->items->forResolvedMember($member, $snippetSupport);
             }
         }
 
         if ($context->offersClassConstant && PrefixMatcher::matches('class', $context->prefix)) {
-            $items[] = CompletionItemFactory::forClassConstant();
+            $items[] = $this->items->forClassConstant();
         }
 
         return $items;

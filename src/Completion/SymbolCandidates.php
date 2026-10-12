@@ -48,6 +48,7 @@ final class SymbolCandidates
         private readonly SymbolSourceInterface $symbolSource,
         private readonly CodeResolverInterface $codeResolver,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
+        private readonly CompletionItemFactory $items,
     ) {
     }
 
@@ -394,7 +395,7 @@ final class SymbolCandidates
         $contents = $this->symbolSource->childrenOf(new NamespaceName($child));
         $elementCount = count($contents->childNamespaces) + count($contents->symbols);
         if ($elementCount === 0 || $elementCount > self::INLINE_THRESHOLD) {
-            $item = CompletionItemFactory::forNamespace($segment, $child, $range);
+            $item = $this->items->forNamespace($segment, $child, $range);
             $item['sortText'] = '1_' . $item['label'];
             return [$item];
         }
@@ -402,7 +403,7 @@ final class SymbolCandidates
         $items = [];
         foreach ($contents->childNamespaces as $grandchild) {
             $reference = NamespaceName::join($segment, NamespaceName::shortNameOf($grandchild));
-            $item = CompletionItemFactory::forNamespace($reference, $grandchild, $range);
+            $item = $this->items->forNamespace($reference, $grandchild, $range);
             $item['sortText'] = '1_' . $item['label'];
             $items[] = $item;
         }
@@ -461,7 +462,7 @@ final class SymbolCandidates
     ): array {
         $presented = $kind->isFunction() ? $this->presentFunction($fqn) : null;
 
-        return CompletionItemFactory::forSymbol(
+        return $this->items->forSymbol(
             $reference,
             $fqn,
             $kind,
