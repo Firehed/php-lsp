@@ -18,9 +18,9 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Protocol\Range;
-use Firehed\PhpLsp\Resolution\PresentedSymbol;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -237,17 +237,21 @@ final class CompletionItemFactoryTest extends TestCase
         );
     }
 
-    public function testPresentedSymbolShowsItsSignatureAndDocumentation(): void
+    public function testResolvedSymbolShowsItsSignatureAndDocumentation(): void
     {
+        $symbol = self::createStub(ResolvedSymbolInterface::class);
+        $symbol->method('format')->willReturn('class User');
+        $symbol->method('getDocumentation')->willReturn('/** A person who signs in. */');
+
         $item = self::factory()->forSymbol(
             'User',
             'App\Models\User',
             NameKind::ClassLike,
             Range::onLine(0, 0, 0),
-            presented: new PresentedSymbol('class User', 'A person who signs in.'),
+            symbol: $symbol,
         );
 
-        self::assertSame('class User', $item['detail'] ?? null, 'the presented signature replaces the full name');
+        self::assertSame('class User', $item['detail'] ?? null, 'the symbol\'s signature replaces the full name');
         self::assertSame('A person who signs in.', $item['documentation'] ?? null, 'the description is documentation');
     }
 
