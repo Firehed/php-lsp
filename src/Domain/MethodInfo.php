@@ -48,11 +48,6 @@ final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
         return $this->name;
     }
 
-    public function getReturnType(): ?TypeInterface
-    {
-        return $this->returnType;
-    }
-
     /**
      * ResolvedSymbolInterface's value type for a method is its return type.
      */

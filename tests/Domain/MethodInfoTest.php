@@ -263,13 +263,10 @@ class MethodInfoTest extends TestCase
         );
         $method = $this->makeSubject(parameters: [$param]);
 
-        self::assertSame('int', $method->getReturnType()?->format());
         self::assertSame('int', $method->getType()?->format());
         self::assertSame([$param], $method->getParameters());
         self::assertSame($param, $method->getParameterByName('value'));
-        self::assertSame($param, $method->getParameterAtPosition(0));
         self::assertNull($method->getParameterByName('missing'));
-        self::assertNull($method->getParameterAtPosition(1));
     }
 
     /**

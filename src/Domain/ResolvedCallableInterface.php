@@ -14,13 +14,6 @@ interface ResolvedCallableInterface extends ResolvedSymbolInterface
      */
     public function getParameters(): array;
 
-    public function getReturnType(): ?TypeInterface;
-
-    /**
-     * Returns the parameter at the given 0-based position, or null if out of bounds.
-     */
-    public function getParameterAtPosition(int $position): ?ParameterInfo;
-
     /**
      * Returns the parameter with the given name (without $), or null if not found.
      */
