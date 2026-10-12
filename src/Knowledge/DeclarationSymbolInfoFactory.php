@@ -496,7 +496,6 @@ final readonly class DeclarationSymbolInfoFactory
         return new ParameterInfo(
             name: $param->var->name,
             type: TypeFactory::fromNode($param->type, $selfContext, $parentContext),
-            hasDefault: $param->default !== null,
             defaultValue: $defaultValue,
             position: $position,
             isVariadic: $param->variadic,

@@ -482,7 +482,6 @@ final class BuiltinBackend implements SymbolSourceInterface
         return new ParameterInfo(
             name: $param->getName(),
             type: TypeFactory::fromReflection($param->getType()),
-            hasDefault: $param->isDefaultValueAvailable(),
             defaultValue: $defaultValue,
             position: $param->getPosition(),
             isVariadic: $param->isVariadic(),

@@ -67,7 +67,7 @@ final class NamedArgumentCandidatesTest extends TestCase
             self::parameterInfo('name', new PrimitiveType('string'), 0),
             self::parameterInfo('count', new PrimitiveType('int'), 1),
             self::parameterInfo('active', new PrimitiveType('bool'), 2),
-            new ParameterInfo('values', new PrimitiveType('string'), false, null, 3, true, false),
+            new ParameterInfo('values', new PrimitiveType('string'), null, 3, true, false),
         ]);
         $codeResolver = self::createStub(CodeResolverInterface::class);
         $codeResolver->method('getCallContext')

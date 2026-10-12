@@ -29,7 +29,7 @@ final class CompletionItemFactoryTest extends TestCase
 {
     public function testNamedArgumentSortsAheadOfEveryOtherItem(): void
     {
-        $parameter = new ParameterInfo('count', new PrimitiveType('int'), true, '0', 1, false, false);
+        $parameter = new ParameterInfo('count', new PrimitiveType('int'), '0', 1, false, false);
 
         self::assertSame(
             [

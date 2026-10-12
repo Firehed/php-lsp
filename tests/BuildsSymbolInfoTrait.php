@@ -118,7 +118,7 @@ trait BuildsSymbolInfoTrait
 
     private static function parameterInfo(string $name, ?TypeInterface $type = null, int $position = 0): ParameterInfo
     {
-        return new ParameterInfo($name, $type, false, null, $position, false, false);
+        return new ParameterInfo($name, $type, null, $position, false, false);
     }
 
     /**

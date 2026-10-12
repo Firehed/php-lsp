@@ -385,7 +385,6 @@ final class BuiltinBackendTest extends TestCase
         }
 
         self::assertArrayHasKey('count', $paramsByName, 'str_replace declares $count with a null default');
-        self::assertTrue($paramsByName['count']->hasDefault);
         self::assertSame(
             'null',
             $paramsByName['count']->defaultValue,

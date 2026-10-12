@@ -12,7 +12,7 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
     public function __construct(
         public string $name,
         public ?TypeInterface $type,
-        public bool $hasDefault,
+        /** The default as PHP source; null when the parameter has none. */
         public ?string $defaultValue,
         public int $position,
         public bool $isVariadic,
@@ -58,8 +58,8 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
             $str .= '...';
         }
         $str .= '$' . $parameter->name;
-        if ($showDefault && $parameter->hasDefault && !$parameter->isVariadic) {
-            $str .= ' = ' . ($parameter->defaultValue ?? '...');
+        if ($showDefault && $parameter->defaultValue !== null && !$parameter->isVariadic) {
+            $str .= ' = ' . $parameter->defaultValue;
         }
         return $str;
     }
