@@ -352,6 +352,15 @@ final class SymbolCandidatesTest extends TestCase
             'a leading segment bound by an import navigates from the imported namespace',
         );
         self::assertSame(
+            ['Client' => 'Psr\Http\Client'],
+            array_column(
+                $candidates->find(self::requestAfter('new http\Cl'), [NameKind::ClassLike], ClassCandidateFilter::Any),
+                'detail',
+                'label',
+            ),
+            'an import alias matches regardless of case, as PHP resolves it',
+        );
+        self::assertSame(
             ['Customer' => 'App\Model\Customer'],
             array_column(
                 $candidates->find(self::requestAfter('new Model\Cu'), [NameKind::ClassLike], ClassCandidateFilter::Any),
