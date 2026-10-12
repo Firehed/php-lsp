@@ -40,7 +40,7 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
     }
 
     /**
-     * The parameter's typed name, e.g. `int $count` or `string ...$tail`. A
+     * The parameter as declared, e.g. `int $count = 0` or `string ...$tail`. A
      * standalone method (not on any interface) so a caller composing a callable's
      * signature does not go through {@see ResolvedSymbolInterface::format()}, which the
      * presenter owns.
