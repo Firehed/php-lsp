@@ -61,7 +61,7 @@ final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
         return $this->returnType;
     }
 
-    public function format(bool $showDefaults = true): string
+    public function format(): string
     {
         $parts = [$this->visibility->format()];
         if ($this->isStatic) {
@@ -75,8 +75,7 @@ final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
         }
         $parts[] = 'function';
 
-        $params = array_map(fn($p) => ParameterInfo::signature($p, showDefault: $showDefaults), $this->parameters);
-        $parts[] = $this->name->name . '(' . implode(', ', $params) . ')';
+        $parts[] = $this->name->name . $this->formatParameterList();
 
         $sig = implode(' ', $parts);
         if ($this->returnType !== null) {

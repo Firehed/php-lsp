@@ -45,7 +45,7 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
      * signature does not go through {@see ResolvedSymbolInterface::format()}, which the
      * presenter owns.
      */
-    public static function signature(self $parameter, bool $showDefault = false): string
+    public static function signature(self $parameter): string
     {
         $str = '';
         if ($parameter->type !== null) {
@@ -58,14 +58,14 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
             $str .= '...';
         }
         $str .= '$' . $parameter->name;
-        if ($showDefault && $parameter->defaultValue !== null && !$parameter->isVariadic) {
+        if ($parameter->defaultValue !== null && !$parameter->isVariadic) {
             $str .= ' = ' . $parameter->defaultValue;
         }
         return $str;
     }
 
-    public function format(bool $showDefault = false): string
+    public function format(): string
     {
-        return self::signature($this, $showDefault);
+        return self::signature($this);
     }
 }
