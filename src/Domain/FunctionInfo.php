@@ -25,11 +25,6 @@ final readonly class FunctionInfo implements ResolvedCallableInterface, SymbolIn
     ) {
     }
 
-    public function getReturnType(): ?TypeInterface
-    {
-        return $this->returnType;
-    }
-
     public function getType(): ?TypeInterface
     {
         return $this->returnType;
