@@ -146,15 +146,9 @@ final class SymbolCandidates
         Range $range,
         bool $snippets,
     ): array {
-        $alias = NamespaceName::firstSegment($prefix);
-        $base = array_key_exists($alias, $context->classImports)
-            ? $context->classImports[$alias]
-            : NamespaceName::join($context->namespace, $alias);
-        $rest = substr($prefix, strlen($alias) + 1);
-
         return $this->offerContentsOf(
-            NamespaceName::join($base, NamespaceName::namespaceOf($rest)),
-            NamespaceName::shortNameOf($rest),
+            $context->candidates(NamespaceName::namespaceOf($prefix), NameKind::ClassLike)[0],
+            NamespaceName::shortNameOf($prefix),
             $kinds,
             $classFilter,
             $range,
