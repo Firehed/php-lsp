@@ -40,32 +40,24 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
     }
 
     /**
-     * The parameter as declared, e.g. `int $count = 0` or `string ...$tail`. A
-     * standalone method (not on any interface) so a caller composing a callable's
-     * signature does not go through {@see ResolvedSymbolInterface::format()}, which the
-     * presenter owns.
+     * The parameter as declared, e.g. `int $count = 0` or `string ...$tail`.
      */
-    public static function signature(self $parameter): string
-    {
-        $str = '';
-        if ($parameter->type !== null) {
-            $str .= $parameter->type->format() . ' ';
-        }
-        if ($parameter->isPassedByReference) {
-            $str .= '&';
-        }
-        if ($parameter->isVariadic) {
-            $str .= '...';
-        }
-        $str .= '$' . $parameter->name;
-        if ($parameter->defaultValue !== null && !$parameter->isVariadic) {
-            $str .= ' = ' . $parameter->defaultValue;
-        }
-        return $str;
-    }
-
     public function format(): string
     {
-        return self::signature($this);
+        $str = '';
+        if ($this->type !== null) {
+            $str .= $this->type->format() . ' ';
+        }
+        if ($this->isPassedByReference) {
+            $str .= '&';
+        }
+        if ($this->isVariadic) {
+            $str .= '...';
+        }
+        $str .= '$' . $this->name;
+        if ($this->defaultValue !== null && !$this->isVariadic) {
+            $str .= ' = ' . $this->defaultValue;
+        }
+        return $str;
     }
 }

@@ -182,7 +182,7 @@ final class CompletionItemFactory
         return [
             'label' => $label,
             'kind' => CompletionItemKind::Field->value,
-            'detail' => ParameterInfo::signature($parameter),
+            'detail' => ResolvedSymbolPresenter::present($parameter)->signature,
             // This promotes named args to the top of the list in case it gets
             // capped, since ! sorts alphabetically before the string
             'sortText' => '!' . $label,

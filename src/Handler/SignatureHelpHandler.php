@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Handler;
 
 use Firehed\PhpLsp\Document\DocumentSourceInterface;
-use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CallContext;
@@ -69,7 +68,7 @@ final class SignatureHelpHandler implements DocumentFeatureHandlerInterface
         $signature = [
             'label' => $presented->signature,
             'parameters' => array_map(
-                fn($p) => ['label' => ParameterInfo::signature($p)],
+                fn($p) => ['label' => ResolvedSymbolPresenter::present($p)->signature],
                 $callable->getParameters(),
             ),
         ];

@@ -34,6 +34,6 @@ trait HasCallableParametersTrait
 
     private function formatParameterList(): string
     {
-        return '(' . implode(', ', array_map(ParameterInfo::signature(...), $this->parameters)) . ')';
+        return '(' . implode(', ', array_map(fn (ParameterInfo $p) => $p->format(), $this->parameters)) . ')';
     }
 }
