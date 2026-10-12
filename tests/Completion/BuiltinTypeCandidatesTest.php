@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\TypeHintContext;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -36,19 +37,23 @@ final class BuiltinTypeCandidatesTest extends TestCase
     #[DataProvider('contexts')]
     public function testOffersTheTypesValidInThePosition(TypeHintContext $context, array $expected): void
     {
+        $candidates = new BuiltinTypeCandidates(new CompletionItemFactory());
+
         self::assertSame(
             $expected,
-            array_column((new BuiltinTypeCandidates())->find(self::requestAfter('foo('), $context), 'label'),
+            array_column($candidates->find(self::requestAfter('foo('), $context), 'label'),
             'each position offers the built-in types PHP accepts there',
         );
     }
 
     public function testFiltersByThePrefix(): void
     {
+        $candidates = new BuiltinTypeCandidates(new CompletionItemFactory());
+
         self::assertSame(
             ['string'],
             array_column(
-                (new BuiltinTypeCandidates())->find(self::requestAfter('foo(str'), TypeHintContext::Parameter),
+                $candidates->find(self::requestAfter('foo(str'), TypeHintContext::Parameter),
                 'label',
             ),
             'only types starting with what was typed',

@@ -37,7 +37,7 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forResolvedMember(ResolvedMemberInterface $member, bool $snippetSupport = false): array
+    public function forResolvedMember(ResolvedMemberInterface $member, bool $snippetSupport = false): array
     {
         $memberKind = $member->getMemberKind();
         $itemKind = match ($memberKind) {
@@ -68,7 +68,7 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forSymbol(
+    public function forSymbol(
         string $reference,
         string $fullyQualifiedName,
         NameKind $kind,
@@ -120,7 +120,7 @@ final class CompletionItemFactory
      *
      * @return CompletionItem
      */
-    public static function forNamespace(string $reference, string $fullyQualifiedName, Range $replaceRange): array
+    public function forNamespace(string $reference, string $fullyQualifiedName, Range $replaceRange): array
     {
         return [
             'label' => $reference . '\\',
@@ -137,7 +137,7 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forKeyword(string $keyword): array
+    public function forKeyword(string $keyword): array
     {
         return [
             'label' => $keyword,
@@ -148,7 +148,7 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forBuiltinType(string $type): array
+    public function forBuiltinType(string $type): array
     {
         return [
             'label' => $type,
@@ -164,7 +164,7 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forVariable(ResolvedVariable $variable): array
+    public function forVariable(ResolvedVariable $variable): array
     {
         return [
             'label' => '$' . $variable->getName(),
@@ -176,7 +176,7 @@ final class CompletionItemFactory
     /**
      * @return CompletionItem
      */
-    public static function forNamedArgument(ParameterInfo $parameter): array
+    public function forNamedArgument(ParameterInfo $parameter): array
     {
         $label = $parameter->name . ':';
         return [
@@ -194,7 +194,7 @@ final class CompletionItemFactory
      *
      * @return CompletionItem
      */
-    public static function forClassConstant(): array
+    public function forClassConstant(): array
     {
         return [
             'label' => 'class',

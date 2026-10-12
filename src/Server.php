@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Capability\CapabilityNegotiator;
 use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
 use Firehed\PhpLsp\Client\TransportClientConnection;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -123,6 +124,7 @@ final class Server
         );
 
         $negotiator = new CapabilityNegotiator($serverInfo);
+        $itemFactory = $container->get(CompletionItemFactory::class);
 
         // Watched-file events are registered dynamically after `initialized` (there
         // is no static server capability for them), gated on the client declaring
@@ -154,12 +156,12 @@ final class Server
                 $documents,
                 new CompositeCompletionSource(
                     $symbolResolver,
-                    new SymbolCandidates($symbolSource, $symbolResolver, $negotiator),
-                    new KeywordCandidates(),
-                    new VariableCandidates($symbolResolver),
-                    new MemberCandidates($symbolResolver, $negotiator),
-                    new NamedArgumentCandidates($symbolResolver),
-                    new BuiltinTypeCandidates(),
+                    new SymbolCandidates($symbolSource, $symbolResolver, $negotiator, $itemFactory),
+                    new KeywordCandidates($itemFactory),
+                    new VariableCandidates($symbolResolver, $itemFactory),
+                    new MemberCandidates($symbolResolver, $negotiator, $itemFactory),
+                    new NamedArgumentCandidates($symbolResolver, $itemFactory),
+                    new BuiltinTypeCandidates($itemFactory),
                 ),
             ),
         ];
