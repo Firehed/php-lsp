@@ -338,6 +338,9 @@ final class SymbolCandidatesTest extends TestCase
             'App\Model' => new NamespaceContents(symbols: [
                 new CatalogSymbol('App\Model\Customer', NameKind::ClassLike),
             ]),
+            'App\Parent' => new NamespaceContents(symbols: [
+                new CatalogSymbol('App\Parent\Child', NameKind::ClassLike),
+            ]),
         ];
         $context = new NameContext('App', classImports: ['Http' => 'Psr\Http']);
         $candidates = self::candidates($context, children: $children);
@@ -350,6 +353,28 @@ final class SymbolCandidatesTest extends TestCase
                 'label',
             ),
             'a leading segment bound by an import navigates from the imported namespace',
+        );
+        self::assertSame(
+            ['Client' => 'Psr\Http\Client'],
+            array_column(
+                $candidates->find(self::requestAfter('new http\Cl'), [NameKind::ClassLike], ClassCandidateFilter::Any),
+                'detail',
+                'label',
+            ),
+            'an import alias matches regardless of case, as PHP resolves it',
+        );
+        self::assertSame(
+            ['Child' => 'App\Parent\Child'],
+            array_column(
+                $candidates->find(
+                    self::requestAfter('new Parent\Ch'),
+                    [NameKind::ClassLike],
+                    ClassCandidateFilter::Any,
+                ),
+                'detail',
+                'label',
+            ),
+            'a leading segment spelled like a special class name is still an ordinary namespace segment',
         );
         self::assertSame(
             ['Customer' => 'App\Model\Customer'],

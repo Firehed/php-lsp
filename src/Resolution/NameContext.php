@@ -79,6 +79,21 @@ final readonly class NameContext
     }
 
     /**
+     * The namespace a written path such as `Http` or `Http\Message` names when
+     * it leads a qualified name: its first segment through the class imports,
+     * otherwise relative to the current namespace.
+     */
+    public function resolveNamespacePath(string $path): string
+    {
+        // php-parser leaves a one-segment `self`, `parent` or `static` unresolved
+        // as a special class name, and cannot build a name ending in `\`. A
+        // throwaway last segment makes the path the prefix of a qualified name,
+        // which is how it is written.
+        $resolved = $this->engine()->getResolvedClassName(new Name($path . '\\_'));
+        return NamespaceName::namespaceOf($resolved->toString());
+    }
+
+    /**
      * The import table consulted for an *unqualified* name of the given kind.
      *
      * PHP manual, name resolution rule 5.
