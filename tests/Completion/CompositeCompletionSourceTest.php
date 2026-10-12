@@ -300,7 +300,7 @@ final class CompositeCompletionSourceTest extends TestCase
     {
         $callable = self::createStub(ResolvedCallableInterface::class);
         $callable->method('getParameters')->willReturn([
-            new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
+            new ParameterInfo('name', new PrimitiveType('string'), null, 0, false, false),
         ]);
         $codeResolver = self::createStub(CodeResolverInterface::class);
         $codeResolver->method('getCallContext')->willReturn(new CallContext($callable, 0, []));

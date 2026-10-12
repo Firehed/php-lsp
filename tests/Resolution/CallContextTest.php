@@ -50,7 +50,6 @@ final class CallContextTest extends TestCase
                 new ParameterInfo(
                     name: 'name',
                     type: new PrimitiveType('string'),
-                    hasDefault: false,
                     defaultValue: null,
                     position: 0,
                     isVariadic: false,
@@ -59,7 +58,6 @@ final class CallContextTest extends TestCase
                 new ParameterInfo(
                     name: 'age',
                     type: new PrimitiveType('int'),
-                    hasDefault: true,
                     defaultValue: '0',
                     position: 1,
                     isVariadic: false,

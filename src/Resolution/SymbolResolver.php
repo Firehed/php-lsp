@@ -500,7 +500,6 @@ final class SymbolResolver implements CodeResolverInterface
         return new ParameterInfo(
             name: $name,
             type: $this->parameterType($param, $name, $enclosingScope),
-            hasDefault: $param->default !== null,
             defaultValue: $defaultValue,
             position: $position,
             isVariadic: $param->variadic,

@@ -112,7 +112,7 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
+                new ParameterInfo('name', new PrimitiveType('string'), null, 0, false, false),
             ],
             returnType: null,
             docblock: null,
@@ -132,8 +132,8 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('a', new PrimitiveType('int'), false, null, 0, false, false),
-                new ParameterInfo('b', new PrimitiveType('int'), false, null, 1, false, false),
+                new ParameterInfo('a', new PrimitiveType('int'), null, 0, false, false),
+                new ParameterInfo('b', new PrimitiveType('int'), null, 1, false, false),
             ],
             returnType: new PrimitiveType('int'),
             docblock: null,
@@ -153,7 +153,7 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('arrays', new PrimitiveType('array'), false, null, 0, true, false),
+                new ParameterInfo('arrays', new PrimitiveType('array'), null, 0, true, false),
             ],
             returnType: new PrimitiveType('array'),
             docblock: null,
@@ -173,8 +173,8 @@ class MethodInfoTest extends TestCase
             isAbstract: false,
             isFinal: false,
             parameters: [
-                new ParameterInfo('a', new PrimitiveType('mixed'), false, null, 0, false, true),
-                new ParameterInfo('b', new PrimitiveType('mixed'), false, null, 1, false, true),
+                new ParameterInfo('a', new PrimitiveType('mixed'), null, 0, false, true),
+                new ParameterInfo('b', new PrimitiveType('mixed'), null, 1, false, true),
             ],
             returnType: new PrimitiveType('void'),
             docblock: null,
@@ -256,7 +256,6 @@ class MethodInfoTest extends TestCase
         $param = new ParameterInfo(
             name: 'value',
             type: new PrimitiveType('string'),
-            hasDefault: false,
             defaultValue: null,
             position: 0,
             isVariadic: false,

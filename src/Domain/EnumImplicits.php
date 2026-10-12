@@ -64,7 +64,6 @@ final class EnumImplicits
         $valueParam = new ParameterInfo(
             name: 'value',
             type: $scalarType,
-            hasDefault: false,
             defaultValue: null,
             position: 0,
             isVariadic: false,

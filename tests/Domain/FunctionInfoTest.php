@@ -65,7 +65,7 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: FunctionName::fromFullyQualified('greet'),
             parameters: [
-                new ParameterInfo('name', new PrimitiveType('string'), false, null, 0, false, false),
+                new ParameterInfo('name', new PrimitiveType('string'), null, 0, false, false),
             ],
             returnType: null,
             docblock: null,
@@ -81,8 +81,8 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: FunctionName::fromFullyQualified('add'),
             parameters: [
-                new ParameterInfo('a', new PrimitiveType('int'), false, null, 0, false, false),
-                new ParameterInfo('b', new PrimitiveType('int'), false, null, 1, false, false),
+                new ParameterInfo('a', new PrimitiveType('int'), null, 0, false, false),
+                new ParameterInfo('b', new PrimitiveType('int'), null, 1, false, false),
             ],
             returnType: new PrimitiveType('int'),
             docblock: null,
@@ -93,12 +93,32 @@ class FunctionInfoTest extends TestCase
         self::assertSame('function add(int $a, int $b): int', $func->format());
     }
 
+    public function testFormatShowsDefaults(): void
+    {
+        $func = new FunctionInfo(
+            name: FunctionName::fromFullyQualified('greet'),
+            parameters: [
+                new ParameterInfo('name', new PrimitiveType('string'), "'world'", 0, false, false),
+            ],
+            returnType: null,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertSame(
+            "function greet(string \$name = 'world')",
+            $func->format(),
+            'a function signature shows defaults, as a method signature does',
+        );
+    }
+
     public function testFormatWithVariadicParameter(): void
     {
         $func = new FunctionInfo(
             name: FunctionName::fromFullyQualified('sum'),
             parameters: [
-                new ParameterInfo('numbers', new PrimitiveType('int'), false, null, 0, true, false),
+                new ParameterInfo('numbers', new PrimitiveType('int'), null, 0, true, false),
             ],
             returnType: new PrimitiveType('int'),
             docblock: null,

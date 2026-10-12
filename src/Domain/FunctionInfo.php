@@ -42,8 +42,7 @@ final readonly class FunctionInfo implements ResolvedCallableInterface, SymbolIn
 
     public function format(): string
     {
-        $params = array_map(fn($p) => ParameterInfo::signature($p), $this->parameters);
-        $sig = 'function ' . $this->name->qualifiedName->shortName . '(' . implode(', ', $params) . ')';
+        $sig = 'function ' . $this->name->qualifiedName->shortName . $this->formatParameterList();
         if ($this->returnType !== null) {
             $sig .= ': ' . $this->returnType->format();
         }

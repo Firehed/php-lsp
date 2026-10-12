@@ -12,7 +12,7 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
     public function __construct(
         public string $name,
         public ?TypeInterface $type,
-        public bool $hasDefault,
+        /** The default as PHP source; null when the parameter has none. */
         public ?string $defaultValue,
         public int $position,
         public bool $isVariadic,
@@ -40,12 +40,12 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
     }
 
     /**
-     * The parameter's typed name, e.g. `int $count` or `string ...$tail`. A
+     * The parameter as declared, e.g. `int $count = 0` or `string ...$tail`. A
      * standalone method (not on any interface) so a caller composing a callable's
      * signature does not go through {@see ResolvedSymbolInterface::format()}, which the
      * presenter owns.
      */
-    public static function signature(self $parameter, bool $showDefault = false): string
+    public static function signature(self $parameter): string
     {
         $str = '';
         if ($parameter->type !== null) {
@@ -58,14 +58,14 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
             $str .= '...';
         }
         $str .= '$' . $parameter->name;
-        if ($showDefault && $parameter->hasDefault && !$parameter->isVariadic) {
-            $str .= ' = ' . ($parameter->defaultValue ?? '...');
+        if ($parameter->defaultValue !== null && !$parameter->isVariadic) {
+            $str .= ' = ' . $parameter->defaultValue;
         }
         return $str;
     }
 
-    public function format(bool $showDefault = false): string
+    public function format(): string
     {
-        return self::signature($this, $showDefault);
+        return self::signature($this);
     }
 }

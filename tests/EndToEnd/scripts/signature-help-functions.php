@@ -30,6 +30,17 @@ return [
         new Expectation\SignatureShows('signatureHelpAdd'),
         new Expectation\ActiveParameter(1),
     ),
+    'function with defaults' => new Session\Script(
+        project: 'tests/Fixtures',
+        steps: [
+            new Step\Open('src/Completion/NamedArguments.php'),
+            new Step\SignatureHelp(
+                'src/Completion/NamedArguments.php',
+                new Marker\CursorMarker('procedural_empty'),
+                expect: [new Expectation\SignatureShows('int $level = 0', 'bool $verbose = false')],
+            ),
+        ],
+    ),
     'built-in function' => $signatureHelp('builtin', new Expectation\SignatureShows('array_map')),
     'outside a call' => $signatureHelp('outside_call', new Expectation\NoAnswer()),
 ];
