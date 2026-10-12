@@ -60,6 +60,7 @@ return [
         $child,
         'self_method',
         new Expectation\Shows('staticMethod', 'Static method documentation'),
+        new Expectation\Hides('*/'),
     ),
     'static static method' => $hover(
         $child,
