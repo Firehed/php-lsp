@@ -21,11 +21,12 @@
     },
     "require-dev": {
         "amphp/process": "^2.1",
+        "brianium/paratest": "^7",
         "deptrac/deptrac": "^4.7",
         "phpstan/phpstan": "^2.3",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
-        "phpunit/phpunit": "^12.5.22",
+        "phpunit/phpunit": "^13",
         "slevomat/coding-standard": "^8.31",
         "squizlabs/php_codesniffer": "^4.0"
     },
@@ -43,7 +44,7 @@
     "scripts": {
         "phpcs": "phpcs",
         "unit": "phpunit",
-        "e2e": "phpunit --testsuite end-to-end",
+        "e2e": "paratest --functional --testsuite end-to-end",
         "coverage": "phpunit --testsuite unit --coverage-text",
         "parity-coverage": "phpunit tests/Parity --coverage-text",
         "phpstan": "phpstan analyze",
@@ -53,7 +54,8 @@
             "@phpstan",
             "@deptrac",
             "@layer-coverage",
-            "@unit",
+            "@unit --exclude-testsuite end-to-end",
+            "@e2e",
             "@phpcs"
         ]
     },
