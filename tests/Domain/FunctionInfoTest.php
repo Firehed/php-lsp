@@ -93,6 +93,26 @@ class FunctionInfoTest extends TestCase
         self::assertSame('function add(int $a, int $b): int', $func->format());
     }
 
+    public function testFormatShowsDefaults(): void
+    {
+        $func = new FunctionInfo(
+            name: FunctionName::fromFullyQualified('greet'),
+            parameters: [
+                new ParameterInfo('name', new PrimitiveType('string'), "'world'", 0, false, false),
+            ],
+            returnType: null,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertSame(
+            "function greet(string \$name = 'world')",
+            $func->format(),
+            'a function signature shows defaults, as a method signature does',
+        );
+    }
+
     public function testFormatWithVariadicParameter(): void
     {
         $func = new FunctionInfo(

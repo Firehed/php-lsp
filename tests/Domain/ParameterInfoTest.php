@@ -86,20 +86,6 @@ class ParameterInfoTest extends TestCase
         self::assertSame('string ...$args', $param->format());
     }
 
-    public function testFormatWithDefaultHidden(): void
-    {
-        $param = new ParameterInfo(
-            name: 'value',
-            type: new PrimitiveType('int'),
-            defaultValue: '10',
-            position: 0,
-            isVariadic: false,
-            isPassedByReference: false,
-        );
-
-        self::assertSame('int $value', $param->format());
-    }
-
     public function testFormatVariadicIgnoresDefault(): void
     {
         $param = new ParameterInfo(
@@ -111,7 +97,7 @@ class ParameterInfoTest extends TestCase
             isPassedByReference: false,
         );
 
-        self::assertSame('string ...$args', $param->format(showDefault: true));
+        self::assertSame('string ...$args', $param->format());
     }
 
     public function testFormatPassedByReference(): void
@@ -181,7 +167,7 @@ class ParameterInfoTest extends TestCase
             isPassedByReference: false,
         );
 
-        self::assertSame('int $count = 42', $param->format(showDefault: true));
+        self::assertSame('int $count = 42', $param->format(), 'a parameter always shows its default');
     }
 
     public function testResolvedSymbolMetadata(): void

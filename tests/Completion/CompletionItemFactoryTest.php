@@ -35,7 +35,7 @@ final class CompletionItemFactoryTest extends TestCase
             [
                 'label' => 'count:',
                 'kind' => CompletionItemKind::Field->value,
-                'detail' => 'int $count',
+                'detail' => 'int $count = 0',
                 'sortText' => '!count:',
             ],
             CompletionItemFactory::forNamedArgument($parameter),
