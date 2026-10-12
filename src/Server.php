@@ -160,7 +160,7 @@ final class Server
                 $documents,
                 new CompositeCompletionSource(
                     $symbolResolver,
-                    new SymbolCandidates($symbolSource, $symbolResolver, $negotiator, $itemFactory, $presenter),
+                    new SymbolCandidates($symbolSource, $symbolResolver, $negotiator, $itemFactory),
                     new KeywordCandidates($itemFactory),
                     new VariableCandidates($symbolResolver, $itemFactory),
                     new MemberCandidates($symbolResolver, $negotiator, $itemFactory),

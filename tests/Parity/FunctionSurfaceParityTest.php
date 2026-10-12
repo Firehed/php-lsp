@@ -194,7 +194,6 @@ final class FunctionSurfaceParityTest extends TestCase
             $this->symbolResolver,
             $capabilities,
             new CompletionItemFactory(new ResolvedSymbolPresenter()),
-            new ResolvedSymbolPresenter(),
         );
     }
 

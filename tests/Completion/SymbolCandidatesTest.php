@@ -465,7 +465,6 @@ final class SymbolCandidatesTest extends TestCase
             $resolver,
             self::capabilitiesProvider($capabilities),
             new CompletionItemFactory(new ResolvedSymbolPresenter()),
-            new ResolvedSymbolPresenter(),
         );
     }
 

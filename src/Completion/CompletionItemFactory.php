@@ -9,8 +9,8 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
+use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Protocol\Range;
-use Firehed\PhpLsp\Resolution\PresentedSymbol;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 
@@ -80,7 +80,7 @@ final class CompletionItemFactory
         Range $replaceRange,
         bool $snippetSupport = false,
         ?string $filterText = null,
-        ?PresentedSymbol $presented = null,
+        ?ResolvedSymbolInterface $symbol = null,
     ): array {
         $itemKind = match ($kind) {
             NameKind::ClassLike => CompletionItemKind::Class_,
@@ -88,6 +88,7 @@ final class CompletionItemFactory
             NameKind::Constant => CompletionItemKind::Constant,
         };
 
+        $presented = $symbol === null ? null : $this->presenter->present($symbol);
         $item = [
             'label' => $reference,
             'kind' => $itemKind->value,

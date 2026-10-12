@@ -30,11 +30,10 @@ trait WiresCompletionSourceTrait
         CodeResolverInterface $codeResolver,
         SessionCapabilitiesProviderInterface $capabilities,
     ): CompositeCompletionSource {
-        $presenter = new ResolvedSymbolPresenter();
-        $itemFactory = new CompletionItemFactory($presenter);
+        $itemFactory = new CompletionItemFactory(new ResolvedSymbolPresenter());
         return new CompositeCompletionSource(
             $codeResolver,
-            new SymbolCandidates($symbolSource, $codeResolver, $capabilities, $itemFactory, $presenter),
+            new SymbolCandidates($symbolSource, $codeResolver, $capabilities, $itemFactory),
             new KeywordCandidates($itemFactory),
             new VariableCandidates($codeResolver, $itemFactory),
             new MemberCandidates($codeResolver, $capabilities, $itemFactory),
