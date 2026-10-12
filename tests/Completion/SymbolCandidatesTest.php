@@ -366,7 +366,11 @@ final class SymbolCandidatesTest extends TestCase
         self::assertSame(
             ['Child' => 'App\Parent\Child'],
             array_column(
-                $candidates->find(self::requestAfter('new Parent\Ch'), [NameKind::ClassLike], ClassCandidateFilter::Any),
+                $candidates->find(
+                    self::requestAfter('new Parent\Ch'),
+                    [NameKind::ClassLike],
+                    ClassCandidateFilter::Any,
+                ),
                 'detail',
                 'label',
             ),

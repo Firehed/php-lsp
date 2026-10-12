@@ -147,7 +147,7 @@ final class SymbolCandidates
         bool $snippets,
     ): array {
         return $this->offerContentsOf(
-            $context->candidates(NamespaceName::namespaceOf($prefix), NameKind::ClassLike)[0],
+            $context->resolveNamespacePath(NamespaceName::namespaceOf($prefix)),
             NamespaceName::shortNameOf($prefix),
             $kinds,
             $classFilter,
