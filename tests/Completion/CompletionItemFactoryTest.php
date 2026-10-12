@@ -79,7 +79,7 @@ final class CompletionItemFactoryTest extends TestCase
             [
                 'label' => '$user',
                 'kind' => CompletionItemKind::Variable->value,
-                'detail' => 'Fixtures\Domain\User $user',
+                'detail' => 'Fixtures\Domain\User',
             ],
             CompletionItemFactory::forVariable($variable),
             'a variable is labelled with its sigil and shows its presented signature',

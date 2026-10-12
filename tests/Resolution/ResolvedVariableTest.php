@@ -59,13 +59,13 @@ class ResolvedVariableTest extends TestCase
     {
         $resolved = new ResolvedVariable('name', new PrimitiveType('string'));
 
-        self::assertSame('string $name', $resolved->format());
+        self::assertSame('string', $resolved->format(), 'a variable is described by its type alone');
     }
 
     public function testFormatWithoutType(): void
     {
         $resolved = new ResolvedVariable('data', null);
 
-        self::assertSame('$data', $resolved->format());
+        self::assertSame('mixed', $resolved->format(), 'a variable of unknown type may hold anything');
     }
 }

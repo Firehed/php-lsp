@@ -17,14 +17,14 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(VariableCandidates::class)]
 final class VariableCandidatesTest extends TestCase
 {
-    private const array ALL_IN_SCOPE = ['$name' => 'string $name', '$age' => 'int $age', '$untyped' => '$untyped'];
+    private const array ALL_IN_SCOPE = ['$name' => 'string', '$age' => 'int', '$untyped' => 'mixed'];
 
     /**
      * @return iterable<string, array{string, array<string, string>}>
      */
     public static function prefixCases(): iterable
     {
-        yield 'prefix after $' => ['$n', ['$name' => 'string $name']];
+        yield 'prefix after $' => ['$n', ['$name' => 'string']];
         yield 'bare $' => ['$', self::ALL_IN_SCOPE];
         yield 'no $ offers everything in scope' => ['foo(', self::ALL_IN_SCOPE];
     }
