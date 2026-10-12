@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\MethodInfo;
@@ -20,6 +21,7 @@ use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\PresentedSymbol;
+use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -66,12 +68,21 @@ final class CompletionItemFactoryTest extends TestCase
         );
     }
 
-    public function testVariableShowsItsType(): void
+    public function testVariableShowsItsSignature(): void
     {
+        $variable = new ResolvedVariable(
+            'user',
+            new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Domain\User')),
+        );
+
         self::assertSame(
-            ['label' => '$user', 'kind' => CompletionItemKind::Variable->value, 'detail' => 'Fixtures\Domain\User'],
-            CompletionItemFactory::forVariable('user', 'Fixtures\Domain\User'),
-            'a variable is labelled with its sigil and shows its type',
+            [
+                'label' => '$user',
+                'kind' => CompletionItemKind::Variable->value,
+                'detail' => 'Fixtures\Domain\User $user',
+            ],
+            CompletionItemFactory::forVariable($variable),
+            'a variable is labelled with its sigil and shows its presented signature',
         );
     }
 
