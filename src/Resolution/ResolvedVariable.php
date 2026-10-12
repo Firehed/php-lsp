@@ -42,14 +42,8 @@ final readonly class ResolvedVariable implements ResolvedSymbolInterface
         return $this->type;
     }
 
-    /**
-     * Returns the variable signature for display (e.g., "string $name").
-     */
     public function format(): string
     {
-        if ($this->type === null) {
-            return '$' . $this->name;
-        }
-        return $this->type->format() . ' $' . $this->name;
+        return $this->type?->format() ?? 'mixed';
     }
 }
