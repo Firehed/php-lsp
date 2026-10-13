@@ -7,6 +7,13 @@ namespace Firehed\PhpLsp;
 use Firehed\Container\TypedContainerInterface as TC;
 
 return [
+    Capability\CapabilityNegotiator::class,
+    Capability\SessionCapabilitiesProviderInterface::class => Capability\CapabilityNegotiator::class,
+    Capability\WatchedFilesRegistrar::class,
+
+    Client\TransportClientConnection::class,
+    Client\ClientConnectionInterface::class => Client\TransportClientConnection::class,
+
     Completion\CompletionItemFactory::class,
 
     Document\CompositeDocumentSource::class,
