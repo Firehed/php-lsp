@@ -11,11 +11,14 @@ use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
@@ -56,6 +59,7 @@ final class ExpressionResolutionTest extends TestCase
         $this->resolver = self::resolverOver(
             self::createStub(SymbolSourceInterface::class),
             self::createStub(TypeSourceInterface::class),
+            self::createStub(MemberResolverInterface::class),
         );
     }
 
@@ -196,6 +200,76 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testThisIsTheEnclosingClass(): void
+    {
+        self::assertEquals(
+            new ResolvedTypeOnly(new ClasslikeType(self::className('Fixtures\Definition\VariableBindings'))),
+            $this->resolveVariableAt(self::BINDINGS, 'this_usage'),
+            '$this is typed by the class it appears in',
+        );
+    }
+
+    public function testUnboundVariableInAClosureWithoutCaptureIsUntyped(): void
+    {
+        self::assertEquals(
+            new ResolvedVariable('outer', null),
+            $this->resolveVariableAt(self::BINDINGS, 'closure_uncaptured'),
+            'a long closure sees only what its use clause captures',
+        );
+    }
+
+    public function testMethodCallResolvesOnTheReceiversClass(): void
+    {
+        $this->knowUserMembers();
+
+        self::assertEquals(
+            self::methodInfo(self::className(self::USER_CLASS), 'setName', self::userType()),
+            $this->resolveSymbolAt(self::USER, 'setName'),
+            'a method call resolves to the method on the class of its receiver',
+        );
+    }
+
+    public function testStaticCallResolvesOnTheNamedClass(): void
+    {
+        $this->knowUserMembers();
+
+        self::assertEquals(
+            self::methodInfo(self::className(self::USER_CLASS), 'create', self::userType(), isStatic: true),
+            $this->resolveSymbolAt(self::USER, 'create'),
+            'a static call resolves to the method on the class it names',
+        );
+    }
+
+    public function testPropertyFetchResolvesOnTheReceiversClass(): void
+    {
+        $this->knowUserMembers();
+
+        self::assertEquals(
+            self::propertyInfo(self::className(self::USER_CLASS), 'manager', self::userType()),
+            $this->resolveSymbolAt(self::USER, 'manager'),
+            'a property fetch resolves to the property on the class of its receiver',
+        );
+    }
+
+    public function testMemberTheReceiversClassLacksIsUnresolved(): void
+    {
+        $members = $this->createMock(MemberResolverInterface::class);
+        $members->expects(self::once())
+            ->method('findProperty')
+            ->with(self::className(self::USER_CLASS), 'unknownProperty')
+            ->willReturn(null);
+        $this->resolver = self::resolverOver(
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+            $members,
+        );
+
+        self::assertNull(
+            $this->resolveSymbolAt(self::USER, 'unknown_property'),
+            'no class the receiver could be declares the property',
+        );
+    }
+
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
@@ -211,21 +285,23 @@ final class ExpressionResolutionTest extends TestCase
         return new FunctionInfo(FunctionName::fromFullyQualified($fqn), [], null, $docblock, null, null);
     }
 
+    private static function isUser(ClasslikeName $class): bool
+    {
+        return $class->equals(self::className(self::USER_CLASS));
+    }
+
     private static function userType(): ClasslikeType
     {
         return new ClasslikeType(self::className(self::USER_CLASS));
     }
 
-    private static function resolverOver(SymbolSourceInterface $symbols, TypeSourceInterface $types): SymbolResolver
-    {
+    private static function resolverOver(
+        SymbolSourceInterface $symbols,
+        TypeSourceInterface $types,
+        MemberResolverInterface $members,
+    ): SymbolResolver {
         $production = ProductionSyntaxSource::create();
-        return new SymbolResolver(
-            $production->source,
-            $production->locator,
-            $symbols,
-            self::createStub(MemberResolverInterface::class),
-            $types,
-        );
+        return new SymbolResolver($production->source, $production->locator, $symbols, $members, $types);
     }
 
     private static function uri(string $fixture): string
@@ -257,7 +333,37 @@ final class ExpressionResolutionTest extends TestCase
                 return null;
             },
         );
-        $this->resolver = self::resolverOver($symbols, self::createStub(TypeSourceInterface::class));
+        $this->resolver = self::resolverOver(
+            $symbols,
+            self::createStub(TypeSourceInterface::class),
+            self::createStub(MemberResolverInterface::class),
+        );
+    }
+
+    /**
+     * Resolves against a member resolver that knows the User members the fixture
+     * calls, and nothing else.
+     */
+    private function knowUserMembers(): void
+    {
+        $members = self::createStub(MemberResolverInterface::class);
+        $members->method('findMethod')->willReturnCallback(
+            static fn (ClasslikeName $class, string $name): ?MethodInfo => self::isUser($class)
+                && in_array($name, ['setName', 'create'], true)
+                ? self::methodInfo($class, $name, self::userType(), isStatic: $name === 'create')
+                : null,
+        );
+        $members->method('findProperty')->willReturnCallback(
+            static fn (ClasslikeName $class, string $name): ?PropertyInfo => self::isUser($class)
+                && $name === 'manager'
+                ? self::propertyInfo($class, $name, self::userType())
+                : null,
+        );
+        $this->resolver = self::resolverOver(
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+            $members,
+        );
     }
 
     /**
@@ -268,7 +374,11 @@ final class ExpressionResolutionTest extends TestCase
     {
         $types = self::createStub(TypeSourceInterface::class);
         $types->method('forMethodParameter')->willReturn($type);
-        $this->resolver = self::resolverOver(self::createStub(SymbolSourceInterface::class), $types);
+        $this->resolver = self::resolverOver(
+            self::createStub(SymbolSourceInterface::class),
+            $types,
+            self::createStub(MemberResolverInterface::class),
+        );
     }
 
     /**

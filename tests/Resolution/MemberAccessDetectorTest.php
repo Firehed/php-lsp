@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
-use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
@@ -25,21 +24,21 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
-use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
+use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(ExpressionResolver::class)]
 #[CoversClass(MemberAccessDetector::class)]
 class MemberAccessDetectorTest extends TestCase
 {
+    use BuildsSymbolInfoTrait;
     use LoadsFixturesTrait;
 
     private const string CHAINS = 'src/Completion/ChainCompletion.php';
@@ -393,34 +392,13 @@ class MemberAccessDetectorTest extends TestCase
         $memberResolver->method('findMethod')->willReturnCallback(
             static function (ClasslikeName $class, string $name) use ($methods): ?MethodInfo {
                 $type = $methods[self::memberKey($class, $name)] ?? null;
-                return $type === null ? null : new MethodInfo(
-                    new MethodName($class, $name),
-                    Visibility::Public,
-                    false,
-                    false,
-                    false,
-                    [],
-                    $type,
-                    null,
-                    null,
-                    null,
-                );
+                return $type === null ? null : self::methodInfo($class, $name, $type);
             },
         );
         $memberResolver->method('findProperty')->willReturnCallback(
             static function (ClasslikeName $class, string $name) use ($properties): ?PropertyInfo {
                 $type = $properties[self::memberKey($class, $name)] ?? null;
-                return $type === null ? null : new PropertyInfo(
-                    new PropertyName($class, $name),
-                    Visibility::Private,
-                    false,
-                    false,
-                    false,
-                    $type,
-                    null,
-                    null,
-                    null,
-                );
+                return $type === null ? null : self::propertyInfo($class, $name, $type, Visibility::Private);
             },
         );
 

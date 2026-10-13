@@ -12,10 +12,15 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
+use Firehed\PhpLsp\Domain\PropertyInfo;
+use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\TypeInterface;
+use Firehed\PhpLsp\Domain\Visibility;
 
 /**
  * Builds minimal domain value objects for tests that need symbols without a real
@@ -116,9 +121,48 @@ trait BuildsSymbolInfoTrait
         return new FunctionInfo(new FunctionName($name), $parameters, $returnType, null, $file, 1);
     }
 
+    private static function methodInfo(
+        ClasslikeName $owner,
+        string $name,
+        ?TypeInterface $returnType = null,
+        bool $isStatic = false,
+    ): MethodInfo {
+        return new MethodInfo(
+            name: new MethodName($owner, $name),
+            visibility: Visibility::Public,
+            isStatic: $isStatic,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [],
+            returnType: $returnType,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+    }
+
     private static function parameterInfo(string $name, ?TypeInterface $type = null, int $position = 0): ParameterInfo
     {
         return new ParameterInfo($name, $type, null, $position, false, false);
+    }
+
+    private static function propertyInfo(
+        ClasslikeName $owner,
+        string $name,
+        ?TypeInterface $type = null,
+        Visibility $visibility = Visibility::Public,
+    ): PropertyInfo {
+        return new PropertyInfo(
+            name: new PropertyName($owner, $name),
+            visibility: $visibility,
+            isStatic: false,
+            isReadonly: false,
+            isPromoted: false,
+            type: $type,
+            docblock: null,
+            file: null,
+            line: null,
+        );
     }
 
     /**

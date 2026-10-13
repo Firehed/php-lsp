@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\CountingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -27,6 +28,7 @@ use PHPUnit\Framework\TestCase;
  * visible to the read source (they share one open-document backend), and that a
  * pre-populated index is honored.
  */
+#[CoversClass(KnowledgeStack::class)]
 final class KnowledgeStackTest extends TestCase
 {
     private string $fixturesRoot;
