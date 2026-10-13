@@ -10,10 +10,10 @@ return [
     Protocol\ServerInfo::class => fn () => new Protocol\ServerInfo('php-lsp', '0.1.0'),
 
     Server::class => function (TC $c) {
-        return Server::forProject(
-            $c->get(Transport\TransportInterface::class),
-            $c->get(Protocol\ServerInfo::class),
-            $c,
-        );
+        $projectRoot = getcwd();
+        if ($projectRoot === false) {
+            throw new \LogicException('Unable to determine project root: getcwd() failed');
+        }
+        return Server::forProject($c, $projectRoot);
     },
 ];
