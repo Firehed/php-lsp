@@ -276,7 +276,11 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         $property = $info->properties[$name];
         self::assertTrue($property->isPromoted, 'a property declared by a constructor parameter is promoted');
         self::assertSame($visibility, $property->visibility, 'read visibility is public unless a keyword narrows it');
-        self::assertSame($isReadonly, $property->isReadonly, 'only `readonly` makes a promoted property read-only');
+        self::assertSame(
+            $isReadonly,
+            $property->isReadonly,
+            '`readonly` on the parameter makes it read-only; set-visibility and hooks do not',
+        );
     }
 
     public function testUnmodifiedConstructorParameterIsNotAProperty(): void
