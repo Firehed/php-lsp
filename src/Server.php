@@ -31,7 +31,6 @@ use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MessageScopedInterface;
-use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
@@ -78,23 +77,11 @@ final class Server
      * The container is used as a service locator, a known anti-pattern. It's
      * transitional as part of #557 and #566.
      */
-    public static function forProject(
-        TransportInterface $transport,
-        ServerInfo $serverInfo,
-        TC $container,
-        ?string $projectRoot = null,
-        (SyntaxSourceInterface&MessageScopedInterface)|null $parser = null,
-    ): self {
-        $parser ??= $container->get(MemoizingSyntaxSource::class);
-        if ($projectRoot === null) {
-            $cwd = getcwd();
-            if ($cwd === false) {
-                // @codeCoverageIgnoreStart
-                throw new \LogicException('Unable to determine project root: getcwd() failed');
-                // @codeCoverageIgnoreEnd
-            }
-            $projectRoot = $cwd;
-        }
+    public static function forProject(TC $container, string $projectRoot): self
+    {
+        $transport = $container->get(TransportInterface::class);
+        $serverInfo = $container->get(ServerInfo::class);
+        $parser = $container->get(MemoizingSyntaxSource::class);
 
         $documentManager = $container->get(DocumentManagerInterface::class);
         $documents = $container->get(DocumentSourceInterface::class);
