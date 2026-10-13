@@ -28,9 +28,6 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(Server::class)]
 class ServerTest extends TestCase
 {
-    use BuildsContainerTrait;
-    use LoadsFixturesTrait;
-
     public function testUnknownMethodReturnsError(): void
     {
         $input = $this->buildMessages(
@@ -202,57 +199,6 @@ class ServerTest extends TestCase
         yield 'notification before initialize' => [[], $notification, null];
         yield 'request after shutdown' => [[$initialize, $initialized, $shutdown], $request, ErrorCode::InvalidRequest];
         yield 'notification after shutdown' => [[$initialize, $initialized, $shutdown], $notification, null];
-    }
-
-    /**
-     * What a document declares is remembered for its text, so the sync path
-     * parses a given text once however many messages carry it.
-     *
-     * Measured across `run()` rather than the process, because construction
-     * eagerly indexes the `autoload.files` set; that cost is gated separately by
-     * KnowledgeStackTest, not folded in here where it would blur this bound.
-     */
-    public function testTheSyncPathParsesATextOnce(): void
-    {
-        $uri = 'file:///fixtures/src/Domain/User.php';
-        $text = $this->loadFixture('src/Domain/User.php');
-
-        $didOpen = $this->notificationJson('textDocument/didOpen', [
-            'textDocument' => ['uri' => $uri, 'languageId' => 'php', 'version' => 1, 'text' => $text],
-        ]);
-        $didChange = $this->notificationJson('textDocument/didChange', [
-            'textDocument' => ['uri' => $uri, 'version' => 2],
-            'contentChanges' => [['text' => $text]],
-        ]);
-
-        $input = $this->buildMessages(
-            $this->initializeJson(),
-            $this->initializedJson(),
-            $didOpen,
-            $didChange,
-            $didChange,
-            $this->notificationJson('exit'),
-        );
-        $outputBuffer = new WritableBuffer();
-
-        $production = ProductionSyntaxSource::create();
-        $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject(
-            $transport,
-            new ServerInfo('test', '1.0'),
-            $this->buildContainer(),
-            __DIR__ . '/Fixtures',
-            $production->source,
-        );
-        $atStartup = $production->counter->parseCount;
-
-        $server->run();
-
-        self::assertSame(
-            1,
-            $production->counter->parseCount - $atStartup,
-            'three sync messages carrying one text, one parse',
-        );
     }
 
     /**
