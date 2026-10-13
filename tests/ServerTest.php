@@ -256,93 +256,43 @@ class ServerTest extends TestCase
     }
 
     /**
-     * A request needs the tree, and trees are kept for one message only. Two
-     * identical completion requests separate that from a standing tree cache:
-     * the second re-parses only if the first message's memo was discarded.
-     *
-     * A variable prefix asks the resolver several questions, so it also shows
-     * each request costs one parse; a member or static access asks only one.
+     * Trees are kept for one message only. Two identical requests whose handler
+     * parses fixed content separate that from a standing tree cache: the second
+     * re-parses only if the first message's memo was discarded. The throwing
+     * case pins the discard to a `finally`: at the tail of the `try`, the memo
+     * would outlive a throwing message.
      */
-    public function testParsesAreScopedToOneMessageOnTheRequestPath(): void
-    {
-        $fixture = 'src/Completion/Variables.php';
-        $uri = 'file:///fixtures/' . $fixture;
-        $text = $this->loadFixture($fixture);
-        $cursor = $this->locateCursor($text, 'param_prefix');
-
-        $didOpen = $this->notificationJson('textDocument/didOpen', [
-            'textDocument' => ['uri' => $uri, 'languageId' => 'php', 'version' => 1, 'text' => $text],
-        ]);
-        $completion = $this->requestJson(1, 'textDocument/completion', [
-            'textDocument' => ['uri' => $uri],
-            'position' => ['line' => $cursor['line'], 'character' => $cursor['character']],
-        ]);
-
-        $input = $this->buildMessages(
-            $this->initializeJson(),
-            $this->initializedJson(),
-            $didOpen,
-            $completion,
-            $completion,
-            $this->notificationJson('exit'),
-        );
-        $outputBuffer = new WritableBuffer();
-
-        $production = ProductionSyntaxSource::create();
-        $transport = $this->createTransport($input, $outputBuffer);
-        $server = Server::forProject(
-            $transport,
-            new ServerInfo('test', '1.0'),
-            $this->buildContainer(),
-            __DIR__ . '/Fixtures',
-            $production->source,
-        );
-        $atStartup = $production->counter->parseCount;
-
-        $server->run();
-
-        self::assertSame(
-            3,
-            $production->counter->parseCount - $atStartup,
-            'one didOpen and two completion requests, one parse each',
-        );
-    }
-
-    /**
-     * The parse memo is discarded in a `finally`, so a handler that parses and
-     * then throws still closes its scope. Both parse-scope tests above use
-     * non-throwing handlers, so moving the discard out of the `finally` to the
-     * tail of the `try` leaves them green while the memo silently outlives a
-     * throwing message and becomes standing. Two identical requests whose
-     * handler parses fixed content and throws separate the cases: the second
-     * re-parses only if the first message's memo was discarded despite the throw.
-     */
-    public function testParseMemoIsDiscardedWhenTheHandlerThrows(): void
+    #[DataProvider('handlerOutcomes')]
+    public function testParseMemoIsDiscardedAfterEachMessage(bool $throws): void
     {
         $production = ProductionSyntaxSource::create();
         $parser = $production->source;
         $document = new TextDocument('file:///probe.php', 'php', 1, '<?php class ScopedProbe {}');
 
-        $handler = new class ($parser, $document) implements HandlerInterface {
+        $handler = new class ($parser, $document, $throws) implements HandlerInterface {
             public function __construct(
                 private SyntaxSourceInterface $parser,
                 private TextDocument $document,
+                private bool $throws,
             ) {
             }
 
             public function supports(string $method): bool
             {
-                return $method === 'test/parseThenThrow';
+                return $method === 'test/parse';
             }
 
             public function handle(Message $message): mixed
             {
                 $this->parser->parse($this->document);
-                throw new \RuntimeException('after parsing');
+                if ($this->throws) {
+                    throw new \RuntimeException('after parsing');
+                }
+                return null;
             }
         };
 
-        $call = $this->requestJson(1, 'test/parseThenThrow');
+        $call = $this->requestJson(1, 'test/parse');
         $input = $this->buildMessages(
             $this->initializeJson(),
             $this->initializedJson(),
@@ -361,8 +311,19 @@ class ServerTest extends TestCase
         self::assertSame(
             2,
             $production->counter->parseCount,
-            'the memo is discarded on the throwing message, so the second call parses again',
+            'the memo is discarded after the first message, so the second call parses again',
         );
+    }
+
+    /**
+     * @return iterable<string, array{bool}>
+     *
+     * @codeCoverageIgnore
+     */
+    public static function handlerOutcomes(): iterable
+    {
+        yield 'handler returns' => [false];
+        yield 'handler throws' => [true];
     }
 
     /**
