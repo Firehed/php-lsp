@@ -358,7 +358,7 @@ final readonly class DeclarationSymbolInfoFactory
                         name: new PropertyName($className, $name),
                         visibility: $this->visibilityFromFlags($param->flags),
                         isStatic: false,
-                        isReadonly: ($param->flags & Modifiers::READONLY) !== 0,
+                        isReadonly: $param->isReadonly(),
                         isPromoted: true,
                         type: TypeFactory::fromNode(
                             $param->type,
