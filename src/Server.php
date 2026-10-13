@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp;
 
 use Firehed\Container\TypedContainerInterface as TC;
-use Firehed\PhpLsp\Capability\CapabilityNegotiator;
-use Firehed\PhpLsp\Capability\WatchedFilesRegistrar;
-use Firehed\PhpLsp\Client\TransportClientConnection;
+use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
@@ -35,7 +33,6 @@ use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
-use Firehed\PhpLsp\Protocol\ServerInfo;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
@@ -80,7 +77,6 @@ final class Server
     public static function forProject(TC $container, string $projectRoot): self
     {
         $transport = $container->get(TransportInterface::class);
-        $serverInfo = $container->get(ServerInfo::class);
         $parser = $container->get(MemoizingSyntaxSource::class);
 
         $documentManager = $container->get(DocumentManagerInterface::class);
@@ -111,15 +107,10 @@ final class Server
             $typeSource,
         );
 
-        $negotiator = new CapabilityNegotiator($serverInfo);
+        $capabilities = $container->get(SessionCapabilitiesProviderInterface::class);
         $itemFactory = $container->get(CompletionItemFactory::class);
         $presenter = $container->get(ResolvedSymbolPresenterInterface::class);
-
-        // Watched-file events are registered dynamically after `initialized` (there
-        // is no static server capability for them), gated on the client declaring
-        // support; the events invalidate cached workspace state.
-        $watchedFilesRegistrar = new WatchedFilesRegistrar(new TransportClientConnection($transport));
-        $lifecycleHandler = new LifecycleHandler($negotiator, [$watchedFilesRegistrar]);
+        $lifecycleHandler = $container->get(LifecycleHandler::class);
 
         $handlers = [
             new TextDocumentSyncHandler(
@@ -135,7 +126,7 @@ final class Server
             new HoverHandler(
                 $documents,
                 $symbolResolver,
-                $negotiator,
+                $capabilities,
                 $presenter,
             ),
             new SignatureHelpHandler(
@@ -147,10 +138,10 @@ final class Server
                 $documents,
                 new CompositeCompletionSource(
                     $symbolResolver,
-                    new SymbolCandidates($symbolSource, $symbolResolver, $negotiator, $itemFactory),
+                    new SymbolCandidates($symbolSource, $symbolResolver, $capabilities, $itemFactory),
                     new KeywordCandidates($itemFactory),
                     new VariableCandidates($symbolResolver, $itemFactory),
-                    new MemberCandidates($symbolResolver, $negotiator, $itemFactory),
+                    new MemberCandidates($symbolResolver, $capabilities, $itemFactory),
                     new NamedArgumentCandidates($symbolResolver, $itemFactory),
                     new BuiltinTypeCandidates($itemFactory),
                 ),

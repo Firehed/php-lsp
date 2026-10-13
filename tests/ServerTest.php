@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests;
 use Amp\ByteStream\ReadableBuffer;
 use Amp\ByteStream\WritableBuffer;
 use Firehed\PhpLsp\Capability\CapabilityNegotiator;
+use Firehed\PhpLsp\Capability\InitializedListenerInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Handler\HandlerInterface;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
@@ -247,9 +248,8 @@ class ServerTest extends TestCase
         );
         $outputBuffer = new WritableBuffer();
 
-        $lifecycle = new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, $lifecycle, [$handler], $parser);
+        $server = new Server($transport, self::lifecycleHandler(), [$handler], $parser);
 
         $server->run();
 
@@ -694,9 +694,17 @@ class ServerTest extends TestCase
     {
         return new Server(
             $transport,
-            new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0'))),
+            self::lifecycleHandler(),
             $handlers,
             ProductionSyntaxSource::create()->source,
+        );
+    }
+
+    private static function lifecycleHandler(): LifecycleHandler
+    {
+        return new LifecycleHandler(
+            new CapabilityNegotiator(new ServerInfo('test', '1.0')),
+            self::createStub(InitializedListenerInterface::class),
         );
     }
 
