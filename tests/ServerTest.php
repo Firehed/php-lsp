@@ -259,8 +259,7 @@ class ServerTest extends TestCase
      * Trees are kept for one message only. Two identical requests whose handler
      * parses fixed content separate that from a standing tree cache: the second
      * re-parses only if the first message's memo was discarded. The throwing
-     * case pins the discard to a `finally`: at the tail of the `try`, the memo
-     * would outlive a throwing message.
+     * case fails if the discard sits on the handler's success path.
      */
     #[DataProvider('handlerOutcomes')]
     public function testParseMemoIsDiscardedAfterEachMessage(bool $throws): void
