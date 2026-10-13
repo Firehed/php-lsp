@@ -245,6 +245,58 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         );
     }
 
+    /**
+     * @return array<string, array{string, Visibility, bool}>
+     */
+    public static function promotedParameters(): array
+    {
+        return [
+            'public' => ['publicId', Visibility::Public, false],
+            'protected' => ['protectedId', Visibility::Protected, false],
+            'private' => ['privateId', Visibility::Private, false],
+            'readonly alone' => ['readonlyId', Visibility::Public, true],
+            'private(set) alone' => ['privateSetCount', Visibility::Public, false],
+            'protected(set) alone' => ['protectedSetCount', Visibility::Public, false],
+            'hooks alone' => ['hookedId', Visibility::Public, false],
+        ];
+    }
+
+    #[DataProvider('promotedParameters')]
+    public function testPromotedParameterBecomesProperty(
+        string $name,
+        Visibility $visibility,
+        bool $isReadonly,
+    ): void {
+        $info = $this->buildClassInfoFromFixture(
+            'src/Utility/PromotedModifiers.php',
+            'Fixtures\Utility\PromotedModifiers',
+        );
+
+        self::assertArrayHasKey($name, $info->properties, 'any modifier on a constructor parameter promotes it');
+        $property = $info->properties[$name];
+        self::assertTrue($property->isPromoted, 'a property declared by a constructor parameter is promoted');
+        self::assertSame($visibility, $property->visibility, 'read visibility is public unless a keyword narrows it');
+        self::assertSame(
+            $isReadonly,
+            $property->isReadonly,
+            '`readonly` on the parameter makes it read-only; set-visibility and hooks do not',
+        );
+    }
+
+    public function testUnmodifiedConstructorParameterIsNotAProperty(): void
+    {
+        $info = $this->buildClassInfoFromFixture(
+            'src/Utility/PromotedModifiers.php',
+            'Fixtures\Utility\PromotedModifiers',
+        );
+
+        self::assertArrayNotHasKey(
+            'notPromoted',
+            $info->properties,
+            'a constructor parameter without modifiers is not promoted',
+        );
+    }
+
     public function testFunctionParameterWithMalformedVarNodeIsSkipped(): void
     {
         // Same shape as the promoted-property fixture, in a free-standing
