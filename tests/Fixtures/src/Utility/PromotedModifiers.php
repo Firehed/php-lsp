@@ -13,6 +13,7 @@ final class PromotedModifiers
         readonly int $readonlyId,
         private(set) int $privateSetCount,
         protected(set) int $protectedSetCount,
+        int $hookedId { get => $this->hookedId; },
         int $notPromoted,
     ) {
     }

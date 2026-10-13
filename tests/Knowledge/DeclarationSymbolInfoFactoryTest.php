@@ -257,6 +257,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
             'readonly alone' => ['readonlyId', Visibility::Public, true],
             'private(set) alone' => ['privateSetCount', Visibility::Public, false],
             'protected(set) alone' => ['protectedSetCount', Visibility::Public, false],
+            'hooks alone' => ['hookedId', Visibility::Public, false],
         ];
     }
 
