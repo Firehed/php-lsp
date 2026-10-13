@@ -66,6 +66,7 @@ final class TypeGraphParityTest extends TestCase
                 => ['Fixtures\Hierarchy\TraitAliasCollidingUser'],
             'trait alias without an explicit source trait' => ['Fixtures\Hierarchy\TraitNamelessAliasUser'],
             'enum implementing interface' => ['Fixtures\Hierarchy\EnumWithInterface'],
+            'constructor promotion by every modifier' => ['Fixtures\Utility\PromotedModifiers'],
         ];
     }
 
