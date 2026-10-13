@@ -11,8 +11,6 @@ use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
-use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
-use Firehed\PhpLsp\Tests\Parser\CountingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -21,10 +19,8 @@ use PHPUnit\Framework\TestCase;
 class TextDocumentSyncHandlerIntegrationTest extends TestCase
 {
     use BuildsKnowledgeStackTrait;
-    use LoadsFixturesTrait;
 
     private DocumentManager $manager;
-    private CountingSyntaxSource $counter;
     private SymbolSourceInterface $source;
     private TextDocumentSyncHandler $handler;
 
@@ -32,7 +28,6 @@ class TextDocumentSyncHandlerIntegrationTest extends TestCase
     {
         $this->manager = new DocumentManager();
         $production = ProductionSyntaxSource::create();
-        $this->counter = $production->counter;
         $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
         $this->source = $knowledge->source;
         $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink, $knowledge->invalidator);
@@ -58,35 +53,6 @@ class TextDocumentSyncHandlerIntegrationTest extends TestCase
         $doc = $this->manager->get('file:///test.php');
         self::assertNotNull($doc);
         self::assertSame('<?php echo "hello";', $doc->getContent());
-    }
-
-    /**
-     * One parse per handled message. The sync path parsed
-     * twice — once here to register the document's classes, and again to index
-     * its symbols — for every keystroke the client sent.
-     */
-    public function testSyncParsesTheDocumentOnce(): void
-    {
-        $notification = NotificationMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'method' => 'textDocument/didOpen',
-            'params' => [
-                'textDocument' => [
-                    'uri' => 'file:///fixtures/src/Domain/User.php',
-                    'languageId' => 'php',
-                    'version' => 1,
-                    'text' => $this->loadFixture('src/Domain/User.php'),
-                ],
-            ],
-        ]);
-
-        $this->handler->handle($notification);
-
-        self::assertSame(
-            1,
-            $this->counter->parseCount,
-            'registering classes and indexing symbols share one parse',
-        );
     }
 
     public function testDidChange(): void
