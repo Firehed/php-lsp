@@ -23,6 +23,7 @@ use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -33,6 +34,7 @@ use PHPUnit\Framework\TestCase;
  * the composite types on the interface — carry every assertion. Parity with the
  * real backends is frozen by the parity harness.
  */
+#[CoversClass(CompositeSymbolSource::class)]
 final class CompositeSymbolSourceTest extends TestCase
 {
     use BuildsSymbolInfoTrait;
