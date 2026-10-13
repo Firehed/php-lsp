@@ -253,7 +253,16 @@ final class ExpressionResolutionTest extends TestCase
 
     public function testMemberTheReceiversClassLacksIsUnresolved(): void
     {
-        $this->knowUserMembers();
+        $members = $this->createMock(MemberResolverInterface::class);
+        $members->expects(self::once())
+            ->method('findProperty')
+            ->with(self::className(self::USER_CLASS), 'unknownProperty')
+            ->willReturn(null);
+        $this->resolver = self::resolverOver(
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+            $members,
+        );
 
         self::assertNull(
             $this->resolveSymbolAt(self::USER, 'unknown_property'),
