@@ -1617,7 +1617,7 @@ final class MemberResolverTest extends TestCase
         self::assertNotNull($resolved, 'the alias with no explicit trait must resolve through the used-trait scan');
         self::assertSame(
             $className->qualifiedName->fullyQualifiedName(),
-            $resolved->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
+            $resolved->getName()->owner->qualifiedName->fullyQualifiedName(),
             'the aliasing class owns the aliased-method identity',
         );
         self::assertNotNull($resolved->aliasedFrom, 'aliasedFrom points at the trait the used-trait scan located');

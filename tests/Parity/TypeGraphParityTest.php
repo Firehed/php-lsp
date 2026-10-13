@@ -178,7 +178,7 @@ final class TypeGraphParityTest extends TestCase
         self::assertNotNull($resolved, 'the conflict method should resolve');
         self::assertSame(
             $expectedTrait,
-            $resolved->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
+            $resolved->getName()->owner->qualifiedName->fullyQualifiedName(),
             'insteadof must pick the winning trait, regardless of trait-use order',
         );
     }
@@ -208,7 +208,7 @@ final class TypeGraphParityTest extends TestCase
         self::assertNotNull($conflicting, 'the conflict method should appear in the listed methods');
         self::assertSame(
             $expectedTrait,
-            $conflicting->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
+            $conflicting->getName()->owner->qualifiedName->fullyQualifiedName(),
             'insteadof must pick the winning trait for enumerated members too',
         );
     }
@@ -230,7 +230,7 @@ final class TypeGraphParityTest extends TestCase
         // resolveLateBoundReturn.
         self::assertSame(
             'Fixtures\Hierarchy\TraitAdaptationUser',
-            $resolved->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
+            $resolved->getName()->owner->qualifiedName->fullyQualifiedName(),
             'the aliasing class owns the aliased-method identity',
         );
         self::assertNotNull($resolved->aliasedFrom, 'aliasedFrom points at the source trait method');
@@ -259,7 +259,7 @@ final class TypeGraphParityTest extends TestCase
         self::assertInstanceOf(MethodInfo::class, $collision, 'the aliased method must appear exactly once');
         self::assertSame(
             'Fixtures\Hierarchy\TraitAliasCollidingUser',
-            $collision->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
+            $collision->getName()->owner->qualifiedName->fullyQualifiedName(),
             'the aliasing class owns the aliased-method identity',
         );
         self::assertNotNull($collision->aliasedFrom, 'aliasedFrom points at the source trait method');

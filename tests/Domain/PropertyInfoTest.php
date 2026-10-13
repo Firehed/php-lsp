@@ -131,7 +131,7 @@ class PropertyInfoTest extends TestCase
 
         self::assertSame(MemberKind::Property, $property->getMemberKind());
         self::assertSame('value', $property->getName()->name);
-        self::assertSame(PropertyInfo::class, $property->getDeclaringClass()->qualifiedName->fullyQualifiedName());
+        self::assertSame(PropertyInfo::class, $property->getName()->owner->qualifiedName->fullyQualifiedName());
         self::assertSame('string', $property->getType()?->format());
         self::assertSame(Visibility::Public, $property->getVisibility());
         self::assertFalse($property->isStatic());

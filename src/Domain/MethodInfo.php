@@ -33,11 +33,6 @@ final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
     ) {
     }
 
-    public function getDeclaringClass(): ClasslikeName
-    {
-        return $this->name->owner;
-    }
-
     public function getMemberKind(): MemberKind
     {
         return MemberKind::Method;

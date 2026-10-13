@@ -40,11 +40,6 @@ final readonly class PropertyInfo implements MemberInfoInterface
         return implode(' ', $parts);
     }
 
-    public function getDeclaringClass(): ClasslikeName
-    {
-        return $this->name->owner;
-    }
-
     public function getMemberKind(): MemberKind
     {
         return MemberKind::Property;
