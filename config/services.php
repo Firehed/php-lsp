@@ -10,6 +10,7 @@ return [
     Capability\CapabilityNegotiator::class,
     Capability\SessionCapabilitiesProviderInterface::class => Capability\CapabilityNegotiator::class,
     Capability\WatchedFilesRegistrar::class,
+    Capability\InitializedListenerInterface::class => Capability\WatchedFilesRegistrar::class,
 
     Client\TransportClientConnection::class,
     Client\ClientConnectionInterface::class => Client\TransportClientConnection::class,

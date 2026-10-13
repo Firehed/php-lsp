@@ -24,15 +24,9 @@ final class LifecycleHandler implements HandlerInterface
     private bool $shutdownRequested = false;
     private ?int $exitCode = null;
 
-    /**
-     * @param list<InitializedListenerInterface> $initializedListeners invoked once the
-     *        client sends `initialized`, when the negotiated session capabilities
-     *        are settled and dynamic registration may proceed ([LSP] Register
-     *        Capability)
-     */
     public function __construct(
         private readonly CapabilityNegotiator $negotiator,
-        private readonly array $initializedListeners = [],
+        private readonly InitializedListenerInterface $initializedListener,
     ) {
     }
 
@@ -108,10 +102,7 @@ final class LifecycleHandler implements HandlerInterface
      */
     private function handleInitialized(): null
     {
-        $capabilities = $this->negotiator->getSessionCapabilities();
-        foreach ($this->initializedListeners as $listener) {
-            $listener->onInitialized($capabilities);
-        }
+        $this->initializedListener->onInitialized($this->negotiator->getSessionCapabilities());
 
         return null;
     }

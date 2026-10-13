@@ -36,7 +36,7 @@ class LifecycleHandlerTest extends TestCase
     public function testInitializeDelegatesToTheNegotiator(): void
     {
         $negotiator = new CapabilityNegotiator(new ServerInfo('php-lsp', '0.1.0'));
-        $handler = new LifecycleHandler($negotiator);
+        $handler = new LifecycleHandler($negotiator, self::createStub(InitializedListenerInterface::class));
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -87,7 +87,7 @@ class LifecycleHandlerTest extends TestCase
         self::assertNull($result);
     }
 
-    public function testInitializedInvokesListenersWithTheNegotiatedCapabilities(): void
+    public function testInitializedInvokesTheListenerWithTheNegotiatedCapabilities(): void
     {
         $negotiator = new CapabilityNegotiator(new ServerInfo('test', '1.0'));
         $captured = null;
@@ -97,7 +97,7 @@ class LifecycleHandlerTest extends TestCase
             ->willReturnCallback(function (SessionCapabilities $capabilities) use (&$captured): void {
                 $captured = $capabilities;
             });
-        $handler = new LifecycleHandler($negotiator, [$listener]);
+        $handler = new LifecycleHandler($negotiator, $listener);
 
         $handler->handle(RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -114,7 +114,8 @@ class LifecycleHandlerTest extends TestCase
         self::assertSame(
             $negotiator->getSessionCapabilities(),
             $captured,
-            'initialized must invoke listeners with the resolved session capabilities so registration can gate on them',
+            'initialized must invoke the listener with the resolved session capabilities '
+                . 'so registration can gate on them',
         );
     }
 
@@ -286,6 +287,9 @@ class LifecycleHandlerTest extends TestCase
 
     private static function handler(): LifecycleHandler
     {
-        return new LifecycleHandler(new CapabilityNegotiator(new ServerInfo('test', '1.0')));
+        return new LifecycleHandler(
+            new CapabilityNegotiator(new ServerInfo('test', '1.0')),
+            self::createStub(InitializedListenerInterface::class),
+        );
     }
 }
