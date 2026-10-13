@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
  * documents, and the {@see InvalidatableInterface} fan-out that drops cached on-disk
  * state.
  *
- * The wiring lives here, in one place, so the composition root ({@see \Firehed\PhpLsp\Server})
+ * The wiring lives here, in one place, so the container configuration
  * and the tests that exercise the surfaces (parity, handlers) build the same stack
  * rather than each re-assembling the backends by hand.
  */
