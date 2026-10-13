@@ -475,8 +475,8 @@ final readonly class DeclarationSymbolInfoFactory
     private function parameterFromNode(
         Param $param,
         int $position,
-        ?string $selfContext = null,
-        ?string $parentContext = null,
+        ?string $selfContext,
+        ?string $parentContext,
     ): ?ParameterInfo {
         if (!$param->var instanceof Variable || !is_string($param->var->name)) {
             return null;
