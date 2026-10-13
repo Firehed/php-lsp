@@ -346,7 +346,7 @@ final readonly class DeclarationSymbolInfoFactory
 
             if ($stmt instanceof Stmt\ClassMethod && $stmt->name->toLowerString() === '__construct') {
                 foreach ($stmt->params as $param) {
-                    if (!$this->isPromotedProperty($param)) {
+                    if (!$param->isPromoted()) {
                         continue;
                     }
                     if (!$param->var instanceof Variable || !is_string($param->var->name)) {
@@ -465,11 +465,6 @@ final readonly class DeclarationSymbolInfoFactory
         }
 
         return false;
-    }
-
-    private function isPromotedProperty(Param $param): bool
-    {
-        return ($param->flags & Modifiers::VISIBILITY_MASK) !== 0;
     }
 
     private function parameterFromNode(
