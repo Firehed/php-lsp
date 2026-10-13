@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\ParsedDeclarationSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -28,6 +29,7 @@ use PHPUnit\Framework\TestCase;
  * autoload strategy. Names declared in `autoload.files` entries are the
  * separate {@see \Firehed\PhpLsp\Knowledge\AutoloadFilesBackend}'s concern.
  */
+#[CoversClass(ComposerMapBackend::class)]
 final class ComposerMapBackendTest extends TestCase
 {
     use LooksUpBackendSymbolsTrait;
