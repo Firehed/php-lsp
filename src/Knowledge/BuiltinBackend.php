@@ -37,6 +37,7 @@ use Firehed\PhpLsp\Domain\Visibility;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionFunction;
+use ReflectionFunctionAbstract;
 use ReflectionMethod;
 use ReflectionParameter;
 use ReflectionProperty;
@@ -333,10 +334,10 @@ final class BuiltinBackend implements SymbolSourceInterface
     /**
      * @return list<ParameterInfo>
      */
-    private function extractParameters(ReflectionMethod $method): array
+    private function extractParameters(ReflectionFunctionAbstract $function): array
     {
         $params = [];
-        foreach ($method->getParameters() as $param) {
+        foreach ($function->getParameters() as $param) {
             $params[] = $this->parameterFromReflection($param);
         }
         return $params;
@@ -387,14 +388,9 @@ final class BuiltinBackend implements SymbolSourceInterface
             return null;
         }
 
-        $parameters = [];
-        foreach ($reflection->getParameters() as $param) {
-            $parameters[] = $this->parameterFromReflection($param);
-        }
-
         return new FunctionInfo(
             name: FunctionName::fromFullyQualified($reflection->getName()),
-            parameters: $parameters,
+            parameters: $this->extractParameters($reflection),
             returnType: TypeFactory::fromReflection($reflection->getReturnType()),
             docblock: $reflection->getDocComment() !== false ? $reflection->getDocComment() : null,
             file: $reflection->getFileName() !== false ? $reflection->getFileName() : null,

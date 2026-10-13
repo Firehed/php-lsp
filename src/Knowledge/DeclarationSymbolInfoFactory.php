@@ -290,14 +290,17 @@ final readonly class DeclarationSymbolInfoFactory
      * @param array<Param> $params
      * @return list<ParameterInfo>
      */
-    private function extractParameters(array $params, ClasslikeName $className, ?ClasslikeName $parentClass): array
-    {
+    private function extractParameters(
+        array $params,
+        ?ClasslikeName $className = null,
+        ?ClasslikeName $parentClass = null,
+    ): array {
         $result = [];
         foreach ($params as $position => $param) {
             $info = $this->parameterFromNode(
                 $param,
                 $position,
-                $className->qualifiedName->fullyQualifiedName(),
+                $className?->qualifiedName->fullyQualifiedName(),
                 $parentClass?->qualifiedName->fullyQualifiedName(),
             );
             if ($info !== null) {
@@ -432,17 +435,9 @@ final readonly class DeclarationSymbolInfoFactory
         QualifiedName $name,
         string $filePath,
     ): FunctionInfo {
-        $params = [];
-        foreach ($node->params as $position => $param) {
-            $paramInfo = $this->parameterFromNode($param, $position);
-            if ($paramInfo !== null) {
-                $params[] = $paramInfo;
-            }
-        }
-
         return new FunctionInfo(
             name: new FunctionName($name),
-            parameters: $params,
+            parameters: $this->extractParameters($node->params),
             returnType: TypeFactory::fromNode($node->returnType),
             docblock: $node->getDocComment()?->getText(),
             file: $filePath,
@@ -480,8 +475,8 @@ final readonly class DeclarationSymbolInfoFactory
     private function parameterFromNode(
         Param $param,
         int $position,
-        ?string $selfContext = null,
-        ?string $parentContext = null,
+        ?string $selfContext,
+        ?string $parentContext,
     ): ?ParameterInfo {
         if (!$param->var instanceof Variable || !is_string($param->var->name)) {
             return null;
