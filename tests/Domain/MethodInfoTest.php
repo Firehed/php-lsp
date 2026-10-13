@@ -61,7 +61,7 @@ class MethodInfoTest extends TestCase
             aliasedFrom: new MethodName($trait, 'originalName'),
         );
 
-        self::assertSame($user, $method->getDeclaringClass(), 'the aliasing class owns an aliased method identity');
+        self::assertSame($user, $method->getName()->owner, 'the aliasing class owns an aliased method identity');
         self::assertNotNull($method->aliasedFrom);
         self::assertSame($trait, $method->aliasedFrom->owner, 'aliasedFrom carries the source trait');
         self::assertSame('originalName', $method->aliasedFrom->name);
@@ -227,7 +227,7 @@ class MethodInfoTest extends TestCase
 
         self::assertSame(MemberKind::Method, $method->getMemberKind());
         self::assertSame('doSomething', $method->getName()->name);
-        self::assertSame(MethodInfo::class, $method->getDeclaringClass()->qualifiedName->fullyQualifiedName());
+        self::assertSame(MethodInfo::class, $method->getName()->owner->qualifiedName->fullyQualifiedName());
         self::assertSame(Visibility::Public, $method->getVisibility());
         self::assertFalse($method->isStatic());
     }

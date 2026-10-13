@@ -118,7 +118,7 @@ class ClasslikeConstantInfoTest extends TestCase
         self::assertSame('MAX_SIZE', $constant->getName()->name);
         self::assertSame(
             ClasslikeConstantInfo::class,
-            $constant->getDeclaringClass()->qualifiedName->fullyQualifiedName(),
+            $constant->getName()->owner->qualifiedName->fullyQualifiedName(),
         );
         self::assertSame('int', $constant->getType()?->format());
         self::assertSame(Visibility::Public, $constant->getVisibility());

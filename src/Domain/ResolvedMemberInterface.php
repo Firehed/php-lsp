@@ -9,11 +9,6 @@ namespace Firehed\PhpLsp\Domain;
  */
 interface ResolvedMemberInterface extends ResolvedSymbolInterface
 {
-    /**
-     * Returns the class that declares this member.
-     */
-    public function getDeclaringClass(): ClasslikeName;
-
     public function getMemberKind(): MemberKind;
 
     public function getName(): ClasslikeOwnedNameInterface;
