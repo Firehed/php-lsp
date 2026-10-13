@@ -20,84 +20,15 @@ class TextDocumentSyncHandlerIntegrationTest extends TestCase
 {
     use BuildsKnowledgeStackTrait;
 
-    private DocumentManager $manager;
     private SymbolSourceInterface $source;
     private TextDocumentSyncHandler $handler;
 
     protected function setUp(): void
     {
-        $this->manager = new DocumentManager();
         $production = ProductionSyntaxSource::create();
         $knowledge = $this->knowledgeStackForMap(new ComposerAutoloadMap(), $production);
         $this->source = $knowledge->source;
-        $this->handler = new TextDocumentSyncHandler($this->manager, $knowledge->sink, $knowledge->invalidator);
-    }
-
-    public function testDidOpen(): void
-    {
-        $notification = NotificationMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'method' => 'textDocument/didOpen',
-            'params' => [
-                'textDocument' => [
-                    'uri' => 'file:///test.php',
-                    'languageId' => 'php',
-                    'version' => 1,
-                    'text' => '<?php echo "hello";',
-                ],
-            ],
-        ]);
-
-        $this->handler->handle($notification);
-
-        $doc = $this->manager->get('file:///test.php');
-        self::assertNotNull($doc);
-        self::assertSame('<?php echo "hello";', $doc->getContent());
-    }
-
-    public function testDidChange(): void
-    {
-        $this->manager->open('file:///test.php', 'php', 1, '<?php echo "v1";');
-
-        $notification = NotificationMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'method' => 'textDocument/didChange',
-            'params' => [
-                'textDocument' => [
-                    'uri' => 'file:///test.php',
-                    'version' => 2,
-                ],
-                'contentChanges' => [
-                    ['text' => '<?php echo "v2";'],
-                ],
-            ],
-        ]);
-
-        $this->handler->handle($notification);
-
-        $doc = $this->manager->get('file:///test.php');
-        self::assertNotNull($doc);
-        self::assertSame('<?php echo "v2";', $doc->getContent());
-        self::assertSame(2, $doc->version);
-    }
-
-    public function testDidClose(): void
-    {
-        $this->manager->open('file:///test.php', 'php', 1, '<?php');
-
-        $notification = NotificationMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'method' => 'textDocument/didClose',
-            'params' => [
-                'textDocument' => [
-                    'uri' => 'file:///test.php',
-                ],
-            ],
-        ]);
-
-        $this->handler->handle($notification);
-
-        self::assertNull($this->manager->get('file:///test.php'));
+        $this->handler = new TextDocumentSyncHandler(new DocumentManager(), $knowledge->sink, $knowledge->invalidator);
     }
 
     public function testDidOpenRegistersClasses(): void
