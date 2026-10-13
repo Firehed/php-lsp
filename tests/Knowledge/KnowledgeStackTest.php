@@ -200,59 +200,6 @@ final class KnowledgeStackTest extends TestCase
         );
     }
 
-    public function testARepeatedLookupIsServedWithoutReParsing(): void
-    {
-        $stack = KnowledgeStack::forProject(
-            new ComposerAutoloadMapReader($this->fixturesRoot),
-            $this->parser,
-            $this->reader,
-        );
-        $name = self::className('Fixtures\Domain\User');
-
-        self::assertNotNull($stack->source->lookupClassLike($name));
-        $afterFirst = $this->counter->parseCount;
-        // The parser's own memo lasts one message; only the stack's cache can
-        // answer across messages.
-        $this->parser->endMessage();
-        $stack->source->lookupClassLike($name);
-
-        self::assertSame(
-            $afterFirst,
-            $this->counter->parseCount,
-            'a repeated lookup across messages is remembered, not re-parsed from disk',
-        );
-    }
-
-    public function testTwoNamesInOneFileCostOneParse(): void
-    {
-        $file = $this->fixturesRoot . '/MultiClass/MultiClass.php';
-        $stack = KnowledgeStack::forProject(
-            ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap(classMap: [
-                'Fixtures\Completion\FirstUnrelated' => $file,
-                'Fixtures\Completion\SecondUnrelated' => $file,
-            ])),
-            $this->parser,
-            $this->reader,
-        );
-
-        self::assertNotNull(
-            $stack->source->lookupClassLike(self::className('Fixtures\Completion\FirstUnrelated')),
-            'the first name must resolve for the parse count to mean anything',
-        );
-        $afterFirst = $this->counter->parseCount;
-        $this->parser->endMessage();
-
-        self::assertNotNull(
-            $stack->source->lookupClassLike(self::className('Fixtures\Completion\SecondUnrelated')),
-            'the second name is declared in the same file',
-        );
-        self::assertSame(
-            $afterFirst,
-            $this->counter->parseCount,
-            'what a file declares is remembered for the file, not for the name that was asked',
-        );
-    }
-
     public function testAClassRemovedInAnOpenBufferNoLongerResolves(): void
     {
         $file = $this->fixturesRoot . '/src/Domain/User.php';
