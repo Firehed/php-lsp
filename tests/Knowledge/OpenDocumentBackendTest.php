@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -26,6 +27,7 @@ use PHPUnit\Framework\TestCase;
  * query, that a document's registration is replaced on update and dropped on
  * close, and that a malformed document contributes nothing rather than crashing.
  */
+#[CoversClass(OpenDocumentBackend::class)]
 final class OpenDocumentBackendTest extends TestCase
 {
     use LoadsFixturesTrait;
