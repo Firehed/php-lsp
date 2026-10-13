@@ -17,12 +17,14 @@ use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\FileDeclarations;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
  * The single place a {@see NameKind} selects a declaration list and a builder.
  */
+#[CoversClass(DeclarationSymbolInfoFactory::class)]
 final class DeclarationSymbolInfoFactoryTest extends TestCase
 {
     use LoadsFixturesTrait;
