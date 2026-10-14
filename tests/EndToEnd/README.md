@@ -32,8 +32,9 @@ A script file declares `namespace Firehed\PhpLsp\Tests\EndToEnd;` and names type
   Each script runs against a throwaway copy, which becomes the server's working directory.
 - `capabilities` is what the client declares in `initialize`.
   Declare watched-file support in any script that changes files on disk.
-- `Open`, `Type`, and `Close` are what a person does in the editor.
+- `Open`, `Type`, `Replace`, and `Close` are what a person does in the editor.
   Open only files a person would have open; the server finds the rest on its own.
+  `Replace` swaps an open document's whole text for a prepared variant, such as those in `BufferChange/`; the disk is not changed.
 - `Copy` and `Delete` change the disk as another program would, and the server is not told.
   `Copy` puts a prepared variant in place; variants live outside the autoload paths, such as `DiskChange/` in the fixture project.
 - `ReportChanges` is the client's file watcher reporting what changed, in one notification.
