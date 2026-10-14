@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
+use Firehed\PhpLsp\Knowledge\DeclarationSourceInterface;
 use Firehed\PhpLsp\Knowledge\ParsedDeclarationSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -681,6 +682,28 @@ final class ComposerMapBackendTest extends TestCase
     }
 
     /**
+     * The maps name files, not symbols, so enumerating the PSR-4 tree reads
+     * directory listings; only a lookup scans a file, and only the one it locates.
+     */
+    public function testOnlyALookupScansAFile(): void
+    {
+        $declarations = new RecordingDeclarationSource($this->declarations);
+        $backend = $this->backendForMap(ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot), $declarations);
+
+        $backend->childrenOf(new NamespaceName('Fixtures'));
+        $backend->childrenOf(new NamespaceName('Fixtures\Domain'));
+        $backend->search('Us', NameKind::ClassLike);
+        self::assertSame([], $declarations->scanned, 'enumeration and search scan no file');
+
+        self::classLikeIn($backend, 'Fixtures\Domain\User');
+        self::assertSame(
+            [$this->fixturesRoot . '/src/Domain/User.php'],
+            $declarations->scanned,
+            'a lookup scans the one file the maps locate for the name',
+        );
+    }
+
+    /**
      * Wired against the fixtures project so lookups run through the same
      * Composer maps every fixture-based test uses.
      */
@@ -689,12 +712,14 @@ final class ComposerMapBackendTest extends TestCase
         return $this->backendForMap(ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot));
     }
 
-    private function backendForMap(ComposerAutoloadMap $map): ComposerMapBackend
-    {
+    private function backendForMap(
+        ComposerAutoloadMap $map,
+        ?DeclarationSourceInterface $declarations = null,
+    ): ComposerMapBackend {
         return new ComposerMapBackend(
             ComposerAutoloadMapReader::fromMap($map),
             $this->reader,
-            $this->declarations,
+            $declarations ?? $this->declarations,
         );
     }
 
