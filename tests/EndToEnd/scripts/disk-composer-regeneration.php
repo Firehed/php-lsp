@@ -15,14 +15,12 @@ $constantConsumer = 'src/Resolution/NamespacedConstant.php';
 $helperConstant = new Marker\SymbolMarker('global_const_fetch');
 $capabilities = new Session\ClientCapabilities(watchedFilesDynamicRegistration: true);
 
-// A `composer install` rewrites the maps under vendor/composer/ and the client
-// reports them; the next query must use the new maps.
-$psr4 = 'vendor/composer/autoload_psr4.php';
+// After a checkout changes composer.json, a `composer install` rewrites the
+// autoloader; the next query must use it.
 $psr4Regenerated = [
-    new Step\Copy('ComposerRegeneration/autoload_psr4.php', $psr4),
-    new Step\ReportChanges([new Step\FileChange($psr4, Step\FileChangeType::Changed)]),
+    new Step\Copy('ComposerRegeneration/composer.renamed-prefix.json', 'composer.json'),
+    new Step\DumpAutoload(),
 ];
-$files = 'vendor/composer/autoload_files.php';
 
 return [
     'a regenerated PSR-4 map reaches lookup' => new Session\Script(
@@ -63,8 +61,8 @@ return [
                 $helperConstant,
                 expect: new Expectation\LandsOn('AutoloadFiles/helpers.php', line: 19),
             ),
-            new Step\Copy('ComposerRegeneration/autoload_files.php', $files),
-            new Step\ReportChanges([new Step\FileChange($files, Step\FileChangeType::Changed)]),
+            new Step\Copy('ComposerRegeneration/composer.without-helpers.json', 'composer.json'),
+            new Step\DumpAutoload(),
             new Step\Definition($constantConsumer, $helperConstant, expect: new Expectation\NoAnswer()),
         ],
         capabilities: $capabilities,

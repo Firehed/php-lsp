@@ -1,0 +1,23 @@
+{
+    "name": "fixtures/fixtures",
+    "description": "The fixture project without AutoloadFiles/helpers.php in its files list",
+    "autoload": {
+        "psr-0": {
+            "Psr0": "Autoload/"
+        },
+        "psr-4": {
+            "Fixtures\\": "src/"
+        },
+        "classmap": [
+            "Autoload/Classmap/",
+            "TypeInference/"
+        ],
+        "files": [
+            "AutoloadFiles/globals.php",
+            "AutoloadFiles/precedence.php"
+        ]
+    },
+    "require-dev": {
+        "psr/http-message": "^2.0"
+    }
+}

@@ -1,0 +1,24 @@
+{
+    "name": "fixtures/fixtures",
+    "description": "The fixture project with its Fixtures\\ prefix replaced by Regen\\",
+    "autoload": {
+        "psr-0": {
+            "Psr0": "Autoload/"
+        },
+        "psr-4": {
+            "Regen\\": "ComposerRegeneration/src/"
+        },
+        "classmap": [
+            "Autoload/Classmap/",
+            "TypeInference/"
+        ],
+        "files": [
+            "AutoloadFiles/globals.php",
+            "AutoloadFiles/helpers.php",
+            "AutoloadFiles/precedence.php"
+        ]
+    },
+    "require-dev": {
+        "psr/http-message": "^2.0"
+    }
+}
