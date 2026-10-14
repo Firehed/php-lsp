@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Integration;
 
-use Firehed\PhpLsp\Document\DocumentManager;
-use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
+use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\FileUri;
+use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
-use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
-use Firehed\PhpLsp\Tests\Handler\OpensDocumentsTrait;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use LogicException;
 use PhpParser\ErrorHandler\Collecting;
@@ -53,8 +52,7 @@ use ReflectionMethod;
 #[CoversNothing]
 final class ParseHealthGridTest extends TestCase
 {
-    use BuildsKnowledgeStackTrait;
-    use OpensDocumentsTrait;
+    use LoadsFixturesTrait;
 
     /**
      * @var array<string, array{
@@ -105,28 +103,21 @@ final class ParseHealthGridTest extends TestCase
         return [];
     }
 
-    private DocumentManager $documents;
-    private MemoizingSyntaxSource $parser;
     private CodeResolverInterface $resolver;
-    private TextDocumentSyncHandler $syncHandler;
 
     protected function setUp(): void
     {
         $production = ProductionSyntaxSource::create();
-        $this->parser = $production->source;
-        $this->documents = new DocumentManager();
-
-        $fixturesRoot = dirname(__DIR__) . '/Fixtures';
-        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
-        $memberResolver = new MemberResolver($knowledge->source);
+        // The scenario's one outside name is the built-in `strlen`.
+        $symbols = new BuiltinBackend();
+        $members = new MemberResolver($symbols);
         $this->resolver = new SymbolResolver(
-            parser: $this->parser,
+            parser: $production->source,
             locator: $production->locator,
-            symbolSource: $knowledge->source,
-            memberResolver: $memberResolver,
-            typeSource: new NativeTypeSource($knowledge->source, $memberResolver),
+            symbolSource: $symbols,
+            memberResolver: $members,
+            typeSource: new NativeTypeSource($symbols, $members),
         );
-        $this->syncHandler = new TextDocumentSyncHandler($this->documents, $knowledge->sink, $knowledge->invalidator);
     }
 
     /**
@@ -186,19 +177,19 @@ final class ParseHealthGridTest extends TestCase
     public function testCellAnswersConsistentlyWithFixture(string $method, string $state): void
     {
         $config = self::STATES[$state];
-        $cursor = $this->openFixtureAtCursor($config['fixture'], $config['marker']);
-        $document = $this->documents->get($cursor['uri']);
-        self::assertNotNull($document, 'fixture must be open');
+        $content = $this->loadFixture($config['fixture']);
+        $document = new TextDocument(FileUri::fromPath($this->fixturePath($config['fixture'])), 'php', 1, $content);
+        $cursor = $this->locateCursor($content, $config['marker']);
 
         $step = $state === 'empty' ? self::emptyStateSkips()[$method] ?? null : null;
 
         try {
             match ($method) {
-                'resolveAtPosition' => $this->assertResolveAtPosition($cursor, $config),
-                'getMemberAccessContext' => $this->assertMemberAccessContext($cursor, $config),
-                'getVariablesInScope' => $this->assertVariablesInScope($cursor, $config),
-                'getCallContext' => $this->assertCallContext($cursor, $config),
-                'getNameContext' => $this->assertNameContext($cursor, $config),
+                'resolveAtPosition' => $this->assertResolveAtPosition($document, $cursor, $config),
+                'getMemberAccessContext' => $this->assertMemberAccessContext($document, $cursor, $config),
+                'getVariablesInScope' => $this->assertVariablesInScope($document, $cursor, $config),
+                'getCallContext' => $this->assertCallContext($document, $cursor, $config),
+                'getNameContext' => $this->assertNameContext($document, $cursor, $config),
                 default => throw new LogicException(
                     "no dispatch for {$method} — add a case when introducing a new position-taking "
                     . 'CodeResolverInterface method',
@@ -237,14 +228,11 @@ final class ParseHealthGridTest extends TestCase
     }
 
     /**
-     * @param array{uri: string, line: int, character: int} $cursor
+     * @param array{line: int, character: int} $cursor
      * @param array{fixture: string, marker: string, namespace: string, class: string} $config
      */
-    private function assertResolveAtPosition(array $cursor, array $config): void
+    private function assertResolveAtPosition(TextDocument $document, array $cursor, array $config): void
     {
-        $document = $this->documents->get($cursor['uri']);
-        self::assertNotNull($document);
-
         $line = $document->getLine($cursor['line']);
         $thisStart = strpos($line, '$this');
         self::assertNotFalse($thisStart, "fixture line must contain \$this: {$line}");
@@ -272,14 +260,11 @@ final class ParseHealthGridTest extends TestCase
     }
 
     /**
-     * @param array{uri: string, line: int, character: int} $cursor
+     * @param array{line: int, character: int} $cursor
      * @param array{fixture: string, marker: string, namespace: string, class: string} $config
      */
-    private function assertMemberAccessContext(array $cursor, array $config): void
+    private function assertMemberAccessContext(TextDocument $document, array $cursor, array $config): void
     {
-        $document = $this->documents->get($cursor['uri']);
-        self::assertNotNull($document);
-
         $context = $this->resolver->getMemberAccessContext(
             $document,
             $cursor['line'],
@@ -299,14 +284,11 @@ final class ParseHealthGridTest extends TestCase
     }
 
     /**
-     * @param array{uri: string, line: int, character: int} $cursor
+     * @param array{line: int, character: int} $cursor
      * @param array{fixture: string, marker: string, namespace: string, class: string} $config
      */
-    private function assertVariablesInScope(array $cursor, array $config): void
+    private function assertVariablesInScope(TextDocument $document, array $cursor, array $config): void
     {
-        $document = $this->documents->get($cursor['uri']);
-        self::assertNotNull($document);
-
         $variables = $this->resolver->getVariablesInScope(
             $document,
             $cursor['line'],
@@ -322,14 +304,11 @@ final class ParseHealthGridTest extends TestCase
     }
 
     /**
-     * @param array{uri: string, line: int, character: int} $cursor
+     * @param array{line: int, character: int} $cursor
      * @param array{fixture: string, marker: string, namespace: string, class: string} $config
      */
-    private function assertCallContext(array $cursor, array $config): void
+    private function assertCallContext(TextDocument $document, array $cursor, array $config): void
     {
-        $document = $this->documents->get($cursor['uri']);
-        self::assertNotNull($document);
-
         $context = $this->resolver->getCallContext(
             $document,
             $cursor['line'],
@@ -344,14 +323,11 @@ final class ParseHealthGridTest extends TestCase
     }
 
     /**
-     * @param array{uri: string, line: int, character: int} $cursor
+     * @param array{line: int, character: int} $cursor
      * @param array{fixture: string, marker: string, namespace: string, class: string} $config
      */
-    private function assertNameContext(array $cursor, array $config): void
+    private function assertNameContext(TextDocument $document, array $cursor, array $config): void
     {
-        $document = $this->documents->get($cursor['uri']);
-        self::assertNotNull($document);
-
         $context = $this->resolver->getNameContext($document, $cursor['line']);
 
         self::assertSame(
