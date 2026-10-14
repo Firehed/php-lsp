@@ -139,8 +139,7 @@ final class ParseHealthGridTest extends TestCase
     public function testStatePreconditionHolds(string $state): void
     {
         $config = self::STATES[$state];
-        $content = file_get_contents(dirname(__DIR__) . '/Fixtures/' . $config['fixture']);
-        self::assertIsString($content, "unable to read {$config['fixture']}");
+        $content = $this->loadFixture($config['fixture']);
 
         $errors = new Collecting();
         $statements = (new ParserFactory())->createForNewestSupportedVersion()->parse($content, $errors) ?? [];
