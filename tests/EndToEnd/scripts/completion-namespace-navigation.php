@@ -115,6 +115,11 @@ return [
         new Expectation\Offers('HelperRegistry'),
         new Expectation\Withholds('HelperContract'),
     ),
+    'namespace from an autoload files entry is offered beside the directory listing' => $complete(
+        $catalog,
+        'ondisk_autoload_files_namespace',
+        new Expectation\Offers('Helpers\\', 'Domain\\'),
+    ),
     'bare import of a small namespace inlines it' => $complete(
         $imported,
         'imported_bare',

@@ -25,4 +25,9 @@ class CatalogProbe
     {
         new \Fixtures\Helpers\Helper/*|ondisk_autoload_files*/
     }
+
+    public function autoloadFilesNamespace(): void
+    {
+        new \Fixtures\/*|ondisk_autoload_files_namespace*/
+    }
 }

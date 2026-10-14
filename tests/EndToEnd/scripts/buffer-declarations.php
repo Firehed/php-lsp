@@ -8,6 +8,9 @@ $consumer = 'src/Definition/BufferDeclared.php';
 $declarations = 'BufferChange/Declarations.php';
 $original = new Marker\SymbolMarker('original');
 $renamed = new Marker\SymbolMarker('renamed');
+$widgetConsumer = 'src/DiskChange/Consumer.php';
+$widget = 'src/DiskChange/Widget.php';
+$newWidget = new Marker\SymbolMarker('new_widget');
 
 $opened = [
     new Step\Definition($consumer, $original, expect: new Expectation\NoAnswer()),
@@ -35,6 +38,17 @@ return [
             ...$opened,
             new Step\Close($declarations),
             new Step\Definition($consumer, $original, expect: new Expectation\NoAnswer()),
+        ],
+    ),
+    // Once the buffer stops declaring the class, the Composer map still points
+    // at its file, which must then be read from the buffer, not the disk.
+    'a buffer that drops a class on disk hides it' => new Session\Script(
+        project: 'tests/Fixtures',
+        steps: [
+            new Step\Definition($widgetConsumer, $newWidget, expect: new Expectation\LandsOn($widget, line: 11)),
+            new Step\Open($widget),
+            new Step\Replace($widget, $declarations),
+            new Step\Definition($widgetConsumer, $newWidget, expect: new Expectation\NoAnswer()),
         ],
     ),
 ];
