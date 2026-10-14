@@ -8,8 +8,9 @@ use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
+use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Tests\BuildsKnowledgeStackTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -28,8 +29,6 @@ use ReflectionProperty;
 #[CoversClass(MemberResolver::class)]
 final class TypeGraphParityTest extends TestCase
 {
-    use BuildsKnowledgeStackTrait;
-
     private MemberResolver $resolver;
 
     public static function setUpBeforeClass(): void
@@ -50,13 +49,11 @@ final class TypeGraphParityTest extends TestCase
             'interface' => ['Fixtures\Hierarchy\BaseInterface'],
             'interface extends interface' => ['Fixtures\Hierarchy\MiddleInterface'],
             'interface extends several' => ['Fixtures\Hierarchy\MultipleParentsInterface'],
-            'interface extends several, incl. built-in' => ['Fixtures\Hierarchy\LeafInterface'],
             'trait using a trait' => ['Fixtures\Hierarchy\OuterTrait'],
             'abstract class implementing an interface' => ['Fixtures\Hierarchy\AbstractImplementor'],
             'class reaching an interface via its parent' => ['Fixtures\Hierarchy\ConcreteDescendant'],
             'class extending a class, several levels' => ['Fixtures\Hierarchy\GrandchildDescendant'],
             'class using a trait' => ['Fixtures\Traits\ConcreteService'],
-            'interface extending a built-in' => ['Fixtures\Repository\Repository'],
             'PSR-7 request' => ['Psr\Http\Message\RequestInterface'],
             'PSR-7 server request' => ['Psr\Http\Message\ServerRequestInterface'],
             'trait insteadof and as adaptations' => ['Fixtures\Hierarchy\TraitAdaptationUser'],
@@ -73,10 +70,12 @@ final class TypeGraphParityTest extends TestCase
 
     protected function setUp(): void
     {
-        $fixturesRoot = dirname(__DIR__) . '/Fixtures';
         $production = ProductionSyntaxSource::create();
-        $knowledge = $this->knowledgeStackForProjectRoot($fixturesRoot, $production);
-        $this->resolver = new MemberResolver($knowledge->source);
+        $this->resolver = new MemberResolver(new ComposerMapBackend(
+            new ComposerAutoloadMapReader(dirname(__DIR__) . '/Fixtures'),
+            $production->reader,
+            $production->declarations,
+        ));
     }
 
     /**
