@@ -157,6 +157,7 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
 
     private function buildIndex(ComposerAutoloadMap $map): void
     {
+        $this->byNamespace = null;
         $this->catalog = [];
         $this->pathByKey = [];
         $this->fqnByWalkedPath = [];
