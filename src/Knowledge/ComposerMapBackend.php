@@ -78,10 +78,10 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
      * A watched-file event adjusts one name rather than dropping the whole
      * index. The path's previously walked name (if any) is removed, and the
      * name Composer's loader now confirms at that path (if any) is added.
-     * Classmap entries change with the map itself: a
-     * regenerated autoload map (a fresh instance from
-     * {@see ComposerAutoloadMapReader::current()}) drops the whole derived
-     * index so the next query rebuilds against the new map.
+     * Classmap entries change with the map itself: after a regenerated
+     * autoload map (a fresh instance from
+     * {@see ComposerAutoloadMapReader::current()}) the index is stale as a
+     * whole, and the next query rebuilds it against the new map.
      */
     public function invalidate(string $uri): void
     {
@@ -91,8 +91,6 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
 
         $map = $this->mapReader->current();
         if ($map !== $this->mapAtBuild) {
-            $this->byNamespace = null;
-
             return;
         }
 
