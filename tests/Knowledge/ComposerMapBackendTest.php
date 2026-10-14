@@ -358,8 +358,9 @@ final class ComposerMapBackendTest extends TestCase
             'sanity: the initial index carries the classmap entry',
         );
 
-        // Drop the reader's cache; the next reader->current() re-reads and, since
-        // the empty root has no vendor/composer files, returns a fresh, empty map.
+        // The watched-file event for the regenerated map reaches the reader, then
+        // the backend. The reader's next current() re-reads and, since the empty
+        // root has no vendor/composer files, returns a fresh, empty map.
         $mapReader->invalidate(FileUri::fromPath('/vendor/composer/autoload_classmap.php'));
         $backend->invalidate(FileUri::fromPath('/vendor/composer/autoload_classmap.php'));
 
