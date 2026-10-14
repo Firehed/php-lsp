@@ -33,8 +33,8 @@ use Firehed\PhpLsp\Domain\SymbolKind;
  * and adjusted one name at a time when a watched file changes.
  * The map itself is read through {@see ComposerAutoloadMapReader}: when
  * `composer install` regenerates the autoload files the reader returns a new
- * map instance, the derived index is dropped, and the next query rebuilds it
- * against the new map. Names declared in `autoload.files` entries are the
+ * map instance, and the next query rebuilds the derived index against it.
+ * Names declared in `autoload.files` entries are the
  * separate {@see AutoloadFilesBackend}'s concern.
  *
  * Lookup is a name-to-file resolve through Composer, then a parse of that one
