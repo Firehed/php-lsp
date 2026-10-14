@@ -5,18 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp;
 
 use Firehed\Container\TypedContainerInterface as TC;
-use Firehed\PhpLsp\Cache\InvalidatableInterface;
-use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
-use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
-use Firehed\PhpLsp\Completion\CompletionItemFactory;
-use Firehed\PhpLsp\Completion\CompositeCompletionSource;
-use Firehed\PhpLsp\Completion\KeywordCandidates;
-use Firehed\PhpLsp\Completion\MemberCandidates;
-use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
-use Firehed\PhpLsp\Completion\SymbolCandidates;
-use Firehed\PhpLsp\Completion\VariableCandidates;
-use Firehed\PhpLsp\Document\DocumentManagerInterface;
-use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Handler\CompletionHandler;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
 use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
@@ -25,19 +13,11 @@ use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
-use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
-use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
-use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MessageScopedInterface;
 use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\RequestMessage;
 use Firehed\PhpLsp\Protocol\ResponseError;
 use Firehed\PhpLsp\Protocol\ResponseMessage;
-use Firehed\PhpLsp\Repository\MemberResolver;
-use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
-use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Transport\EndOfStream;
 use Firehed\PhpLsp\Transport\MalformedFrame;
 use Firehed\PhpLsp\Transport\TransportInterface;
@@ -77,69 +57,21 @@ final class Server
      */
     public static function forProject(TC $container): self
     {
-        $transport = $container->get(TransportInterface::class);
-        $parser = $container->get(MemoizingSyntaxSource::class);
-
-        $documentManager = $container->get(DocumentManagerInterface::class);
-        $documents = $container->get(DocumentSourceInterface::class);
-
-        $symbolSource = $container->get(SymbolSourceInterface::class);
-        $symbolSink = $container->get(SymbolSinkInterface::class);
-        $invalidator = $container->get(InvalidatableInterface::class);
-
-        $memberResolver = new MemberResolver($symbolSource);
-        $typeSource = new NativeTypeSource($symbolSource, $memberResolver);
-
-        $symbolResolver = new SymbolResolver(
-            $parser,
-            $container->get(NodeLocatorInterface::class),
-            $symbolSource,
-            $memberResolver,
-            $typeSource,
-        );
-
-        $capabilities = $container->get(SessionCapabilitiesProviderInterface::class);
-        $itemFactory = $container->get(CompletionItemFactory::class);
-        $presenter = $container->get(ResolvedSymbolPresenterInterface::class);
-        $lifecycleHandler = $container->get(LifecycleHandler::class);
-
         $handlers = [
-            new TextDocumentSyncHandler(
-                $documentManager,
-                $symbolSink,
-                $invalidator,
-            ),
-            new DidChangeWatchedFilesHandler($invalidator),
-            new DefinitionHandler(
-                $documents,
-                $symbolResolver,
-            ),
-            new HoverHandler(
-                $documents,
-                $symbolResolver,
-                $capabilities,
-                $presenter,
-            ),
-            new SignatureHelpHandler(
-                $documents,
-                $symbolResolver,
-                $presenter,
-            ),
-            new CompletionHandler(
-                $documents,
-                new CompositeCompletionSource(
-                    $symbolResolver,
-                    new SymbolCandidates($symbolSource, $symbolResolver, $capabilities, $itemFactory),
-                    new KeywordCandidates($itemFactory),
-                    new VariableCandidates($symbolResolver, $itemFactory),
-                    new MemberCandidates($symbolResolver, $capabilities, $itemFactory),
-                    new NamedArgumentCandidates($symbolResolver, $itemFactory),
-                    new BuiltinTypeCandidates($itemFactory),
-                ),
-            ),
+            $container->get(TextDocumentSyncHandler::class),
+            $container->get(DidChangeWatchedFilesHandler::class),
+            $container->get(DefinitionHandler::class),
+            $container->get(HoverHandler::class),
+            $container->get(SignatureHelpHandler::class),
+            $container->get(CompletionHandler::class),
         ];
 
-        return new self($transport, $lifecycleHandler, $handlers, $parser);
+        return new self(
+            $container->get(TransportInterface::class),
+            $container->get(LifecycleHandler::class),
+            $handlers,
+            $container->get(MessageScopedInterface::class),
+        );
     }
 
     public function run(): int

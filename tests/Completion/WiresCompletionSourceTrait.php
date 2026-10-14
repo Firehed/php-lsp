@@ -18,10 +18,8 @@ use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 
 /**
- * Builds the production-shaped completion composite for tests. The same
- * wiring is duplicated in {@see \Firehed\PhpLsp\Server::forProject}; any
- * structural change to {@see CompositeCompletionSource} breaks compilation
- * at both sites.
+ * Builds the production-shaped completion composite for tests, mirroring what
+ * the container configuration autowires.
  */
 trait WiresCompletionSourceTrait
 {
