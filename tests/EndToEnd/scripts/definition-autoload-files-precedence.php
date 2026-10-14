@@ -6,8 +6,6 @@ namespace Firehed\PhpLsp\Tests\EndToEnd;
 
 $consumer = 'src/Definition/AutoloadPrecedence.php';
 
-// Composer requires every `files` entry before the autoloader is asked, so a
-// class declared there wins over the same name under a PSR-4 directory.
 return new Session\Script(
     project: 'tests/Fixtures',
     steps: [
