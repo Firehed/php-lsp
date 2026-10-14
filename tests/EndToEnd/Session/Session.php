@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\EndToEnd\Session;
 
+use Amp\Process\Process;
 use FilesystemIterator;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\LspClient;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\ServerMessage;
@@ -15,6 +16,8 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
 use stdClass;
+
+use function Amp\ByteStream\buffer;
 
 /**
  * An editor session on one project: turns editor actions on project files
@@ -97,20 +100,12 @@ final class Session
     {
         $before = $this->vendorHashes();
 
-        $process = proc_open(
-            [
-                PHP_BINARY,
-                dirname(__DIR__, 3) . '/vendor/bin/composer',
-                'dump-autoload',
-                '--no-interaction',
-                '--quiet',
-                '--working-dir=' . $this->projectRoot,
-            ],
-            [],
-            $pipes,
+        $composer = Process::start(
+            [PHP_BINARY, dirname(__DIR__, 3) . '/vendor/bin/composer', 'dump-autoload', '--no-interaction', '--quiet'],
+            $this->projectRoot,
         );
-        assert($process !== false, 'Cannot start composer');
-        Assert::assertSame(0, proc_close($process), 'composer dump-autoload succeeds');
+        $errors = buffer($composer->getStderr());
+        Assert::assertSame(0, $composer->join(), "composer dump-autoload succeeds: {$errors}");
 
         $after = $this->vendorHashes();
         $changes = [];
