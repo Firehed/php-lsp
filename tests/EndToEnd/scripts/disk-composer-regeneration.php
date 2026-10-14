@@ -7,7 +7,12 @@ namespace Firehed\PhpLsp\Tests\EndToEnd;
 $consumer = 'ComposerRegeneration/Consumer.php';
 $regenWidget = new Marker\SymbolMarker('regen_widget');
 $regenPrefix = new Marker\CursorMarker('regen_prefix');
-$user = 'src/Domain/User.php';
+$userConsumer = 'SignatureHelp.php';
+$newUser = new Marker\SymbolMarker('class_instantiation');
+$catalog = 'Namespacing/CatalogProbe.php';
+$userPrefix = new Marker\CursorMarker('ondisk_class');
+$constantConsumer = 'src/Resolution/NamespacedConstant.php';
+$helperConstant = new Marker\SymbolMarker('global_const_fetch');
 $capabilities = new Session\ClientCapabilities(watchedFilesDynamicRegistration: true);
 
 // A `composer install` rewrites the maps under vendor/composer/ and the client
@@ -18,10 +23,6 @@ $psr4Regenerated = [
     new Step\ReportChanges([new Step\FileChange($psr4, Step\FileChangeType::Changed)]),
 ];
 $files = 'vendor/composer/autoload_files.php';
-$filesRegenerated = [
-    new Step\Copy('ComposerRegeneration/autoload_files.php', $files),
-    new Step\ReportChanges([new Step\FileChange($files, Step\FileChangeType::Changed)]),
-];
 
 return [
     'a regenerated PSR-4 map reaches lookup' => new Session\Script(
@@ -29,9 +30,9 @@ return [
         steps: [
             new Step\Definition($consumer, $regenWidget, expect: new Expectation\NoAnswer()),
             new Step\Definition(
-                'SignatureHelp.php',
-                new Marker\SymbolMarker('class_instantiation'),
-                expect: new Expectation\LandsOn($user, line: 15),
+                $userConsumer,
+                $newUser,
+                expect: new Expectation\LandsOn('src/Domain/User.php', line: 15),
             ),
             ...$psr4Regenerated,
             new Step\Definition(
@@ -39,11 +40,7 @@ return [
                 $regenWidget,
                 expect: new Expectation\LandsOn('ComposerRegeneration/src/Widget.php', line: 7),
             ),
-            new Step\Definition(
-                'SignatureHelp.php',
-                new Marker\SymbolMarker('class_instantiation'),
-                expect: new Expectation\NoAnswer(),
-            ),
+            new Step\Definition($userConsumer, $newUser, expect: new Expectation\NoAnswer()),
         ],
         capabilities: $capabilities,
     ),
@@ -51,18 +48,10 @@ return [
         project: 'tests/Fixtures',
         steps: [
             new Step\Complete($consumer, $regenPrefix, expect: [new Expectation\NoAnswer()]),
-            new Step\Complete(
-                'Namespacing/CatalogProbe.php',
-                new Marker\CursorMarker('ondisk_class'),
-                expect: [new Expectation\Offers('User')],
-            ),
+            new Step\Complete($catalog, $userPrefix, expect: [new Expectation\Offers('User')]),
             ...$psr4Regenerated,
             new Step\Complete($consumer, $regenPrefix, expect: [new Expectation\Offers('Widget')]),
-            new Step\Complete(
-                'Namespacing/CatalogProbe.php',
-                new Marker\CursorMarker('ondisk_class'),
-                expect: [new Expectation\NoAnswer()],
-            ),
+            new Step\Complete($catalog, $userPrefix, expect: [new Expectation\NoAnswer()]),
         ],
         capabilities: $capabilities,
     ),
@@ -70,16 +59,13 @@ return [
         project: 'tests/Fixtures',
         steps: [
             new Step\Definition(
-                'src/Resolution/NamespacedConstant.php',
-                new Marker\SymbolMarker('global_const_fetch'),
+                $constantConsumer,
+                $helperConstant,
                 expect: new Expectation\LandsOn('AutoloadFiles/helpers.php', line: 19),
             ),
-            ...$filesRegenerated,
-            new Step\Definition(
-                'src/Resolution/NamespacedConstant.php',
-                new Marker\SymbolMarker('global_const_fetch'),
-                expect: new Expectation\NoAnswer(),
-            ),
+            new Step\Copy('ComposerRegeneration/autoload_files.php', $files),
+            new Step\ReportChanges([new Step\FileChange($files, Step\FileChangeType::Changed)]),
+            new Step\Definition($constantConsumer, $helperConstant, expect: new Expectation\NoAnswer()),
         ],
         capabilities: $capabilities,
     ),
