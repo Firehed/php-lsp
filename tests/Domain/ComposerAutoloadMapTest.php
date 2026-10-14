@@ -27,10 +27,15 @@ class ComposerAutoloadMapTest extends TestCase
         $files = $map->autoloadFiles();
 
         self::assertCount(3, $files, 'The fixture project declares three autoload.files entries');
-        foreach (['AutoloadFiles/globals.php', 'AutoloadFiles/helpers.php'] as $expected) {
+        $entries = [
+            'AutoloadFiles/globals.php',
+            'AutoloadFiles/helpers.php',
+            'AutoloadFiles/precedence.php',
+        ];
+        foreach ($entries as $expected) {
             self::assertTrue(
                 self::containsPathEndingIn($files, $expected),
-                "autoload.files must report {$expected}, the bounded function/constant reach",
+                "autoload.files must report {$expected}",
             );
         }
     }
