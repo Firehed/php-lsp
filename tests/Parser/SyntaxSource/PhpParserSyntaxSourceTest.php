@@ -14,6 +14,7 @@ use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Function_;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(PhpParserSyntaxSource::class)]
@@ -77,6 +78,31 @@ final class PhpParserSyntaxSourceTest extends TestCase
             [],
             $this->source->parse($doc)->tree,
             'a name-resolution failure yields no statements rather than a partial or null AST',
+        );
+    }
+
+    /**
+     * The parse-states script asks the same questions of one scenario in each
+     * state, so each fixture must keep the parse outcome its state names.
+     *
+     * @return iterable<string, array{string, bool}>
+     */
+    public static function parseStateFixtures(): iterable
+    {
+        yield 'clean' => ['src/ParseHealth/Clean.php', true];
+        yield 'recovered from an error' => ['src/ParseHealth/Recovered.php', true];
+        yield 'beyond recovery' => ['src/ParseHealth/EmptyParse.php', false];
+    }
+
+    #[DataProvider('parseStateFixtures')]
+    public function testParseStateFixturesKeepTheirOutcome(string $fixture, bool $yieldsATree): void
+    {
+        $doc = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+
+        self::assertSame(
+            $yieldsATree,
+            $this->source->parse($doc)->tree !== [],
+            "{$fixture} must " . ($yieldsATree ? 'yield a tree' : 'yield no tree'),
         );
     }
 
