@@ -139,7 +139,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = $this->serverWith($transport, [$spy]);
+        $server = $this->serverWith($transport, $spy);
 
         $server->run();
 
@@ -249,7 +249,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = new Server($transport, self::lifecycleHandler(), [$handler], $parser);
+        $server = new Server($transport, self::lifecycleHandler(), $handler, $parser);
 
         $server->run();
 
@@ -323,7 +323,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = $this->serverWith($transport, [$throwing]);
+        $server = $this->serverWith($transport, $throwing);
 
         $exitCode = $server->run();
 
@@ -385,7 +385,7 @@ class ServerTest extends TestCase
         // before the lookup reaches this double, so only the id 7 request trips
         // it and the session can still be driven to a clean exit.
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = $this->serverWith($transport, [$throwing]);
+        $server = $this->serverWith($transport, $throwing);
 
         $exitCode = $server->run();
 
@@ -437,7 +437,7 @@ class ServerTest extends TestCase
         $outputBuffer = new WritableBuffer();
 
         $transport = $this->createTransport($input, $outputBuffer);
-        $server = $this->serverWith($transport, [$unencodable]);
+        $server = $this->serverWith($transport, $unencodable);
 
         $exitCode = $server->run();
 
@@ -685,17 +685,15 @@ class ServerTest extends TestCase
     }
 
     /**
-     * A server with the lifecycle handler and only the handlers a test names,
+     * A server with the lifecycle handler and only the handler a test names,
      * for tests of the dispatch loop itself.
-     *
-     * @param list<HandlerInterface> $handlers
      */
-    private function serverWith(TransportInterface $transport, array $handlers = []): Server
+    private function serverWith(TransportInterface $transport, ?HandlerInterface $handler = null): Server
     {
         return new Server(
             $transport,
             self::lifecycleHandler(),
-            $handlers,
+            $handler ?? self::createStub(HandlerInterface::class),
             ProductionSyntaxSource::create()->source,
         );
     }
