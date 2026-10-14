@@ -17,7 +17,6 @@ use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
-use Firehed\PhpLsp\Protocol\NotificationMessage;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -41,28 +40,9 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(CompositeHandler::class)]
 final class CompositeHandlerTest extends TestCase
 {
+    use BuildsHandlerRequestsTrait;
+
     private const string URI = 'file:///t.php';
-
-    /**
-     * @return iterable<string, array{string}>
-     */
-    public static function memberMethods(): iterable
-    {
-        yield 'didOpen' => ['textDocument/didOpen'];
-        yield 'didChange' => ['textDocument/didChange'];
-        yield 'didClose' => ['textDocument/didClose'];
-        yield 'didChangeWatchedFiles' => ['workspace/didChangeWatchedFiles'];
-        yield 'definition' => ['textDocument/definition'];
-        yield 'hover' => ['textDocument/hover'];
-        yield 'signatureHelp' => ['textDocument/signatureHelp'];
-        yield 'completion' => ['textDocument/completion'];
-    }
-
-    #[DataProvider('memberMethods')]
-    public function testSupportsWhatAMemberSupports(string $method): void
-    {
-        self::assertTrue(self::composite(self::stubProbes())->supports($method), "a member handles {$method}");
-    }
 
     public function testDoesNotSupportWhatNoMemberSupports(): void
     {
@@ -76,13 +56,13 @@ final class CompositeHandlerTest extends TestCase
      * A message that reached the wrong member, or more than one, trips a probe
      * that should have stayed quiet.
      *
-     * @param array<string, mixed> $params
+     * @param ?array<string, mixed> $params null for a position request
      * @param key-of<Probes> $member
      */
     #[DataProvider('routes')]
     public function testHandleReachesOnlyTheMemberThatSupportsTheMethod(
         string $method,
-        array $params,
+        ?array $params,
         string $member,
     ): void {
         $invalidator = function (string $name) use ($member): InvalidatableInterface {
@@ -105,40 +85,37 @@ final class CompositeHandlerTest extends TestCase
             'completion' => $reader('completion'),
         ]);
 
-        $composite->handle(NotificationMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'method' => $method,
-            'params' => $params,
-        ]));
+        self::assertTrue($composite->supports($method), "a member handles {$method}");
+        $composite->handle(
+            $params === null ? $this->positionRequest($method, self::URI) : $this->request($method, $params),
+        );
     }
 
     /**
-     * @return iterable<string, array{string, array<string, mixed>, key-of<Probes>}>
+     * One method per member: which methods a member claims is that member's
+     * own tests' concern.
+     *
+     * @return iterable<string, array{string, ?array<string, mixed>, key-of<Probes>}>
      */
     public static function routes(): iterable
     {
-        $position = ['textDocument' => ['uri' => self::URI], 'position' => ['line' => 0, 'character' => 0]];
-
         yield 'didClose' => ['textDocument/didClose', ['textDocument' => ['uri' => self::URI]], 'sync'];
         yield 'didChangeWatchedFiles' => [
             'workspace/didChangeWatchedFiles',
             ['changes' => [['uri' => self::URI, 'type' => 2]]],
             'watchedFiles',
         ];
-        yield 'definition' => ['textDocument/definition', $position, 'definition'];
-        yield 'hover' => ['textDocument/hover', $position, 'hover'];
-        yield 'signatureHelp' => ['textDocument/signatureHelp', $position, 'signatureHelp'];
-        yield 'completion' => ['textDocument/completion', $position, 'completion'];
+        yield 'definition' => ['textDocument/definition', null, 'definition'];
+        yield 'hover' => ['textDocument/hover', null, 'hover'];
+        yield 'signatureHelp' => ['textDocument/signatureHelp', null, 'signatureHelp'];
+        yield 'completion' => ['textDocument/completion', null, 'completion'];
     }
 
     public function testHandlingAMethodNoMemberSupportsFails(): void
     {
         $this->expectException(\LogicException::class);
 
-        self::composite(self::stubProbes())->handle(NotificationMessage::fromArray([
-            'jsonrpc' => '2.0',
-            'method' => 'unknown/method',
-        ]));
+        self::composite(self::stubProbes())->handle($this->request('unknown/method'));
     }
 
     /**
