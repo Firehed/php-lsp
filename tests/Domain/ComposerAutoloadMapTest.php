@@ -26,7 +26,7 @@ class ComposerAutoloadMapTest extends TestCase
 
         $files = $map->autoloadFiles();
 
-        self::assertCount(2, $files, 'The fixture project declares two autoload.files entries');
+        self::assertCount(3, $files, 'The fixture project declares three autoload.files entries');
         foreach (['AutoloadFiles/globals.php', 'AutoloadFiles/helpers.php'] as $expected) {
             self::assertTrue(
                 self::containsPathEndingIn($files, $expected),
@@ -40,7 +40,7 @@ class ComposerAutoloadMapTest extends TestCase
         $map = ComposerAutoloadMap::fromProjectRoot(__DIR__ . '/../Fixtures');
 
         self::assertSame(
-            [0, 1],
+            [0, 1, 2],
             array_keys($map->autoloadFiles()),
             'Composer keys the generated file by a content hash; consumers want a plain list',
         );

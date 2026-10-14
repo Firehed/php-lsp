@@ -14,7 +14,8 @@
         ],
         "files": [
             "AutoloadFiles/globals.php",
-            "AutoloadFiles/helpers.php"
+            "AutoloadFiles/helpers.php",
+            "AutoloadFiles/precedence.php"
         ]
     },
     "require-dev": {
