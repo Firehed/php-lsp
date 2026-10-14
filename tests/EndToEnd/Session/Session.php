@@ -121,6 +121,15 @@ final class Session
     }
 
     /**
+     * Replaces the whole text of an open document with a file's contents. The
+     * disk is not changed.
+     */
+    public function replace(string $file, string $with): void
+    {
+        $this->change($file, $this->text($with));
+    }
+
+    /**
      * Reports changes on disk, as the client's file watcher would.
      *
      * @param list<FileChange> $changes
@@ -148,15 +157,6 @@ final class Session
         $this->client->notify('initialized', new stdClass());
 
         return $response;
-    }
-
-    /**
-     * Replaces the whole text of an open document with a file's contents. The
-     * disk is not changed.
-     */
-    public function replace(string $file, string $with): void
-    {
-        $this->change($file, $this->text($with));
     }
 
     /**
