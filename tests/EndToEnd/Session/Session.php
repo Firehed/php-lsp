@@ -151,8 +151,16 @@ final class Session
     }
 
     /**
-     * Inserts text into an open document. The server advertises full-document
-     * sync, so the whole new text is sent ([LSP] textDocument/didChange).
+     * Replaces the whole text of an open document with a file's contents. The
+     * disk is not changed.
+     */
+    public function replace(string $file, string $with): void
+    {
+        $this->change($file, $this->text($with));
+    }
+
+    /**
+     * Inserts text into an open document.
      */
     public function type(string $file, MarkerInterface $at, string $typed): void
     {
@@ -161,11 +169,22 @@ final class Session
         ['line' => $line, 'character' => $byteColumn] = $at->locate($this->buffers[$file]);
         $lines = explode("\n", $this->buffers[$file]);
         $lines[$line] = substr_replace($lines[$line], $typed, $byteColumn, 0);
-        $this->buffers[$file] = implode("\n", $lines);
+
+        $this->change($file, implode("\n", $lines));
+    }
+
+    /**
+     * The server advertises full-document sync, so the whole new text is sent
+     * ([LSP] textDocument/didChange).
+     */
+    private function change(string $file, string $text): void
+    {
+        assert(array_key_exists($file, $this->buffers), "Not open: {$file}");
+        $this->buffers[$file] = $text;
 
         $this->client->notify('textDocument/didChange', (object) [
             'textDocument' => ['uri' => $this->uri($file), 'version' => ++$this->versions[$file]],
-            'contentChanges' => [['text' => $this->buffers[$file]]],
+            'contentChanges' => [['text' => $text]],
         ]);
     }
 
