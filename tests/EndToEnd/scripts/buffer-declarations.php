@@ -40,6 +40,8 @@ return [
             new Step\Definition($consumer, $original, expect: new Expectation\NoAnswer()),
         ],
     ),
+    // Once the buffer stops declaring the class, the Composer map still points
+    // at its file, which must then be read from the buffer, not the disk.
     'a buffer that drops a class on disk hides it' => new Session\Script(
         project: 'tests/Fixtures',
         steps: [
