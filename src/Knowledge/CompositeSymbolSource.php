@@ -34,11 +34,8 @@ use Firehed\PhpLsp\Domain\SymbolInfoInterface;
  */
 final class CompositeSymbolSource implements SymbolSourceInterface
 {
-    /**
-     * @var list<SymbolSourceInterface> Backends in descending precedence.
-     *      Readable so the coverage grid derives its rows from it.
-     */
-    public readonly array $backends;
+    /** @var list<SymbolSourceInterface> Backends in descending precedence. */
+    private readonly array $backends;
 
     public function __construct(
         OpenDocumentBackend $openDocuments,
