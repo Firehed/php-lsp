@@ -48,6 +48,16 @@ use ReflectionMethod;
  * Cells that fail today are listed in {@see self::EMPTY_STATE_SKIPS} with the
  * step that clears them; they still run, and a listed cell that passes fails
  * the test so the entry goes with the fix.
+ *
+ * @phpstan-type Cursor array{line: int, character: int}
+ * @phpstan-type State array{
+ *   fixture: string,
+ *   marker: string,
+ *   namespace: string,
+ *   class: string,
+ *   parserReportsErrors: bool,
+ *   yieldsStatements: bool,
+ * }
  */
 #[CoversNothing]
 final class ParseHealthGridTest extends TestCase
@@ -55,14 +65,7 @@ final class ParseHealthGridTest extends TestCase
     use LoadsFixturesTrait;
 
     /**
-     * @var array<string, array{
-     *   fixture: string,
-     *   marker: string,
-     *   namespace: string,
-     *   class: string,
-     *   parserReportsErrors: bool,
-     *   yieldsStatements: bool,
-     * }>
+     * @var array<string, State>
      */
     private const array STATES = [
         'clean' => [
@@ -227,8 +230,8 @@ final class ParseHealthGridTest extends TestCase
     }
 
     /**
-     * @param array{line: int, character: int} $cursor
-     * @param array{fixture: string, marker: string, namespace: string, class: string} $config
+     * @param Cursor $cursor
+     * @param State $config
      */
     private function assertResolveAtPosition(TextDocument $document, array $cursor, array $config): void
     {
@@ -259,8 +262,8 @@ final class ParseHealthGridTest extends TestCase
     }
 
     /**
-     * @param array{line: int, character: int} $cursor
-     * @param array{fixture: string, marker: string, namespace: string, class: string} $config
+     * @param Cursor $cursor
+     * @param State $config
      */
     private function assertMemberAccessContext(TextDocument $document, array $cursor, array $config): void
     {
@@ -283,8 +286,8 @@ final class ParseHealthGridTest extends TestCase
     }
 
     /**
-     * @param array{line: int, character: int} $cursor
-     * @param array{fixture: string, marker: string, namespace: string, class: string} $config
+     * @param Cursor $cursor
+     * @param State $config
      */
     private function assertVariablesInScope(TextDocument $document, array $cursor, array $config): void
     {
@@ -303,8 +306,8 @@ final class ParseHealthGridTest extends TestCase
     }
 
     /**
-     * @param array{line: int, character: int} $cursor
-     * @param array{fixture: string, marker: string, namespace: string, class: string} $config
+     * @param Cursor $cursor
+     * @param State $config
      */
     private function assertCallContext(TextDocument $document, array $cursor, array $config): void
     {
@@ -322,8 +325,8 @@ final class ParseHealthGridTest extends TestCase
     }
 
     /**
-     * @param array{line: int, character: int} $cursor
-     * @param array{fixture: string, marker: string, namespace: string, class: string} $config
+     * @param Cursor $cursor
+     * @param State $config
      */
     private function assertNameContext(TextDocument $document, array $cursor, array $config): void
     {
