@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
+use Firehed\PhpLsp\Knowledge\DeclarationSourceInterface;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -161,6 +162,48 @@ final class AutoloadFilesBackendTest extends TestCase
             self::backendForRoot('/nonexistent/path')
                 ->lookupConstant(ConstantName::fromFullyQualified('FIXTURE_GLOBAL_LIMIT')),
             'a project with no autoload.files map indexes nothing, and is not an error',
+        );
+    }
+
+    /**
+     * The set is scanned when the backend is built, not mid-keystroke.
+     */
+    public function testConstructionScansEachFilesEntryOnce(): void
+    {
+        $map = ComposerAutoloadMap::fromProjectRoot(self::FIXTURES_ROOT);
+        $declarations = new RecordingDeclarationSource(ProductionSyntaxSource::create()->declarations);
+        self::backendForMap($map, $declarations);
+
+        self::assertSame(
+            $map->autoloadFiles(),
+            $declarations->scanned,
+            'construction scans every files entry exactly once, in the order Composer requires them',
+        );
+    }
+
+    public function testQueriesScanNothingFurther(): void
+    {
+        $declarations = new RecordingDeclarationSource(ProductionSyntaxSource::create()->declarations);
+        $backend = self::backendForMap(ComposerAutoloadMap::fromProjectRoot(self::FIXTURES_ROOT), $declarations);
+        $afterConstruction = $declarations->scanned;
+
+        self::assertNotNull(self::functionIn($backend, 'Fixtures\Helpers\helperFormat'), 'the lookup answers');
+        self::assertNotSame(
+            [],
+            $backend->childrenOf(new NamespaceName('Fixtures\Helpers'))->symbols,
+            'the namespace enumerates its symbols',
+        );
+        self::assertNotSame(
+            [],
+            $backend->childrenOf(new NamespaceName('Fixtures'))->childNamespaces,
+            'the parent enumerates its child namespaces',
+        );
+        self::assertNotSame([], $backend->search('helper', NameKind::Function_), 'the search answers');
+
+        self::assertSame(
+            $afterConstruction,
+            $declarations->scanned,
+            'lookup, enumeration and search answer from the index built at construction',
         );
     }
 
@@ -538,14 +581,16 @@ final class AutoloadFilesBackendTest extends TestCase
         return self::backendForMap(ComposerAutoloadMap::fromProjectRoot($projectRoot));
     }
 
-    private static function backendForMap(ComposerAutoloadMap $map): AutoloadFilesBackend
-    {
+    private static function backendForMap(
+        ComposerAutoloadMap $map,
+        ?DeclarationSourceInterface $declarations = null,
+    ): AutoloadFilesBackend {
         $production = ProductionSyntaxSource::create();
 
         return new AutoloadFilesBackend(
             ComposerAutoloadMapReader::fromMap($map),
             $production->reader,
-            $production->declarations,
+            $declarations ?? $production->declarations,
         );
     }
 
