@@ -20,9 +20,9 @@ use Firehed\PhpLsp\Parser\TreeAnnotator;
 
 /**
  * The test-facing wiring for the production SyntaxSourceInterface and
- * NodeLocatorInterface stacks. Mirrors what
- * {@see \Firehed\PhpLsp\Server::forProject} assembles, so a test that needs
- * production wiring does not name any implementation directly.
+ * NodeLocatorInterface stacks. Mirrors what `config/services.php` assembles,
+ * so a test that needs production wiring does not name any implementation
+ * directly.
  *
  * The exposed {@see CountingSyntaxSource} sits under the memoizer, so tests can
  * assert how many times the real parser actually ran rather than how many times

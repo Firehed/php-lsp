@@ -4,15 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp;
 
-use Firehed\Container\TypedContainerInterface as TC;
-use Firehed\PhpLsp\Handler\CompletionHandler;
-use Firehed\PhpLsp\Handler\DefinitionHandler;
-use Firehed\PhpLsp\Handler\DidChangeWatchedFilesHandler;
 use Firehed\PhpLsp\Handler\HandlerInterface;
-use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
-use Firehed\PhpLsp\Handler\SignatureHelpHandler;
-use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Parser\SyntaxSource\MessageScopedInterface;
 use Firehed\PhpLsp\Protocol\ErrorCode;
 use Firehed\PhpLsp\Protocol\RequestMessage;
@@ -24,54 +17,18 @@ use Firehed\PhpLsp\Transport\TransportInterface;
 
 final class Server
 {
-    /** @var list<HandlerInterface> */
-    private readonly array $handlers;
-
     /**
-     * @param LifecycleHandler $lifecycleHandler Named separately because the
-     *        loop asks it for the lifecycle gate and the exit code, which are
-     *        not dispatch. It is prepended to the dispatch list here rather
-     *        than passed in twice, so the instance the gate consults and the
-     *        instance that handles `initialize`/`shutdown` cannot diverge.
-     * @param list<HandlerInterface> $handlers Consulted after it, in order;
-     *        the first that supports a method answers it.
+     * @param LifecycleHandler $lifecycleHandler Consulted before $handler. The
+     *        loop also asks it for the lifecycle gate and the exit code, so the
+     *        instance that gates a message is the one that handled `initialize`
+     *        and `shutdown`.
      */
     public function __construct(
         private readonly TransportInterface $transport,
         private readonly LifecycleHandler $lifecycleHandler,
-        array $handlers,
+        private readonly HandlerInterface $handler,
         private readonly MessageScopedInterface $messageScope,
     ) {
-        $this->handlers = [$lifecycleHandler, ...$handlers];
-    }
-
-    /**
-     * Wires the server against a project on disk.
-     *
-     * Construction lives here rather than in the constructor so the constructor
-     * stays injectable: the dispatch loop can then be exercised against a
-     * handler set a test chooses, without standing up the whole project.
-     *
-     * The container is used as a service locator, a known anti-pattern. It's
-     * transitional as part of #557 and #566.
-     */
-    public static function forProject(TC $container): self
-    {
-        $handlers = [
-            $container->get(TextDocumentSyncHandler::class),
-            $container->get(DidChangeWatchedFilesHandler::class),
-            $container->get(DefinitionHandler::class),
-            $container->get(HoverHandler::class),
-            $container->get(SignatureHelpHandler::class),
-            $container->get(CompletionHandler::class),
-        ];
-
-        return new self(
-            $container->get(TransportInterface::class),
-            $container->get(LifecycleHandler::class),
-            $handlers,
-            $container->get(MessageScopedInterface::class),
-        );
     }
 
     public function run(): int
@@ -192,10 +149,11 @@ final class Server
 
     private function findHandler(string $method): ?HandlerInterface
     {
-        foreach ($this->handlers as $handler) {
-            if ($handler->supports($method)) {
-                return $handler;
-            }
+        if ($this->lifecycleHandler->supports($method)) {
+            return $this->lifecycleHandler;
+        }
+        if ($this->handler->supports($method)) {
+            return $this->handler;
         }
         return null;
     }
