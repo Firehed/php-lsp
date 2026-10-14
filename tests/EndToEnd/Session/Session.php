@@ -4,12 +4,20 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\EndToEnd\Session;
 
+use Amp\Process\Process;
+use FilesystemIterator;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\LspClient;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\ServerMessage;
 use Firehed\PhpLsp\Tests\EndToEnd\Marker\MarkerInterface;
 use Firehed\PhpLsp\Tests\EndToEnd\Step\FileChange;
+use Firehed\PhpLsp\Tests\EndToEnd\Step\FileChangeType;
 use PHPUnit\Framework\Assert;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
 use stdClass;
+
+use function Amp\ByteStream\buffer;
 
 /**
  * An editor session on one project: turns editor actions on project files
@@ -81,6 +89,34 @@ final class Session
     {
         $deleted = unlink("{$this->projectRoot}/{$file}");
         assert($deleted, "Cannot delete {$file}");
+    }
+
+    /**
+     * Regenerates the Composer autoloader from the project's `composer.json`,
+     * then reports every PHP file it created, changed or deleted, as the
+     * client's file watcher would.
+     */
+    public function dumpAutoload(): void
+    {
+        $before = $this->vendorHashes();
+
+        $composer = Process::start(
+            [PHP_BINARY, dirname(__DIR__, 3) . '/vendor/bin/composer', 'dump-autoload', '--no-interaction', '--quiet'],
+            $this->projectRoot,
+        );
+        $errors = buffer($composer->getStderr());
+        Assert::assertSame(0, $composer->join(), "composer dump-autoload succeeds: {$errors}");
+
+        $after = $this->vendorHashes();
+        $changes = [];
+        foreach (array_keys(array_diff_assoc($after, $before)) as $file) {
+            $type = array_key_exists($file, $before) ? FileChangeType::Changed : FileChangeType::Created;
+            $changes[] = new FileChange($file, $type);
+        }
+        foreach (array_keys(array_diff_key($before, $after)) as $file) {
+            $changes[] = new FileChange($file, FileChangeType::Deleted);
+        }
+        $this->reportChanges($changes);
     }
 
     /**
@@ -201,6 +237,27 @@ final class Session
         assert($text !== false, "Not in the project: {$file}");
 
         return $text;
+    }
+
+    /**
+     * @return array<string, string> Content hash of each PHP file under
+     *         vendor/, by file.
+     */
+    private function vendorHashes(): array
+    {
+        $hashes = [];
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator("{$this->projectRoot}/vendor", FilesystemIterator::SKIP_DOTS),
+        );
+        foreach ($files as $file) {
+            assert($file instanceof SplFileInfo);
+            if ($file->getExtension() === 'php') {
+                $relative = substr($file->getPathname(), strlen($this->projectRoot) + 1);
+                $hashes[$relative] = (string) hash_file('sha1', $file->getPathname());
+            }
+        }
+
+        return $hashes;
     }
 
     private function uri(string $file): string

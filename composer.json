@@ -22,6 +22,7 @@
     "require-dev": {
         "amphp/process": "^2.1",
         "brianium/paratest": "^7",
+        "composer/composer": "^2.10",
         "deptrac/deptrac": "^4.7",
         "phpstan/phpstan": "^2.3",
         "phpstan/phpstan-deprecation-rules": "^2.0",
