@@ -10,4 +10,4 @@ class EmptyParse
 
     public function test(): void
     {
-        strlen($this->/*|this_in_if*/
+        strlen(/*|this_start*/$this->/*|this_in_if*/ //jtd:this_var this

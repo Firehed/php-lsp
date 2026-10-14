@@ -10,6 +10,6 @@ class Clean
 
     public function test(): void
     {
-        strlen($this->/*|this_in_if*/name);
+        strlen(/*|this_start*/$this->/*|this_in_if*/name); //jtd:this_var this
     }
 }
