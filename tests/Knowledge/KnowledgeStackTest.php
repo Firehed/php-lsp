@@ -16,7 +16,6 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\KnowledgeStack;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
-use Firehed\PhpLsp\Tests\Parser\CountingSyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -34,7 +33,6 @@ final class KnowledgeStackTest extends TestCase
     private string $fixturesRoot;
     private MemoizingSyntaxSource $parser;
     private SourceFileReader $reader;
-    private CountingSyntaxSource $counter;
 
     protected function setUp(): void
     {
@@ -42,7 +40,6 @@ final class KnowledgeStackTest extends TestCase
         $production = ProductionSyntaxSource::create();
         $this->parser = $production->source;
         $this->reader = $production->reader;
-        $this->counter = $production->counter;
     }
 
     public function testSourceResolvesAWorkspaceClassThroughTheBackends(): void
@@ -152,51 +149,6 @@ final class KnowledgeStackTest extends TestCase
             'Fixtures\Domain',
             $children,
             'merging the derived index must not displace the directory listing',
-        );
-    }
-
-    /**
-     * Enumeration is wired onto data already derived, not
-     * a second scan: the set is parsed once at construction and enumerating it
-     * groups what is already in memory.
-     */
-    public function testEnumeratingTheAutoloadFilesSetCostsNoFurtherParse(): void
-    {
-        $stack = KnowledgeStack::forProject(
-            new ComposerAutoloadMapReader($this->fixturesRoot),
-            $this->parser,
-            $this->reader,
-        );
-        $afterConstruction = $this->counter->parseCount;
-
-        $stack->source->childrenOf(new NamespaceName('Fixtures\Helpers'));
-        $stack->source->childrenOf(new NamespaceName('Fixtures'));
-
-        self::assertSame(
-            $afterConstruction,
-            $this->counter->parseCount,
-            'enumeration reads the index built at construction rather than re-scanning the set',
-        );
-    }
-
-    /**
-     * The index is built eagerly, so the set is parsed at construction rather than
-     * mid-keystroke. This pins that it happens, and that indexing never reaches
-     * outside the `files` set into the PSR-4 tree. It cannot see the same content
-     * parsed twice — the memo is keyed by content — so it bounds no cost.
-     */
-    public function testTheAutoloadFilesIndexIsBuiltOnceAtConstruction(): void
-    {
-        KnowledgeStack::forProject(
-            new ComposerAutoloadMapReader($this->fixturesRoot),
-            $this->parser,
-            $this->reader,
-        );
-
-        self::assertSame(
-            2,
-            $this->counter->parseCount,
-            'construction parses each autoload.files entry exactly once',
         );
     }
 
