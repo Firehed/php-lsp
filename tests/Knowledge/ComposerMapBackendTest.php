@@ -338,12 +338,11 @@ final class ComposerMapBackendTest extends TestCase
         }
     }
 
-    public function testInvalidateDropsTheDerivedIndexWhenTheAutoloadMapChanged(): void
+    public function testAQueryAfterTheAutoloadMapChangedUsesTheNewMap(): void
     {
         // A `composer install` regenerates the autoload files, which the reader
-        // detects and re-reads. The next invalidate the backend sees carries a
-        // map instance different from the one it built the index against; the
-        // derived index is wholly dropped so the next query re-derives it.
+        // detects and re-reads. Whatever event the backend sees in between, the
+        // next query must answer from the new map.
         $mapReader = ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap(
             classMap: ['Fixtures\Domain\User' => $this->fixturesRoot . '/src/Domain/User.php'],
         ));
