@@ -109,14 +109,11 @@ final class Session
 
         $after = $this->vendorHashes();
         $changes = [];
-        foreach ($after as $file => $hash) {
-            if (!array_key_exists($file, $before)) {
-                $changes[] = new FileChange($file, FileChangeType::Created);
-            } elseif ($before[$file] !== $hash) {
-                $changes[] = new FileChange($file, FileChangeType::Changed);
-            }
+        foreach (array_keys(array_diff_assoc($after, $before)) as $file) {
+            $type = array_key_exists($file, $before) ? FileChangeType::Changed : FileChangeType::Created;
+            $changes[] = new FileChange($file, $type);
         }
-        foreach (array_diff_key($before, $after) as $file => $hash) {
+        foreach (array_keys(array_diff_key($before, $after)) as $file) {
             $changes[] = new FileChange($file, FileChangeType::Deleted);
         }
         $this->reportChanges($changes);
