@@ -11,11 +11,5 @@ return [
 
     Handler\LifecycleHandler::class,
 
-    Server::class => function (TC $c) {
-        $projectRoot = getcwd();
-        if ($projectRoot === false) {
-            throw new \LogicException('Unable to determine project root: getcwd() failed');
-        }
-        return Server::forProject($c, $projectRoot);
-    },
+    Server::class => fn (TC $c) => Server::forProject($c),
 ];

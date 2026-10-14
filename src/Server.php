@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp;
 
 use Firehed\Container\TypedContainerInterface as TC;
+use Firehed\PhpLsp\Cache\InvalidatableInterface;
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
@@ -24,8 +25,8 @@ use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\LifecycleHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
-use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
-use Firehed\PhpLsp\Knowledge\KnowledgeStack;
+use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
+use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MessageScopedInterface;
@@ -74,7 +75,7 @@ final class Server
      * The container is used as a service locator, a known anti-pattern. It's
      * transitional as part of #557 and #566.
      */
-    public static function forProject(TC $container, string $projectRoot): self
+    public static function forProject(TC $container): self
     {
         $transport = $container->get(TransportInterface::class);
         $parser = $container->get(MemoizingSyntaxSource::class);
@@ -82,19 +83,9 @@ final class Server
         $documentManager = $container->get(DocumentManagerInterface::class);
         $documents = $container->get(DocumentSourceInterface::class);
 
-        // The symbol-knowledge tier: one read composite over the fixed backend
-        // precedence (open document › disk › built-in) and one write path, sharing
-        // an open-document backend and index. Every
-        // knowledge consumer — SymbolResolver, the completion sources, and
-        // MemberResolver — reads through this one composite.
-        $knowledge = KnowledgeStack::forProject(
-            new ComposerAutoloadMapReader($projectRoot),
-            $parser,
-            $documents,
-        );
-        $symbolSource = $knowledge->source;
-        $symbolSink = $knowledge->sink;
-        $invalidator = $knowledge->invalidator;
+        $symbolSource = $container->get(SymbolSourceInterface::class);
+        $symbolSink = $container->get(SymbolSinkInterface::class);
+        $invalidator = $container->get(InvalidatableInterface::class);
 
         $memberResolver = new MemberResolver($symbolSource);
         $typeSource = new NativeTypeSource($symbolSource, $memberResolver);

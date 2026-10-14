@@ -11,8 +11,8 @@ use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 
 /**
  * Builds the production symbol-knowledge stack for tests, mirroring what
- * {@see \Firehed\PhpLsp\Server::forProject} assembles, so the wiring lives in
- * one place under tests/.
+ * `config/knowledge.php` assembles, so the wiring lives in one place under
+ * tests/.
  */
 trait BuildsKnowledgeStackTrait
 {
