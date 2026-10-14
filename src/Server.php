@@ -18,7 +18,7 @@ use Firehed\PhpLsp\Transport\TransportInterface;
 final class Server
 {
     /**
-     * @param LifecycleHandler $lifecycleHandler Consulted before $handlers. The
+     * @param LifecycleHandler $lifecycleHandler Consulted before $handler. The
      *        loop also asks it for the lifecycle gate and the exit code, so the
      *        instance that gates a message is the one that handled `initialize`
      *        and `shutdown`.
@@ -26,7 +26,7 @@ final class Server
     public function __construct(
         private readonly TransportInterface $transport,
         private readonly LifecycleHandler $lifecycleHandler,
-        private readonly HandlerInterface $handlers,
+        private readonly HandlerInterface $handler,
         private readonly MessageScopedInterface $messageScope,
     ) {
     }
@@ -152,8 +152,8 @@ final class Server
         if ($this->lifecycleHandler->supports($method)) {
             return $this->lifecycleHandler;
         }
-        if ($this->handlers->supports($method)) {
-            return $this->handlers;
+        if ($this->handler->supports($method)) {
+            return $this->handler;
         }
         return null;
     }
