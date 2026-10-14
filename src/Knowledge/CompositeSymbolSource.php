@@ -34,7 +34,7 @@ use Firehed\PhpLsp\Domain\SymbolInfoInterface;
  */
 final class CompositeSymbolSource implements SymbolSourceInterface
 {
-    /** @var list<SymbolSourceInterface> Backends in descending precedence. */
+    /** @var list<SymbolSourceInterface> */
     private readonly array $backends;
 
     public function __construct(
