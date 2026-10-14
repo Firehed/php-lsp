@@ -15,7 +15,15 @@ return [
     Client\TransportClientConnection::class,
     Client\ClientConnectionInterface::class => Client\TransportClientConnection::class,
 
+    Completion\BuiltinTypeCandidates::class,
     Completion\CompletionItemFactory::class,
+    Completion\CompositeCompletionSource::class,
+    Completion\CompletionSourceInterface::class => Completion\CompositeCompletionSource::class,
+    Completion\KeywordCandidates::class,
+    Completion\MemberCandidates::class,
+    Completion\NamedArgumentCandidates::class,
+    Completion\SymbolCandidates::class,
+    Completion\VariableCandidates::class,
 
     Document\CompositeDocumentSource::class,
     Document\DocumentManager::class,
@@ -40,6 +48,13 @@ return [
     Parser\NodeLocator\CompositeNodeLocator::class,
     Parser\NodeLocator\NodeLocatorInterface::class => Parser\NodeLocator\CompositeNodeLocator::class,
 
+    Repository\MemberResolver::class,
+    Repository\MemberResolverInterface::class => Repository\MemberResolver::class,
+
     Resolution\ResolvedSymbolPresenter::class,
     Resolution\ResolvedSymbolPresenterInterface::class => Resolution\ResolvedSymbolPresenter::class,
+    Resolution\SymbolResolver::class,
+    Resolution\CodeResolverInterface::class => Resolution\SymbolResolver::class,
+    Resolution\TypeSource\NativeTypeSource::class,
+    Resolution\TypeSource\TypeSourceInterface::class => Resolution\TypeSource\NativeTypeSource::class,
 ];
