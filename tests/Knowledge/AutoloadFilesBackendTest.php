@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\ConstantName;
@@ -167,35 +166,36 @@ final class AutoloadFilesBackendTest extends TestCase
     }
 
     /**
-     * The set is read when the backend is built, not mid-keystroke, and only the
-     * set: the PSR-4 tree belongs to the autoload maps.
+     * The set is scanned when the backend is built, not mid-keystroke.
      */
-    public function testConstructionReadsEachFilesEntryOnce(): void
+    public function testConstructionScansEachFilesEntryOnce(): void
     {
-        $reads = [];
-        self::recordingBackend($reads);
+        $map = ComposerAutoloadMap::fromProjectRoot(self::FIXTURES_ROOT);
+        $declarations = new RecordingDeclarationSource(ProductionSyntaxSource::create()->declarations);
+        self::backendForMap($map, $declarations);
 
         self::assertSame(
-            self::sorted(ComposerAutoloadMap::fromProjectRoot(self::FIXTURES_ROOT)->autoloadFiles()),
-            self::sorted($reads),
-            'construction reads every files entry once, and nothing outside the set',
+            self::sorted($map->autoloadFiles()),
+            self::sorted($declarations->scanned),
+            'construction scans every files entry exactly once',
         );
     }
 
-    public function testQueriesReadNothingFurther(): void
+    public function testQueriesScanNothingFurther(): void
     {
-        $reads = [];
-        $backend = self::recordingBackend($reads);
-        $afterConstruction = $reads;
+        $declarations = new RecordingDeclarationSource(ProductionSyntaxSource::create()->declarations);
+        $backend = self::backendForMap(ComposerAutoloadMap::fromProjectRoot(self::FIXTURES_ROOT), $declarations);
+        $afterConstruction = $declarations->scanned;
 
         self::functionIn($backend, 'Fixtures\Helpers\helperFormat');
         $backend->childrenOf(new NamespaceName('Fixtures\Helpers'));
         $backend->childrenOf(new NamespaceName('Fixtures'));
+        $backend->search('helper', NameKind::Function_);
 
         self::assertSame(
             $afterConstruction,
-            $reads,
-            'lookup and enumeration answer from the index built at construction',
+            $declarations->scanned,
+            'lookup, enumeration and search answer from the index built at construction',
         );
     }
 
@@ -573,38 +573,16 @@ final class AutoloadFilesBackendTest extends TestCase
         return self::backendForMap(ComposerAutoloadMap::fromProjectRoot($projectRoot));
     }
 
-    /**
-     * Over the fixtures' map, with the real declarations behind a stub that
-     * appends the path of every document it is asked about to $reads.
-     *
-     * @param list<string> $reads
-     */
-    private static function recordingBackend(array &$reads): AutoloadFilesBackend
-    {
-        $production = ProductionSyntaxSource::create();
-        $declarations = self::createStub(DeclarationSourceInterface::class);
-        $declarations->method('declarationsIn')->willReturnCallback(
-            static function (TextDocument $document) use (&$reads, $production): array {
-                $reads[] = FileUri::toPath($document->uri);
-                return $production->declarations->declarationsIn($document);
-            },
-        );
-
-        return new AutoloadFilesBackend(
-            ComposerAutoloadMapReader::fromMap(ComposerAutoloadMap::fromProjectRoot(self::FIXTURES_ROOT)),
-            $production->reader,
-            $declarations,
-        );
-    }
-
-    private static function backendForMap(ComposerAutoloadMap $map): AutoloadFilesBackend
-    {
+    private static function backendForMap(
+        ComposerAutoloadMap $map,
+        ?DeclarationSourceInterface $declarations = null,
+    ): AutoloadFilesBackend {
         $production = ProductionSyntaxSource::create();
 
         return new AutoloadFilesBackend(
             ComposerAutoloadMapReader::fromMap($map),
             $production->reader,
-            $production->declarations,
+            $declarations ?? $production->declarations,
         );
     }
 
