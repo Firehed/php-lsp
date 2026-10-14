@@ -175,9 +175,9 @@ final class AutoloadFilesBackendTest extends TestCase
         self::backendForMap($map, $declarations);
 
         self::assertSame(
-            self::sorted($map->autoloadFiles()),
-            self::sorted($declarations->scanned),
-            'construction scans every files entry exactly once',
+            $map->autoloadFiles(),
+            $declarations->scanned,
+            'construction scans every files entry exactly once, in the order Composer requires them',
         );
     }
 
@@ -187,10 +187,18 @@ final class AutoloadFilesBackendTest extends TestCase
         $backend = self::backendForMap(ComposerAutoloadMap::fromProjectRoot(self::FIXTURES_ROOT), $declarations);
         $afterConstruction = $declarations->scanned;
 
-        self::functionIn($backend, 'Fixtures\Helpers\helperFormat');
-        $backend->childrenOf(new NamespaceName('Fixtures\Helpers'));
-        $backend->childrenOf(new NamespaceName('Fixtures'));
-        $backend->search('helper', NameKind::Function_);
+        self::assertNotNull(self::functionIn($backend, 'Fixtures\Helpers\helperFormat'), 'the lookup answers');
+        self::assertNotSame(
+            [],
+            $backend->childrenOf(new NamespaceName('Fixtures\Helpers'))->symbols,
+            'the namespace enumerates its symbols',
+        );
+        self::assertNotSame(
+            [],
+            $backend->childrenOf(new NamespaceName('Fixtures'))->childNamespaces,
+            'the parent enumerates its child namespaces',
+        );
+        self::assertNotSame([], $backend->search('helper', NameKind::Function_), 'the search answers');
 
         self::assertSame(
             $afterConstruction,

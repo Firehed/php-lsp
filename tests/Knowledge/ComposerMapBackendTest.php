@@ -682,20 +682,28 @@ final class ComposerMapBackendTest extends TestCase
     }
 
     /**
-     * The maps name files, not symbols, so enumerating the PSR-4 tree reads
-     * directory listings; only a lookup scans a file, and only the one it locates.
+     * Enumeration and search answer from classmap keys and directory listings;
+     * only a lookup scans a file, and only the one the maps locate.
      */
     public function testOnlyALookupScansAFile(): void
     {
         $declarations = new RecordingDeclarationSource($this->declarations);
         $backend = $this->backendForMap(ComposerAutoloadMap::fromProjectRoot($this->fixturesRoot), $declarations);
 
-        $backend->childrenOf(new NamespaceName('Fixtures'));
-        $backend->childrenOf(new NamespaceName('Fixtures\Domain'));
-        $backend->search('Us', NameKind::ClassLike);
+        self::assertNotSame(
+            [],
+            $backend->childrenOf(new NamespaceName('Fixtures'))->childNamespaces,
+            'the root enumerates its child namespaces',
+        );
+        self::assertNotSame(
+            [],
+            $backend->childrenOf(new NamespaceName('Fixtures\Domain'))->symbols,
+            'the namespace enumerates its classes',
+        );
+        self::assertNotSame([], $backend->search('Us', NameKind::ClassLike), 'the search answers');
         self::assertSame([], $declarations->scanned, 'enumeration and search scan no file');
 
-        self::classLikeIn($backend, 'Fixtures\Domain\User');
+        self::assertNotNull(self::classLikeIn($backend, 'Fixtures\Domain\User'), 'the lookup answers');
         self::assertSame(
             [$this->fixturesRoot . '/src/Domain/User.php'],
             $declarations->scanned,
