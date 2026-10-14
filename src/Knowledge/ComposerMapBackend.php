@@ -33,8 +33,8 @@ use Firehed\PhpLsp\Domain\SymbolKind;
  * and adjusted one name at a time when a watched file changes.
  * The map itself is read through {@see ComposerAutoloadMapReader}: when
  * `composer install` regenerates the autoload files the reader returns a new
- * map instance, the derived index is dropped, and the next query rebuilds it
- * against the new map. Names declared in `autoload.files` entries are the
+ * map instance, and the next query rebuilds the derived index against it.
+ * Names declared in `autoload.files` entries are the
  * separate {@see AutoloadFilesBackend}'s concern.
  *
  * Lookup is a name-to-file resolve through Composer, then a parse of that one
@@ -78,10 +78,10 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
      * A watched-file event adjusts one name rather than dropping the whole
      * index. The path's previously walked name (if any) is removed, and the
      * name Composer's loader now confirms at that path (if any) is added.
-     * Classmap entries change with the map itself: a
-     * regenerated autoload map (a fresh instance from
-     * {@see ComposerAutoloadMapReader::current()}) drops the whole derived
-     * index so the next query rebuilds against the new map.
+     * Classmap entries change with the map itself: after a regenerated
+     * autoload map (a fresh instance from
+     * {@see ComposerAutoloadMapReader::current()}) the index is stale as a
+     * whole, and the next query rebuilds it against the new map.
      */
     public function invalidate(string $uri): void
     {
@@ -91,8 +91,6 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
 
         $map = $this->mapReader->current();
         if ($map !== $this->mapAtBuild) {
-            $this->byNamespace = null;
-
             return;
         }
 
@@ -159,6 +157,7 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
 
     private function buildIndex(ComposerAutoloadMap $map): void
     {
+        $this->byNamespace = null;
         $this->catalog = [];
         $this->pathByKey = [];
         $this->fqnByWalkedPath = [];

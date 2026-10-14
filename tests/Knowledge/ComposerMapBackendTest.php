@@ -338,12 +338,11 @@ final class ComposerMapBackendTest extends TestCase
         }
     }
 
-    public function testInvalidateDropsTheDerivedIndexWhenTheAutoloadMapChanged(): void
+    public function testAQueryAfterTheAutoloadMapChangedUsesTheNewMap(): void
     {
         // A `composer install` regenerates the autoload files, which the reader
-        // detects and re-reads. The next invalidate the backend sees carries a
-        // map instance different from the one it built the index against; the
-        // derived index is wholly dropped so the next query re-derives it.
+        // detects and re-reads. Whatever event the backend sees in between, the
+        // next query must answer from the new map.
         $mapReader = ComposerAutoloadMapReader::fromMap(new ComposerAutoloadMap(
             classMap: ['Fixtures\Domain\User' => $this->fixturesRoot . '/src/Domain/User.php'],
         ));
@@ -359,8 +358,9 @@ final class ComposerMapBackendTest extends TestCase
             'sanity: the initial index carries the classmap entry',
         );
 
-        // Drop the reader's cache; the next reader->current() re-reads and, since
-        // the empty root has no vendor/composer files, returns a fresh, empty map.
+        // The watched-file event for the regenerated map reaches the reader, then
+        // the backend. The reader's next current() re-reads and, since the empty
+        // root has no vendor/composer files, returns a fresh, empty map.
         $mapReader->invalidate(FileUri::fromPath('/vendor/composer/autoload_classmap.php'));
         $backend->invalidate(FileUri::fromPath('/vendor/composer/autoload_classmap.php'));
 
