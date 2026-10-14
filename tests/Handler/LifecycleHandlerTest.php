@@ -119,11 +119,9 @@ class LifecycleHandlerTest extends TestCase
         );
     }
 
-    public function testShutdownSetsFlag(): void
+    public function testShutdownIsAnsweredWithNull(): void
     {
         $handler = self::handler();
-
-        self::assertFalse($handler->isShutdownRequested());
 
         $request = RequestMessage::fromArray([
             'jsonrpc' => '2.0',
@@ -131,10 +129,7 @@ class LifecycleHandlerTest extends TestCase
             'method' => 'shutdown',
         ]);
 
-        $result = $handler->handle($request);
-
-        self::assertNull($result);
-        self::assertTrue($handler->isShutdownRequested());
+        self::assertNull($handler->handle($request), 'the shutdown result is null ([LSP] Shutdown Request)');
     }
 
     public function testExitCodeAfterShutdown(): void

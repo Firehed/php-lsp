@@ -71,11 +71,6 @@ final class LifecycleHandler implements HandlerInterface
         return null;
     }
 
-    public function isShutdownRequested(): bool
-    {
-        return $this->shutdownRequested;
-    }
-
     public function getExitCode(): ?int
     {
         return $this->exitCode;
