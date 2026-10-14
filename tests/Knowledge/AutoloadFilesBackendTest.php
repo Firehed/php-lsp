@@ -335,7 +335,7 @@ final class AutoloadFilesBackendTest extends TestCase
             ],
         ];
 
-        yield 'an intermediate namespace' => ['Fixtures', ['Fixtures\Helpers'], []];
+        yield 'an intermediate namespace' => ['Fixtures', ['Fixtures\Helpers', 'Fixtures\Precedence'], []];
 
         yield 'the global namespace' => [
             '',

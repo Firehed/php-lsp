@@ -156,6 +156,21 @@ final class ComposerMapBackendTest extends TestCase
         );
     }
 
+    public function testLookupClassLikePrefersTheClassmapOverAPsr4Directory(): void
+    {
+        $root = $this->fixturesRoot . '/Precedence';
+        $backend = $this->backendForMap(new ComposerAutoloadMap(
+            psr4: ['Prec\\' => [$root . '/src']],
+            classMap: ['Prec\\Thing' => $root . '/vendor/Thing.php'],
+        ));
+
+        self::assertSame(
+            $root . '/vendor/Thing.php',
+            self::classLikeIn($backend, 'Prec\Thing')?->file,
+            'Composer consults the classmap before any PSR-4 directory',
+        );
+    }
+
     public function testLookupHasNoReachForFunctions(): void
     {
         // Composer's PSR-4, PSR-0 and classmap entries all address class-likes, so a
