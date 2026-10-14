@@ -49,6 +49,7 @@ final class TypeGraphParityTest extends TestCase
         return [
             'interface' => ['Fixtures\Hierarchy\BaseInterface'],
             'interface extends interface' => ['Fixtures\Hierarchy\MiddleInterface'],
+            'interface extends several' => ['Fixtures\Hierarchy\MultipleParentsInterface'],
             'interface extends several, incl. built-in' => ['Fixtures\Hierarchy\LeafInterface'],
             'trait using a trait' => ['Fixtures\Hierarchy\OuterTrait'],
             'abstract class implementing an interface' => ['Fixtures\Hierarchy\AbstractImplementor'],
