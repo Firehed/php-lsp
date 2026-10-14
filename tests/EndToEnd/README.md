@@ -38,7 +38,7 @@ A script file declares `namespace Firehed\PhpLsp\Tests\EndToEnd;` and names type
 - `Copy` and `Delete` change the disk as another program would, and the server is not told.
   `Copy` puts a prepared variant in place; variants live outside the autoload paths, such as `DiskChange/` in the fixture project.
 - `ReportChanges` is the client's file watcher reporting what changed, in one notification.
-- `DumpAutoload` runs `composer dump-autoload` in the project, then reports every file under `vendor/` it rewrote.
+- `DumpAutoload` runs `composer dump-autoload` in the project, then reports every PHP file under `vendor/` it created, changed or deleted.
   Pair it with a `Copy` of a `composer.json` variant to change what Composer maps.
 - `Definition`, `Hover`, `SignatureHelp`, and `Complete` are requests.
   Each decodes the answer, failing on a malformed one, and checks it against `expect:`: one expectation, or a list that must all hold.
