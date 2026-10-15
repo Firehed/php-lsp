@@ -31,8 +31,7 @@ use PHPUnit\Framework\TestCase;
  * The built-in function list is version- and extension-fragile, so a broad prefix
  * cannot be frozen: `arr` alone shifts between 8.3, 8.4 and 8.5. Every prefix
  * queried below is instead narrow enough that its built-in matches are a single
- * long-stable core function, in the same way `ChildrenOfParityTest` freezes only
- * namespaces that hold no reflected symbols. The version-fragile *breadth* is
+ * long-stable core function. The version-fragile *breadth* is
  * covered by {@see testBuiltinFunctionsReachTheSurfaceInBulk} and, name for name,
  * by {@see BuiltinFunctionParityTest}.
  *

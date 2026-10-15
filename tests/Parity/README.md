@@ -36,7 +36,7 @@ recaptures **only** that surface's golden while the others stay frozen.
     affected surface (below) and read every changed line before committing.
 - **Editing a fixture the harness uses changes its golden.** Each surface test names
   its corpus (`CORPUS` / `INDEXED_DOCUMENTS` / the query lists). Adding a method to
-  `User`, or a file under `Fixtures\Model` or `Fixtures\Catalog`, will shift the
+  `User`, or a file under `Fixtures\Catalog`, will shift the
   relevant golden — that is expected; recapture and review. Avoid growing the parity
   corpus for unrelated tests: it is deliberately small and stable so unrelated
   fixture churn does not ripple here.
