@@ -6,7 +6,6 @@ resolution; this covers the knowledge surfaces:
 | Surface | Production entry point | Golden |
 |---|---|---|
 | class-like lookup | `SymbolSourceInterface::lookupClassLike()` | `goldens/class-like-lookup.json` |
-| namespace enumeration | `SymbolSourceInterface::childrenOf()` | `goldens/children-of.json` |
 | prefix search | `SymbolSourceInterface::search()` | `goldens/prefix-search.json` |
 | document write path | open/update/close symbol state | `goldens/write-path.json` |
 | function completion | `SymbolCandidates::find()` with `[NameKind::Function_]` | `goldens/function-surface.json` |
@@ -37,7 +36,7 @@ recaptures **only** that surface's golden while the others stay frozen.
     affected surface (below) and read every changed line before committing.
 - **Editing a fixture the harness uses changes its golden.** Each surface test names
   its corpus (`CORPUS` / `INDEXED_DOCUMENTS` / the query lists). Adding a method to
-  `User`, or a file under `Fixtures\Model` or `Fixtures\Catalog`, will shift the
+  `User`, or a file under `Fixtures\Catalog`, will shift the
   relevant golden — that is expected; recapture and review. Avoid growing the parity
   corpus for unrelated tests: it is deliberately small and stable so unrelated
   fixture churn does not ripple here.
@@ -67,8 +66,7 @@ Goldens are frozen only over inputs that are identical across the CI PHP matrix:
 in-repo fixtures and the locked `psr/http-message` dependency.
 Built-in symbols (reflection) are version-fragile, so they are covered by
 stable-subset assertions instead of being frozen. Each surface picks the queries
-that keep that true: `children-of` enumerates only namespaces holding no reflected
-symbols, and `function-surface` queries only prefixes narrow enough to match a
+that keep that true: `function-surface` queries only prefixes narrow enough to match a
 single long-stable core function (`arr` shifts between 8.3 and 8.5; `array_map`
 does not). Absolute paths are relativized to the repo root so a golden does not
 embed the machine it was captured on.

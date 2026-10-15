@@ -501,6 +501,22 @@ final class BuiltinBackendTest extends TestCase
         );
     }
 
+    public function testAnInternalNamespaceListsAllItsSymbolsAndNestedNamespaces(): void
+    {
+        $random = $this->backend->childrenOf(new NamespaceName('Random'));
+
+        self::assertContains(
+            'Random\CryptoSafeEngine',
+            self::fqns($random),
+            'Every internal symbol of a namespace is filed there, not just one',
+        );
+        self::assertContains(
+            'Random\Engine',
+            $random->childNamespaces,
+            'A nested internal namespace is a child of its parent namespace',
+        );
+    }
+
     public function testUserlandSymbolsAreExcludedFromChildrenOf(): void
     {
         $contents = $this->backend->childrenOf(new NamespaceName(''));
