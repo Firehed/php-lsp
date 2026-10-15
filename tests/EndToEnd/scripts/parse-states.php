@@ -13,7 +13,7 @@ $states = [
 ];
 $thisStart = new Marker\CursorMarker('this_start');
 $thisVariable = new Marker\VariableMarker('this_var');
-$insideCall = new Marker\CursorMarker('this_in_if');
+$inCall = new Marker\CursorMarker('in_call');
 
 $scripts = [];
 foreach ($states as $state => [$file, $class]) {
@@ -24,18 +24,25 @@ foreach ($states as $state => [$file, $class]) {
             new Step\Hover($file, $thisVariable, expect: new Expectation\Shows($class)),
         ],
     );
-    $scripts["{$state}: \$this is offered as a variable"] = new Session\Script(
+    $scripts["{$state}: \$this is offered as the enclosing class"] = new Session\Script(
         project: 'tests/Fixtures',
         steps: [
             new Step\Open($file),
-            new Step\Complete($file, $thisStart, expect: [new Expectation\Offers('$this')]),
+            new Step\Complete($file, $thisStart, expect: [new Expectation\Details('$this', $class)]),
+        ],
+    );
+    $scripts["{$state}: \$this-> offers the class's members"] = new Session\Script(
+        project: 'tests/Fixtures',
+        steps: [
+            new Step\Open($file),
+            new Step\Complete($file, $inCall, expect: [new Expectation\Offers('name')]),
         ],
     );
     $scripts["{$state}: signature help inside a call"] = new Session\Script(
         project: 'tests/Fixtures',
         steps: [
             new Step\Open($file),
-            new Step\SignatureHelp($file, $insideCall, expect: new Expectation\SignatureShows('strlen')),
+            new Step\SignatureHelp($file, $inCall, expect: new Expectation\SignatureShows('strlen')),
         ],
     );
 }
