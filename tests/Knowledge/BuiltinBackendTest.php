@@ -494,10 +494,21 @@ final class BuiltinBackendTest extends TestCase
             'Random\Randomizer is internal but namespaced; it does not belong to global',
         );
 
+        $random = $this->backend->childrenOf(new NamespaceName('Random'));
         self::assertContains(
             'Random\Randomizer',
-            self::fqns($this->backend->childrenOf(new NamespaceName('Random'))),
+            self::fqns($random),
             'An internal namespaced class is filed under its real namespace',
+        );
+        self::assertContains(
+            'Random\CryptoSafeEngine',
+            self::fqns($random),
+            'Every internal symbol of a namespace is filed there, not just one',
+        );
+        self::assertContains(
+            'Random\Engine',
+            $random->childNamespaces,
+            'A nested internal namespace is a child of its parent namespace',
         );
     }
 
