@@ -10,7 +10,7 @@ class Recovered
 
     public function test(): void
     {
-        strlen($this->/*|this_in_if*/name);
+        strlen(/*|this_start*/$this->/*|in_call*/name); //jtd:this_var this
         $bad =
     }
 }
