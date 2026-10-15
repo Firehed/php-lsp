@@ -538,6 +538,19 @@ final class ComposerMapBackendTest extends TestCase
         );
     }
 
+    public function testChildrenOfListsANameAsBothAClassAndAChildNamespace(): void
+    {
+        // src/Model/Env.php sits beside src/Model/Env/.
+        $contents = $this->backend()->childrenOf(new NamespaceName('Fixtures\Model'));
+
+        self::assertContains('Fixtures\Model\Env', self::fqns($contents), 'Env.php declares a class');
+        self::assertContains(
+            'Fixtures\Model\Env',
+            $contents->childNamespaces,
+            'the Env/ directory beside it is still a child namespace',
+        );
+    }
+
     public function testChildrenOfEnumeratesPsr0Contents(): void
     {
         $contents = $this->backend()->childrenOf(new NamespaceName('Psr0'));
