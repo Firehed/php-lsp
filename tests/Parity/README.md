@@ -11,10 +11,10 @@ resolution; this covers the knowledge surfaces:
 | broken-file completion | `CompletionHandler::handle()` at cursors in broken fixtures | `goldens/completion-broken-first-open.json`, `goldens/completion-broken-mid-edit.json` |
 
 `BuiltinFunctionParityTest` is an **oracle, not a golden**: it asserts
-the built-in backend enumerates exactly the functions `get_defined_functions()`
-reports, the way `TypeGraphParityTest` uses reflection as the oracle for members.
-The set cannot be frozen, but it can be compared against the runtime truth
-the production path reads today.
+the built-in backend enumerates (`childrenOf()`) and searches (`search()`, which
+completion reads) exactly the functions `get_defined_functions()` reports, the
+way `TypeGraphParityTest` uses reflection as the oracle for members. The set
+cannot be frozen, but it can be compared against the runtime truth.
 
 Each surface's observable output over a curated fixture corpus is captured once,
 spot-audited, committed, and diffed on every run. A behavior-preserving step must
@@ -63,8 +63,8 @@ is correct. Recapture is deliberate, not a way to make a red run pass.
 Goldens are frozen only over inputs that are identical across the CI PHP matrix:
 in-repo fixtures and the locked `psr/http-message` dependency.
 Built-in symbols (reflection) are version-fragile, so they are covered by
-stable-subset assertions instead of being frozen. Absolute paths are relativized to the repo root so a golden does not
-embed the machine it was captured on.
+stable-subset assertions instead of being frozen. Absolute paths are relativized
+to the repo root so a golden does not embed the machine it was captured on.
 
 ## Surface coverage (the corpus-gap check)
 
