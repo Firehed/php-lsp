@@ -21,9 +21,7 @@ use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
-use Firehed\PhpLsp\Knowledge\FileDeclarations;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -45,19 +43,14 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
 
     private const array USER = ['src/Domain/User.php', 'Fixtures\Domain\User'];
 
-    private DeclarationSymbolInfoFactory $factory;
-    private FileDeclarations $declarations;
+    /** @var list<DeclaredSymbol> */
+    private array $declared;
     private string $path;
 
     protected function setUp(): void
     {
-        $this->factory = new DeclarationSymbolInfoFactory();
         $this->path = $this->fixturePath(self::FIXTURE);
-
-        $production = ProductionSyntaxSource::create();
-        $document = $production->reader->read($this->path);
-        self::assertNotNull($document, 'the fixture must be readable so declarations can be scanned');
-        $this->declarations = (new DeclarationScanner())->scan($production->source->parse($document)->tree);
+        $this->declared = $this->declaredIn(self::FIXTURE);
     }
 
     public function testBuildsClassInfoForAClassLikeDeclaration(): void
@@ -130,11 +123,6 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
 
     public function testConstantsAreBuilt(): void
     {
-        self::assertNotSame(
-            [],
-            $this->declarations->constants,
-            'the fixture must declare constants, or this test would pass vacuously',
-        );
         $info = $this->build('Fixtures\Helpers\HELPER_LIMIT', NameKind::Constant);
         self::assertInstanceOf(
             \Firehed\PhpLsp\Domain\ConstantInfo::class,
@@ -146,7 +134,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     public function testAllInReportsEveryBuildableDeclarationWithItsKind(): void
     {
         $reported = [];
-        foreach ($this->factory->allIn($this->declarations, $this->path) as $symbol) {
+        foreach ($this->declared as $symbol) {
             $reported[] = $symbol->kind->name . '|' . $symbol->name->fullyQualifiedName();
         }
 
@@ -169,12 +157,8 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
 
     public function testAllInKeepsTheFirstOfDuplicateDeclarations(): void
     {
-        $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
-        $document = new TextDocument('file:///dupes.php', 'php', 1, $content);
-        $ast = ProductionSyntaxSource::create()->source->parse($document)->tree;
-
         $names = [];
-        foreach ($this->factory->allIn((new DeclarationScanner())->scan($ast), '/dupes.php') as $symbol) {
+        foreach ($this->declaredIn('MultiClass/DuplicateDeclarations.php') as $symbol) {
             $names[] = $symbol->kind->name . '|' . $symbol->name->fullyQualifiedName();
         }
 
@@ -314,15 +298,9 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     {
         // Same shape as the promoted-property fixture, in a free-standing
         // function's parameter list.
-        $path = $this->fixturePath('src/IncompleteCode/BrokenParameters.php');
-        $production = ProductionSyntaxSource::create();
-        $document = $production->reader->read($path);
-        self::assertNotNull($document);
-        $declarations = (new DeclarationScanner())->scan($production->source->parse($document)->tree);
-
         $name = QualifiedName::fromFullyQualified('Fixtures\IncompleteCode\brokenFreeStandingParam');
         $info = array_find(
-            $this->factory->allIn($declarations, $path),
+            $this->declaredIn('src/IncompleteCode/BrokenParameters.php'),
             static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, NameKind::Function_),
         )?->info;
 
@@ -781,25 +759,32 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     {
         $name = QualifiedName::fromFullyQualified($fqn);
         return array_find(
-            $this->factory->allIn($this->declarations, $this->path),
+            $this->declared,
             static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, $kind),
         )?->info;
     }
 
     private function buildClassInfoFromFixture(string $fixturePath, string $fqn): ClassInfo
     {
-        $path = $this->fixturePath($fixturePath);
-        $production = ProductionSyntaxSource::create();
-        $document = $production->reader->read($path);
-        self::assertNotNull($document, "the fixture $fixturePath must be readable");
-        $declarations = (new DeclarationScanner())->scan($production->source->parse($document)->tree);
-
         $name = QualifiedName::fromFullyQualified($fqn);
         $info = array_find(
-            $this->factory->allIn($declarations, $path),
+            $this->declaredIn($fixturePath),
             static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, NameKind::ClassLike),
         )?->info;
         self::assertInstanceOf(ClassInfo::class, $info, "the fixture must declare $fqn as a class-like");
         return $info;
+    }
+
+    /**
+     * What the one production route reports for a fixture, so these cases
+     * describe the {@see \Firehed\PhpLsp\Knowledge\DeclarationSourceInterface} contract callers rely on.
+     *
+     * @return list<DeclaredSymbol>
+     */
+    private function declaredIn(string $fixture): array
+    {
+        return ProductionSyntaxSource::create()->declarations->declarationsIn(
+            new TextDocument($this->fixturePath($fixture), 'php', 1, $this->loadFixture($fixture)),
+        );
     }
 }
