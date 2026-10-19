@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -416,6 +417,102 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         self::assertSame($isFinal, $info->isFinal, 'only a final class is final');
         self::assertSame($isReadonly, $info->isReadonly, 'only a readonly class is readonly');
         self::assertSame($isAttribute, $info->isAttribute, 'a class declared with #[Attribute] is an attribute');
+    }
+
+    /**
+     * @return iterable<string, array{string, string, ?string, list<string>, list<string>}>
+     */
+    public static function supertypes(): iterable
+    {
+        yield 'class extending a class and implementing an interface' => [
+            'src/Exception/AppException.php',
+            'Fixtures\Exception\AppException',
+            'RuntimeException',
+            ['Fixtures\Exception\ExceptionInterface'],
+            [],
+        ];
+        yield 'class implementing interfaces and using a trait' => [
+            'src/Domain/User.php',
+            'Fixtures\Domain\User',
+            null,
+            ['Fixtures\Domain\Entity', 'Fixtures\Domain\Person'],
+            ['Fixtures\Traits\HasTimestamps'],
+        ];
+        yield 'interface extending several' => [
+            'src/Hierarchy/LeafInterface.php',
+            'Fixtures\Hierarchy\LeafInterface',
+            null,
+            ['Fixtures\Hierarchy\MiddleInterface', 'Countable'],
+            [],
+        ];
+        yield 'trait using a trait' => [
+            'src/Hierarchy/OuterTrait.php',
+            'Fixtures\Hierarchy\OuterTrait',
+            null,
+            [],
+            ['Fixtures\Hierarchy\InnerTrait'],
+        ];
+        yield 'pure enum' => [
+            'src/Enum/Status.php',
+            'Fixtures\Enum\Status',
+            null,
+            ['UnitEnum'],
+            [],
+        ];
+        yield 'backed enum implementing an interface' => [
+            'src/Enum/SerializableStatus.php',
+            'Fixtures\Enum\SerializableStatus',
+            null,
+            ['JsonSerializable', 'UnitEnum', 'BackedEnum'],
+            [],
+        ];
+    }
+
+    /**
+     * @param list<string> $interfaces
+     * @param list<string> $traits
+     */
+    #[DataProvider('supertypes')]
+    public function testClassLikeCarriesItsSupertypes(
+        string $fixture,
+        string $fqn,
+        ?string $parent,
+        array $interfaces,
+        array $traits,
+    ): void {
+        $info = $this->buildClassInfoFromFixture($fixture, $fqn);
+
+        self::assertEquals(
+            $parent === null ? null : ClasslikeName::fromFullyQualified($parent),
+            $info->parent,
+            'only a class has a parent, from its extends clause',
+        );
+        self::assertEquals(
+            array_map(ClasslikeName::fromFullyQualified(...), $interfaces),
+            $info->interfaces,
+            'a class or enum implements, an interface extends, and an enum also has its implicit interfaces',
+        );
+        self::assertEquals(
+            array_map(ClasslikeName::fromFullyQualified(...), $traits),
+            $info->traits,
+            'every trait a class-like uses is recorded',
+        );
+    }
+
+    public function testClassLikeCarriesItsDocblockAndFile(): void
+    {
+        $info = $this->buildClassInfoFromFixture('src/Domain/Entity.php', 'Fixtures\Domain\Entity');
+
+        self::assertSame(
+            "/**\n * Base interface for all domain entities.\n */",
+            $info->docblock,
+            'the declaration\'s doc comment is kept as written',
+        );
+        self::assertSame(
+            $this->fixturePath('src/Domain/Entity.php'),
+            $info->file,
+            'the declaring file is recorded from the path given',
+        );
     }
 
     private function build(string $fqn, NameKind $kind): ?SymbolInfoInterface
