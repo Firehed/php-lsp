@@ -104,15 +104,13 @@ final class CallContextDetector
     }
 
     /**
-     * Whether the cursor is past what is called, so in the argument list rather
-     * than on the name.
+     * Whether the cursor is past the `(` that opens the call's argument list,
+     * rather than on what is called.
      */
-    private static function inArguments(
-        FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
-        int $offset,
-    ): bool {
-        $callee = $call instanceof New_ ? $call->class : $call->name;
-        return $offset > $callee->getEndFilePos() + 1;
+    private static function inArguments(Node $call, int $offset): bool
+    {
+        $open = ParsedDocument::argumentListStartOf($call);
+        return $open !== null && $offset > $open;
     }
 
     /**
