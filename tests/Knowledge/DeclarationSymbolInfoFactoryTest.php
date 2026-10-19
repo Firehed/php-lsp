@@ -8,11 +8,18 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
+use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\ParameterInfo;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
+use Firehed\PhpLsp\Domain\TypeInterface;
+use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
@@ -512,6 +519,140 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
             $this->fixturePath('src/Domain/Entity.php'),
             $info->file,
             'the declaring file is recorded from the path given',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, Visibility, bool, bool}>
+     */
+    public static function methodModifiers(): iterable
+    {
+        $parent = ['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
+        yield 'public static' => [...$parent, 'staticMethod', Visibility::Public, true, false];
+        yield 'private static' => [...$parent, 'privateStaticMethod', Visibility::Private, true, false];
+        yield 'protected' => [...$parent, 'protectedMethod', Visibility::Protected, false, false];
+        yield 'abstract' => [
+            'src/Utility/ClassModifiers.php',
+            'Fixtures\Utility\AbstractBase',
+            'doSomething',
+            Visibility::Public,
+            false,
+            true,
+        ];
+    }
+
+    #[DataProvider('methodModifiers')]
+    public function testMethodCarriesItsModifiers(
+        string $fixture,
+        string $fqn,
+        string $method,
+        Visibility $visibility,
+        bool $isStatic,
+        bool $isAbstract,
+    ): void {
+        $info = $this->buildClassInfoFromFixture($fixture, $fqn)->methods[$method];
+
+        self::assertSame($visibility, $info->visibility, 'the visibility keyword decides visibility');
+        self::assertSame($isStatic, $info->isStatic, 'only a static method is static');
+        self::assertSame($isAbstract, $info->isAbstract, 'only an abstract method is abstract');
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, TypeInterface}>
+     */
+    public static function methodReturnTypes(): iterable
+    {
+        yield 'self stays late-bound' => [
+            'src/Domain/Team.php',
+            'Fixtures\Domain\Team',
+            'withLeader',
+            new LateStaticType(LateBindingKeyword::Self, ClasslikeName::fromFullyQualified('Fixtures\Domain\Team')),
+        ];
+        yield 'static stays late-bound' => [
+            'src/Traits/SingletonTrait.php',
+            'Fixtures\Traits\SingletonTrait',
+            'instance',
+            new LateStaticType(
+                LateBindingKeyword::Static,
+                ClasslikeName::fromFullyQualified('Fixtures\Traits\SingletonTrait'),
+            ),
+        ];
+        yield 'nullable class' => [
+            'src/Domain/User.php',
+            'Fixtures\Domain\User',
+            'getTeam',
+            new UnionType([
+                new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Domain\Team')),
+                new PrimitiveType('null'),
+            ]),
+        ];
+    }
+
+    #[DataProvider('methodReturnTypes')]
+    public function testMethodCarriesItsReturnType(
+        string $fixture,
+        string $fqn,
+        string $method,
+        TypeInterface $returnType,
+    ): void {
+        self::assertEquals(
+            $returnType,
+            $this->buildClassInfoFromFixture($fixture, $fqn)->methods[$method]->returnType,
+            'a return type of self or static is kept late-bound so a subclass can resolve it',
+        );
+    }
+
+    public function testMethodParametersCarryTypesAndDefaults(): void
+    {
+        $parameters = $this->buildClassInfoFromFixture('src/Domain/User.php', 'Fixtures\Domain\User')
+            ->methods['__construct']
+            ->parameters;
+
+        self::assertEquals(
+            new ParameterInfo('age', new PrimitiveType('int'), '0', 3, false, false),
+            $parameters[3],
+            'a scalar default is kept as PHP source',
+        );
+        self::assertEquals(
+            new ParameterInfo(
+                'status',
+                new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Enum\Status')),
+                '\Fixtures\Enum\Status::Active',
+                4,
+                false,
+                false,
+            ),
+            $parameters[4],
+            'a class-constant default is printed with its resolved name',
+        );
+        self::assertEquals(
+            new ParameterInfo(
+                'manager',
+                new UnionType([
+                    new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Domain\User')),
+                    new PrimitiveType('null'),
+                ]),
+                'null',
+                5,
+                false,
+                false,
+            ),
+            $parameters[5],
+            'a nullable parameter carries the null member of its type',
+        );
+    }
+
+    public function testUntypedParameterHasNoType(): void
+    {
+        $parameters = $this->buildClassInfoFromFixture(
+            'vendor/psr/http-message/src/ServerRequestInterface.php',
+            'Psr\Http\Message\ServerRequestInterface',
+        )->methods['getAttribute']->parameters;
+
+        self::assertEquals(
+            new ParameterInfo('default', null, 'null', 1, false, false),
+            $parameters[1],
+            'a parameter declared without a type has none',
         );
     }
 
