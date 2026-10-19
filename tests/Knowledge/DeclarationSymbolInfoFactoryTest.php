@@ -656,6 +656,124 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<string, array{string, string, string, Visibility, bool, bool, TypeInterface}>
+     */
+    public static function properties(): iterable
+    {
+        $user = ['src/Domain/User.php', 'Fixtures\Domain\User'];
+        $parent = ['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
+        $int = new PrimitiveType('int');
+        $string = new PrimitiveType('string');
+        yield 'private static' => [...$user, 'instanceCount', Visibility::Private, true, false, $int];
+        yield 'private readonly' => [...$user, 'id', Visibility::Private, false, true, $string];
+        yield 'public nullable' => [
+            ...$user,
+            'manager',
+            Visibility::Public,
+            false,
+            false,
+            new UnionType([
+                new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Domain\User')),
+                new PrimitiveType('null'),
+            ]),
+        ];
+        yield 'public static' => [...$parent, 'staticProperty', Visibility::Public, true, false, $string];
+        yield 'protected' => [...$parent, 'protectedProperty', Visibility::Protected, false, false, $int];
+    }
+
+    #[DataProvider('properties')]
+    public function testPropertyCarriesItsModifiersAndType(
+        string $fixture,
+        string $fqn,
+        string $property,
+        Visibility $visibility,
+        bool $isStatic,
+        bool $isReadonly,
+        TypeInterface $type,
+    ): void {
+        $info = $this->buildClassInfoFromFixture($fixture, $fqn)->properties[$property];
+
+        self::assertSame($visibility, $info->visibility, 'the visibility keyword decides visibility');
+        self::assertSame($isStatic, $info->isStatic, 'only a static property is static');
+        self::assertSame($isReadonly, $info->isReadonly, 'only a readonly property is readonly');
+        self::assertEquals($type, $info->type, 'the declared type is carried');
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, Visibility}>
+     */
+    public static function classConstants(): iterable
+    {
+        $parent = ['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
+        yield 'public' => [...$parent, 'PARENT_CONST', Visibility::Public];
+        yield 'protected' => [...$parent, 'PROTECTED_CONST', Visibility::Protected];
+        yield 'interface' => [
+            'src/Hierarchy/BaseInterface.php',
+            'Fixtures\Hierarchy\BaseInterface',
+            'BASE_CONST',
+            Visibility::Public,
+        ];
+    }
+
+    #[DataProvider('classConstants')]
+    public function testClassConstantCarriesItsVisibility(
+        string $fixture,
+        string $fqn,
+        string $constant,
+        Visibility $visibility,
+    ): void {
+        $constants = $this->buildClassInfoFromFixture($fixture, $fqn)->constants;
+
+        self::assertArrayHasKey($constant, $constants, 'a class-like\'s own constant is recorded');
+        self::assertSame($visibility, $constants[$constant]->visibility, 'the visibility keyword decides visibility');
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, int|string|null}>
+     */
+    public static function enumCases(): iterable
+    {
+        yield 'int-backed' => ['src/Enum/Priority.php', 'Fixtures\Enum\Priority', 'Low', 1];
+        yield 'string-backed' => ['src/Enum/Color.php', 'Fixtures\Enum\Color', 'Red', 'red'];
+        yield 'pure' => ['src/Enum/Status.php', 'Fixtures\Enum\Status', 'Active', null];
+    }
+
+    #[DataProvider('enumCases')]
+    public function testEnumCaseCarriesItsBackingValue(
+        string $fixture,
+        string $fqn,
+        string $case,
+        int|string|null $backingValue,
+    ): void {
+        $cases = $this->buildClassInfoFromFixture($fixture, $fqn)->enumCases;
+
+        self::assertArrayHasKey($case, $cases, 'each declared case is recorded');
+        self::assertSame($backingValue, $cases[$case]->backingValue, 'the backing value is kept with its type');
+    }
+
+    public function testBackedEnumAddsImplicitMembersTypedByItsBackingType(): void
+    {
+        $info = $this->buildClassInfoFromFixture('src/Enum/Priority.php', 'Fixtures\Enum\Priority');
+
+        self::assertArrayHasKey('fromScore', $info->methods, 'a declared method is kept alongside the implicit ones');
+        self::assertEquals(
+            new PrimitiveType('int'),
+            $info->methods['from']->parameters[0]->type,
+            'from() takes the backing type',
+        );
+        self::assertEquals(new PrimitiveType('int'), $info->properties['value']->type, '$value has the backing type');
+    }
+
+    public function testPureEnumHasNoBackedMembers(): void
+    {
+        $info = $this->buildClassInfoFromFixture('src/Enum/Status.php', 'Fixtures\Enum\Status');
+
+        self::assertArrayHasKey('cases', $info->methods, 'every enum has cases()');
+        self::assertArrayNotHasKey('from', $info->methods, 'only a backed enum has from()');
+        self::assertArrayNotHasKey('value', $info->properties, 'only a backed enum has $value');
+    }
+
     private function build(string $fqn, NameKind $kind): ?SymbolInfoInterface
     {
         $name = QualifiedName::fromFullyQualified($fqn);
