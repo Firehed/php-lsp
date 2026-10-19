@@ -124,52 +124,6 @@ final class TreeAnnotatorTest extends TestCase
         );
     }
 
-    public function testAnnotateRecordsWhereEachCallsArgumentListOpens(): void
-    {
-        $content = $this->loadFixture('src/ParseHealth/ArgumentSeparators.php');
-        $parser = (new ParserFactory())->createForNewestSupportedVersion();
-        $tree = $parser->parse($content) ?? [];
-
-        $annotated = (new TreeAnnotator())->annotate($tree, $parser->getTokens());
-
-        $calls = (new NodeFinder())->find($annotated, static fn (Node $node): bool => $node instanceof CallLike
-            || $node instanceof Attribute);
-        self::assertNotSame([], $calls, 'the fixture must hold calls');
-        foreach ($calls as $call) {
-            $open = ParsedDocument::argumentListStartOf($call);
-            self::assertNotNull($open, 'every call in the fixture is written with its parentheses');
-            self::assertSame('(', $content[$open], 'the recorded position is a `(`');
-            self::assertSame(
-                $call,
-                (new NodeAtPosition())->find(
-                    $annotated,
-                    $open,
-                    static fn (Node $node): bool => $node instanceof CallLike || $node instanceof Attribute,
-                ),
-                'the `(` is the call\'s own, not one inside its callee or a nested call',
-            );
-        }
-    }
-
-    public function testAnnotateRecordsNoArgumentListForACallWrittenWithoutOne(): void
-    {
-        $parser = (new ParserFactory())->createForNewestSupportedVersion();
-        $tree = $parser->parse($this->loadFixture('src/Attributes/UsesAttribute.php')) ?? [];
-
-        $annotated = (new TreeAnnotator())->annotate($tree, $parser->getTokens());
-
-        $attribute = (new NodeFinder())->findFirstInstanceOf($annotated, Attribute::class);
-        self::assertInstanceOf(Attribute::class, $attribute, 'the fixture is declared with an attribute');
-        self::assertTrue(
-            $attribute->hasAttribute(ParsedDocument::ARGUMENT_LIST_START),
-            'a call written without parentheses still records that it has no argument list',
-        );
-        self::assertNull(
-            ParsedDocument::argumentListStartOf($attribute),
-            '`#[NoConstructorAttribute]` has no argument list',
-        );
-    }
-
     private static function extractNewName(\PhpParser\Node $node): ?Name
     {
         if (!$node instanceof \PhpParser\Node\Stmt\Expression) {

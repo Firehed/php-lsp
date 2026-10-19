@@ -77,7 +77,7 @@ trait AssertsTreeContractTrait
                 );
             }
             self::assertNameResolved($node, $context);
-            self::assertArgumentListRecorded($node, $context);
+            self::assertArgumentSeparatorsRecorded($node, $context);
         };
 
         (new NodeTraverser(new class ($check) extends NodeVisitorAbstract {
@@ -135,7 +135,7 @@ trait AssertsTreeContractTrait
         self::fail("{$context}: `{$node->toString()}` at {$node->getStartFilePos()} must be fully qualified");
     }
 
-    private static function assertArgumentListRecorded(Node $node, string $context): void
+    private static function assertArgumentSeparatorsRecorded(Node $node, string $context): void
     {
         if (!$node instanceof CallLike && !$node instanceof Node\Attribute) {
             return;
@@ -143,10 +143,6 @@ trait AssertsTreeContractTrait
         self::assertNotNull(
             ParsedDocument::argumentSeparatorsOf($node),
             "{$context}: {$node->getType()} at {$node->getStartFilePos()} must record its argument separators",
-        );
-        self::assertTrue(
-            $node->hasAttribute(ParsedDocument::ARGUMENT_LIST_START),
-            "{$context}: {$node->getType()} at {$node->getStartFilePos()} must record where its argument list opens",
         );
     }
 }

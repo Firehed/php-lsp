@@ -44,10 +44,9 @@ final class CallContextDetector
     public function detect(ParsedDocument $parsed, int $offset): ?array
     {
         $node = $this->locator->nodeAt($parsed, $offset);
-        // Walk parents until a call whose arguments hold the cursor is found. The
-        // tree annotator sets the parent attribute, so this is a pointer walk, not
-        // a traversal.
-        while ($node !== null && !(self::isCallLike($node) && self::inArguments($node, $offset))) {
+        // Walk parents until an enclosing call is found. The tree annotator sets
+        // the parent attribute, so this is a pointer walk, not a traversal.
+        while ($node !== null && !self::isCallLike($node)) {
             $parent = $node->getAttribute('parent');
             $node = $parent instanceof Node ? $parent : null;
         }
@@ -101,16 +100,6 @@ final class CallContextDetector
             && !$typing->byRef
             && $value->name->getEndFilePos() - $value->name->getStartFilePos() + 1 === strlen($value->name->getLast());
         return !$bareWord && $offset > $typing->getStartFilePos();
-    }
-
-    /**
-     * Whether the cursor is past the `(` that opens the call's argument list,
-     * rather than on what is called.
-     */
-    private static function inArguments(Node $call, int $offset): bool
-    {
-        $open = ParsedDocument::argumentListStartOf($call);
-        return $open !== null && $offset > $open;
     }
 
     /**

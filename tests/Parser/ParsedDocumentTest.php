@@ -58,28 +58,4 @@ final class ParsedDocumentTest extends TestCase
             'a call\'s separators are its recorded positions, or nothing when they are missing or malformed',
         );
     }
-
-    /**
-     * @return array<string, array{mixed, ?int}>
-     */
-    public static function argumentListStartAttributes(): array
-    {
-        return [
-            'a recorded position' => [4, 4],
-            'no argument list' => [null, null],
-            'not a position' => ['4', null],
-        ];
-    }
-
-    #[DataProvider('argumentListStartAttributes')]
-    public function testArgumentListStartIsReadAsAPosition(mixed $attribute, ?int $expected): void
-    {
-        $call = new FuncCall(new Name('f'), attributes: [ParsedDocument::ARGUMENT_LIST_START => $attribute]);
-
-        self::assertSame(
-            $expected,
-            ParsedDocument::argumentListStartOf($call),
-            'where a call\'s argument list opens is its recorded position, or nothing',
-        );
-    }
 }

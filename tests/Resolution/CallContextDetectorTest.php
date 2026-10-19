@@ -76,41 +76,6 @@ final class CallContextDetectorTest extends TestCase
     }
 
     /**
-     * @return array<string, array{string}>
-     */
-    public static function namesOfCalls(): array
-    {
-        return [
-            'a static method' => ['on_call_name'],
-            'an instance method' => ['on_method_name'],
-            'the class after new' => ['on_new_class_name'],
-            'a space before the (' => ['before_spaced_paren'],
-            'the } closing an expression callee' => ['after_expression_callee'],
-        ];
-    }
-
-    #[DataProvider('namesOfCalls')]
-    public function testACallsOwnNameIsOutsideItsArguments(string $marker): void
-    {
-        self::assertNull(
-            $this->detectAt('SignatureHelp.php', $marker),
-            'the cursor on the called name is not in the argument list, so no call is being typed',
-        );
-    }
-
-    public function testAnInnerCallsNameIsInTheOuterCallsArguments(): void
-    {
-        $detection = $this->detectAt('SignatureHelp.php', 'on_inner_call_name');
-
-        self::assertNotNull($detection, 'the inner call\'s name sits in the outer call\'s first argument');
-        [$call, $active] = $detection;
-        self::assertInstanceOf(FuncCall::class, $call, 'the outer call encloses the cursor');
-        self::assertInstanceOf(Name::class, $call->name);
-        self::assertSame('signatureHelpAdd', $call->name->toString(), 'the outer call, not the inner one');
-        self::assertSame(0, $active, 'the inner call is the first argument');
-    }
-
-    /**
      * @return array<string, array{string, int, int}>
      */
     public static function boundaries(): array
@@ -215,16 +180,13 @@ final class CallContextDetectorTest extends TestCase
     public function testRejectsACallWithoutItsArgumentSeparators(): void
     {
         $locator = self::createStub(NodeLocatorInterface::class);
-        $locator->method('nodeAt')->willReturn(
-            new FuncCall(new Name('f'), attributes: [ParsedDocument::ARGUMENT_LIST_START => 1]),
-        );
+        $locator->method('nodeAt')->willReturn(new FuncCall(new Name('f')));
 
         $this->expectException(LogicException::class);
 
-        // Past the `(`, as if just inside `f(`.
         (new CallContextDetector($locator))->detect(
             new ParsedDocument(new TextDocument('file:///f.php', 'php', 1, ''), []),
-            2,
+            0,
         );
     }
 
