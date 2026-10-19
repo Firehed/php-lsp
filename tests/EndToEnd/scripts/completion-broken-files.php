@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\EndToEnd;
 
-// Completion in files whose text does not parse, opened that way.
+// Completion in files whose text does not parse, whether opened that way or
+// changed to it.
 $complete = fn (
     string $file,
     string $marker,
@@ -25,6 +26,7 @@ $inControl = 'src/IncompleteCode/InControlStructures.php';
 $parentAccess = 'src/IncompleteCode/ParentAccess.php';
 $staticAccess = 'TopLevel/static_access.php';
 $thisAccess = 'TopLevel/this_access.php';
+$seed = 'TopLevel/very_broken_seed.php';
 
 $userMembers = new Expectation\Offers('getName', 'manager');
 $userStatics = new Expectation\Offers(
@@ -36,7 +38,6 @@ $userStatics = new Expectation\Offers(
     'triggerDefViaAssignment',
 );
 $nothing = new Expectation\NoAnswer();
-$seed = 'TopLevel/very_broken_seed.php';
 
 return [
     'an aliased import as a parameter type' => $complete($aliased, 'aliased_param', $userMembers),
@@ -44,7 +45,7 @@ return [
     'arguments to new on a name imported as both a class and a function' => $complete(
         $aliased,
         'colliding_new',
-        new Expectation\Offers('Widget', 'AliasedUser'),
+        new Expectation\Details('Widget', 'Fixtures\Namespacing\Models\Widget'),
     ),
     'static access on a name imported as both a class and a function' => $complete(
         $aliased,
