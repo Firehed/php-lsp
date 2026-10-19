@@ -28,20 +28,28 @@ $staticAccess = 'TopLevel/static_access.php';
 $thisAccess = 'TopLevel/this_access.php';
 $seed = 'TopLevel/very_broken_seed.php';
 
-$userMembers = new Expectation\Offers('getName', 'manager');
-$userStatics = new Expectation\Offers(
-    'DEFAULT_ROLE',
-    'class',
-    'create',
-    'getInstanceCount',
-    'triggerDefNullsafeViaAssignment',
-    'triggerDefViaAssignment',
-);
+// From outside User: its public instance members, not private, static or constant ones.
+$userMembers = [
+    new Expectation\Offers('getName', 'manager'),
+    new Expectation\Withholds('email', 'create', 'DEFAULT_ROLE'),
+];
+// From outside User: its public static members, not instance or private ones.
+$userStatics = [
+    new Expectation\Offers(
+        'DEFAULT_ROLE',
+        'class',
+        'create',
+        'getInstanceCount',
+        'triggerDefNullsafeViaAssignment',
+        'triggerDefViaAssignment',
+    ),
+    new Expectation\Withholds('getName', 'instanceCount'),
+];
 $nothing = new Expectation\NoAnswer();
 
 return [
-    'an aliased import as a parameter type' => $complete($aliased, 'aliased_param', $userMembers),
-    'static access on an aliased import' => $complete($aliased, 'aliased_static_access', $userStatics),
+    'an aliased import as a parameter type' => $complete($aliased, 'aliased_param', ...$userMembers),
+    'static access on an aliased import' => $complete($aliased, 'aliased_static_access', ...$userStatics),
     'arguments to new on a name imported as both a class and a function' => $complete(
         $aliased,
         'colliding_new',
@@ -61,6 +69,7 @@ return [
         $brokenClass,
         'broken_static',
         new Expectation\Offers('NAME', 'class', 'create'),
+        new Expectation\Withholds('SECRET', 'privateHelper', 'instanceMethod'),
     ),
     'inherited instance members of a broken class' => $complete(
         $brokenInheritance,
@@ -84,6 +93,7 @@ return [
             'triggerHoverClassConstant',
             'triggerHoverStaticProperty',
         ),
+        new Expectation\Withholds('privateMethod', 'privateProperty', 'staticMethod', 'CHILD_CONST'),
     ),
     'inherited static members of a broken class' => $complete(
         $brokenInheritance,
@@ -100,6 +110,7 @@ return [
             'staticMethod',
             'staticProperty',
         ),
+        new Expectation\Withholds('parentMethod', 'privateStaticMethod'),
     ),
     'a doubled arrow' => $complete($chained, 'double_arrow', $nothing),
     'a chain through a member that does not exist' => $complete($chained, 'nonexistent_chain', $nothing),
@@ -108,17 +119,19 @@ return [
         $group,
         'group_aliased_static',
         new Expectation\Offers('Critical', 'High', 'Low', 'Medium', 'cases', 'class', 'from', 'fromScore', 'tryFrom'),
+        new Expectation\Withholds('name', 'value'),
     ),
-    'static access on a group import' => $complete($group, 'group_static_access', $userStatics),
-    'a group import as a parameter type' => $complete($group, 'group_user_param', $userMembers),
-    'a nullable parameter inside a control structure' => $complete($inControl, 'nullable_param', $userMembers),
+    'static access on a group import' => $complete($group, 'group_static_access', ...$userStatics),
+    'a group import as a parameter type' => $complete($group, 'group_user_param', ...$userMembers),
+    'a nullable parameter inside a control structure' => $complete($inControl, 'nullable_param', ...$userMembers),
     'a primitive parameter' => $complete($inControl, 'primitive_param', $nothing),
     'a $this prefix inside an if' => $complete(
         $inControl,
         'this_prefix_if',
         new Expectation\Offers('getName', 'getUser'),
+        new Expectation\Withholds('test'),
     ),
-    'a variable inside a while' => $complete($inControl, 'var_access_while', $userMembers),
+    'a variable inside a while' => $complete($inControl, 'var_access_while', ...$userMembers),
     'parent:: in a broken class' => $complete(
         $parentAccess,
         'parent_incomplete',
@@ -138,13 +151,14 @@ return [
             'triggerHoverClassConstant',
             'triggerHoverStaticProperty',
         ),
+        new Expectation\Withholds('privateMethod', 'privateStaticMethod'),
     ),
     'parent:: in a class that extends nothing' => $complete($parentAccess, 'parent_no_extends', $nothing),
     'a broken self:: outside a class' => $complete('TopLevel/broken_self.php', 'broken_self_toplevel', $nothing),
     'member access in a namespaced global scope' => $complete(
         'TopLevel/global_scope_completion_ns.php',
         'global_member_access_ns',
-        $userMembers,
+        ...$userMembers,
     ),
     'a nested position in global scope' => $complete('TopLevel/global_scope_nested.php', 'nested_marker', $nothing),
     'static access in a file with no tree' => $complete(
@@ -152,7 +166,7 @@ return [
         'empty_ast_static',
         new Expectation\Offers('class'),
     ),
-    'static access inside an anonymous class' => $complete($staticAccess, 'anon_class_static', $userStatics),
+    'static access inside an anonymous class' => $complete($staticAccess, 'anon_class_static', ...$userStatics),
     'self:: outside a class' => $complete($staticAccess, 'toplevel_self', $nothing),
     'static:: outside a class' => $complete($staticAccess, 'toplevel_static', $nothing),
     'a chain on $this outside a class' => $complete($thisAccess, 'this_chained_toplevel', $nothing),
