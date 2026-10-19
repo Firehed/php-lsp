@@ -5,7 +5,6 @@ resolution; this covers the knowledge surfaces:
 
 | Surface | Production entry point | Golden |
 |---|---|---|
-| class-like lookup | `SymbolSourceInterface::lookupClassLike()` | `goldens/class-like-lookup.json` |
 | prefix search | `SymbolSourceInterface::search()` | `goldens/prefix-search.json` |
 | document write path | open/update/close symbol state | `goldens/write-path.json` |
 | broken-file completion | `CompletionHandler::handle()` at cursors in broken fixtures | `goldens/completion-broken-first-open.json`, `goldens/completion-broken-mid-edit.json` |
