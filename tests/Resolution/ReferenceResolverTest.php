@@ -230,6 +230,13 @@ class ReferenceResolverTest extends TestCase
             '\Other\Thing',
             ReferenceKind::Unreachable,
         ];
+        yield 'function in an unrelated namespace' => [
+            'Other\calc_widgets',
+            NameKind::Function_,
+            new NameContext('App'),
+            '\Other\calc_widgets',
+            ReferenceKind::Unreachable,
+        ];
 
         // Constant names are case-sensitive; their namespace is not.
         yield 'constant short names are case-sensitive' => [
