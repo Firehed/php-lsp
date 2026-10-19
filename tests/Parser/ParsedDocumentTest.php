@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Parser\ArgumentList;
 use Firehed\PhpLsp\Parser\ParsedDocument;
+use LogicException;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Nop;
@@ -27,35 +29,40 @@ final class ParsedDocumentTest extends TestCase
         self::assertSame($tree, $parsed->tree, 'the tree is kept as given');
     }
 
+    public function testARecordedArgumentListIsReadBack(): void
+    {
+        $list = new ArgumentList(1, [3, 9]);
+        $call = new FuncCall(new Name('f'), attributes: [ParsedDocument::ARGUMENT_LIST => $list]);
+
+        self::assertSame($list, ParsedDocument::argumentListOf($call), 'the recorded argument list is the call\'s');
+    }
+
+    public function testACallWrittenWithoutParenthesesHasNoArgumentList(): void
+    {
+        $call = new FuncCall(new Name('f'), attributes: [ParsedDocument::ARGUMENT_LIST => null]);
+
+        self::assertNull(ParsedDocument::argumentListOf($call), 'null records that there is no argument list');
+    }
+
     /**
-     * @return array<string, array{mixed, ?list<int>}>
+     * @return array<string, array{array<string, mixed>}>
      */
-    public static function separatorAttributes(): array
+    public static function unrecordedArgumentLists(): array
     {
         return [
-            'recorded positions' => [[3, 9], [3, 9]],
-            'no commas' => [[], []],
-            'not recorded' => [null, null],
-            'not a list' => [[1 => 3], null],
-            'not positions' => [['3'], null],
+            'missing' => [[]],
+            'not an argument list' => [[ParsedDocument::ARGUMENT_LIST => [3, 9]]],
         ];
     }
 
     /**
-     * @param ?list<int> $expected
+     * @param array<string, mixed> $attributes
      */
-    #[DataProvider('separatorAttributes')]
-    public function testArgumentSeparatorsAreReadAsPositions(mixed $attribute, ?array $expected): void
+    #[DataProvider('unrecordedArgumentLists')]
+    public function testACallWhoseSourceDidNotRecordItsArgumentListIsRejected(array $attributes): void
     {
-        $call = new FuncCall(new Name('f'));
-        if ($attribute !== null) {
-            $call->setAttribute(ParsedDocument::ARGUMENT_SEPARATORS, $attribute);
-        }
+        $this->expectException(LogicException::class);
 
-        self::assertSame(
-            $expected,
-            ParsedDocument::argumentSeparatorsOf($call),
-            'a call\'s separators are its recorded positions, or nothing when they are missing or malformed',
-        );
+        ParsedDocument::argumentListOf(new FuncCall(new Name('f'), attributes: $attributes));
     }
 }

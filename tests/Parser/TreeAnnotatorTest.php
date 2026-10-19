@@ -79,7 +79,7 @@ final class TreeAnnotatorTest extends TestCase
         self::assertSame('Fixtures\\Domain\\User', $className->toString(), 'the first import still resolves the name');
     }
 
-    public function testAnnotateRecordsTheCommasSeparatingEachCallsArguments(): void
+    public function testAnnotateRecordsEachCallsOwnArgumentList(): void
     {
         $content = $this->loadFixture('src/ParseHealth/ArgumentSeparators.php');
         $parser = (new ParserFactory())->createForNewestSupportedVersion();
@@ -87,24 +87,21 @@ final class TreeAnnotatorTest extends TestCase
 
         $annotated = (new TreeAnnotator())->annotate($tree, $parser->getTokens());
 
-        $calls = (new NodeFinder())->find($annotated, static fn (Node $node): bool => $node instanceof CallLike
-            || $node instanceof Attribute);
+        $calls = (new NodeFinder())->find($annotated, self::isCall(...));
+        self::assertNotSame([], $calls, 'the fixture must hold calls');
         $recorded = [];
         foreach ($calls as $call) {
-            $separators = ParsedDocument::argumentSeparatorsOf($call);
-            self::assertNotNull($separators, 'every call carries its argument separators, even when it has none');
-            foreach ($separators as $position) {
+            $list = ParsedDocument::argumentListOf($call);
+            self::assertNotNull($list, 'every call in the fixture is written with its parentheses');
+            self::assertSame('(', $content[$list->opensAt], 'the list opens at a `(`');
+            foreach ([$list->opensAt, ...$list->separators] as $position) {
                 self::assertSame(
                     $call,
-                    (new NodeAtPosition())->find(
-                        $annotated,
-                        $position,
-                        static fn (Node $node): bool => $node instanceof CallLike || $node instanceof Attribute,
-                    ),
-                    'a comma is recorded only by the innermost call that holds it',
+                    (new NodeAtPosition())->find($annotated, $position, self::isCall(...)),
+                    'the `(` and commas recorded are the innermost call\'s own, never a callee\'s or a nested call\'s',
                 );
             }
-            array_push($recorded, ...$separators);
+            array_push($recorded, ...$list->separators);
         }
         sort($recorded);
         $expected = array_map(
@@ -122,6 +119,26 @@ final class TreeAnnotatorTest extends TestCase
             'only the commas between a call\'s own arguments are recorded, never ones inside strings, comments, '
                 . 'nested calls, arrays, or closures',
         );
+    }
+
+    public function testAnnotateRecordsNoArgumentListForACallWrittenWithoutOne(): void
+    {
+        $parser = (new ParserFactory())->createForNewestSupportedVersion();
+        $tree = $parser->parse($this->loadFixture('src/Attributes/UsesAttribute.php')) ?? [];
+
+        $annotated = (new TreeAnnotator())->annotate($tree, $parser->getTokens());
+
+        $attribute = (new NodeFinder())->findFirstInstanceOf($annotated, Attribute::class);
+        self::assertInstanceOf(Attribute::class, $attribute, 'the fixture is declared with an attribute');
+        self::assertNull(
+            ParsedDocument::argumentListOf($attribute),
+            '`#[NoConstructorAttribute]` records that it has no argument list',
+        );
+    }
+
+    private static function isCall(Node $node): bool
+    {
+        return $node instanceof CallLike || $node instanceof Attribute;
     }
 
     private static function extractNewName(\PhpParser\Node $node): ?Name

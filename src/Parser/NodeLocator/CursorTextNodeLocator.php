@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser\NodeLocator;
 
+use Firehed\PhpLsp\Parser\ArgumentList;
 use Firehed\PhpLsp\Parser\BuildsWrittenNamesTrait;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParsedDocument;
@@ -225,7 +226,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         $argsText = substr($content, $parenPos + 1, $offset - $parenPos - 1);
         [$args, $separators] = self::parseArgs($argsText, $parenPos + 1, $offset, $line, $memberInside);
         $callNode->args = $args;
-        $callNode->setAttribute(ParsedDocument::ARGUMENT_SEPARATORS, $separators);
+        $callNode->setAttribute(ParsedDocument::ARGUMENT_LIST, new ArgumentList($parenPos, $separators));
 
         $callStart = $callNode->getStartFilePos();
         $callNode->setAttribute('endFilePos', max($callStart, $offset));

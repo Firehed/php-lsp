@@ -102,11 +102,18 @@ final class AstTextAgreementTest extends TestCase
             $cursorCall::class,
             'call node class must agree between composite and cursor-text source',
         );
-        $parsedSeparators = ParsedDocument::argumentSeparatorsOf($compositeCall);
-        self::assertNotNull($parsedSeparators, 'a parsed call records its argument separators');
+        $parsedList = ParsedDocument::argumentListOf($compositeCall);
+        $cursorList = ParsedDocument::argumentListOf($cursorCall);
+        self::assertNotNull($parsedList, 'a parsed call records its argument list');
+        self::assertNotNull($cursorList, 'a rebuilt call records its argument list');
         self::assertSame(
-            array_values(array_filter($parsedSeparators, static fn (int $pos): bool => $pos < $offset)),
-            ParsedDocument::argumentSeparatorsOf($cursorCall),
+            $parsedList->opensAt,
+            $cursorList->opensAt,
+            'both paths must agree on where the argument list opens',
+        );
+        self::assertSame(
+            array_values(array_filter($parsedList->separators, static fn (int $pos): bool => $pos < $offset)),
+            $cursorList->separators,
             'the commas before the cursor must agree, so both paths count the same finished arguments',
         );
         self::assertTreeContractAgrees($compositeCall, $cursorCall);

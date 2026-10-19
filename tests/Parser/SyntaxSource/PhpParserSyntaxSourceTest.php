@@ -100,7 +100,7 @@ final class PhpParserSyntaxSourceTest extends TestCase
         self::assertNotNull($call, 'the fixture holds a static call');
         self::assertSame(
             [$this->markerOffset($content, 'static_1') - 1],
-            $call->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS),
+            ParsedDocument::argumentListOf($call)?->separators,
             'the parser\'s tokens reach the annotator, so parsed calls record their commas',
         );
     }

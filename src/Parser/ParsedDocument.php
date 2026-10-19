@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Parser;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
 
@@ -21,13 +22,15 @@ use PhpParser\Node\Stmt;
  *   a namespace, which PHP resolves at runtime: it keeps its written form and
  *   carries its `namespacedName`. A namespace or import declaration's own
  *   name is what it declares, so it too keeps its written form.
- * - On every call and attribute, an {@see self::ARGUMENT_SEPARATORS} attribute:
- *   the file positions, in order, of the commas within its span that separate
- *   its own arguments, a trailing comma included.
+ * - On every call and attribute, an {@see self::ARGUMENT_LIST} attribute: its
+ *   {@see ArgumentList}, or null when it is written without parentheses
+ *   (`new Foo`, `#[Foo]`). An anonymous class written with empty parentheses
+ *   (`new class() {}`), and an unclosed `new Foo(` the parser recovered, also
+ *   record null: the tree does not place their `(`.
  */
 final readonly class ParsedDocument
 {
-    public const string ARGUMENT_SEPARATORS = 'argumentSeparators';
+    public const string ARGUMENT_LIST = 'argumentList';
 
     /**
      * @param array<Stmt> $tree
@@ -39,24 +42,16 @@ final readonly class ParsedDocument
     }
 
     /**
-     * The {@see self::ARGUMENT_SEPARATORS} a call carries, or null when it
-     * carries none or they are not file positions.
+     * The {@see self::ARGUMENT_LIST} a call carries.
      *
-     * @return ?list<int>
+     * @throws LogicException when the source that built the call did not record it
      */
-    public static function argumentSeparatorsOf(Node $call): ?array
+    public static function argumentListOf(Node $call): ?ArgumentList
     {
-        $recorded = $call->getAttribute(self::ARGUMENT_SEPARATORS);
-        if (!is_array($recorded) || !array_is_list($recorded)) {
-            return null;
+        $recorded = $call->getAttribute(self::ARGUMENT_LIST, false);
+        if ($recorded !== null && !$recorded instanceof ArgumentList) {
+            throw new LogicException("A syntax source returned a {$call->getType()} without its argument list");
         }
-        $positions = [];
-        foreach ($recorded as $position) {
-            if (!is_int($position)) {
-                return null;
-            }
-            $positions[] = $position;
-        }
-        return $positions;
+        return $recorded;
     }
 }
