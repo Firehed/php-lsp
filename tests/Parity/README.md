@@ -7,7 +7,6 @@ resolution; this covers the knowledge surfaces:
 |---|---|---|
 | prefix search | `SymbolSourceInterface::search()` | `goldens/prefix-search.json` |
 | document write path | open/update/close symbol state | `goldens/write-path.json` |
-| broken-file completion | `CompletionHandler::handle()` at cursors in broken fixtures | `goldens/completion-broken-first-open.json`, `goldens/completion-broken-mid-edit.json` |
 
 `BuiltinFunctionParityTest` is an **oracle, not a golden**: it asserts
 the built-in backend enumerates (`childrenOf()`) and searches (`search()`, which
