@@ -226,6 +226,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         [$args, $separators] = self::parseArgs($argsText, $parenPos + 1, $offset, $line, $memberInside);
         $callNode->args = $args;
         $callNode->setAttribute(ParsedDocument::ARGUMENT_SEPARATORS, $separators);
+        $callNode->setAttribute(ParsedDocument::ARGUMENT_LIST_START, $parenPos);
 
         $callStart = $callNode->getStartFilePos();
         $callNode->setAttribute('endFilePos', max($callStart, $offset));

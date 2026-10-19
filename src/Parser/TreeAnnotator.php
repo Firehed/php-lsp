@@ -66,23 +66,22 @@ final class TreeAnnotator
     {
         $traverser = new NodeTraverser($this->parents, $this->names);
         if ($tokens !== []) {
-            $traverser->addVisitor(new class (
-                static fn (CallLike|Attribute $call): array => self::argumentSeparators($call, $tokens),
-            ) extends NodeVisitorAbstract {
+            $annotateCall = static function (CallLike|Attribute $call) use ($tokens): void {
+                $call->setAttribute(ParsedDocument::ARGUMENT_SEPARATORS, self::argumentSeparators($call, $tokens));
+                $call->setAttribute(ParsedDocument::ARGUMENT_LIST_START, self::argumentListStart($call, $tokens));
+            };
+            $traverser->addVisitor(new class ($annotateCall) extends NodeVisitorAbstract {
                 /**
-                 * @param Closure(CallLike|Attribute): list<int> $separatorsOf
+                 * @param Closure(CallLike|Attribute): void $annotateCall
                  */
-                public function __construct(private readonly Closure $separatorsOf)
+                public function __construct(private readonly Closure $annotateCall)
                 {
                 }
 
                 public function enterNode(Node $node): null
                 {
                     if ($node instanceof CallLike || $node instanceof Attribute) {
-                        $node->setAttribute(
-                            ParsedDocument::ARGUMENT_SEPARATORS,
-                            ($this->separatorsOf)($node),
-                        );
+                        ($this->annotateCall)($node);
                     }
                     return null;
                 }
@@ -91,6 +90,30 @@ final class TreeAnnotator
 
         /** @var array<Stmt> */
         return $traverser->traverse($tree);
+    }
+
+    /**
+     * The `(` is the last real token before the first argument, or, with none,
+     * before the `)` that closes the list (absent when recovery left it
+     * unclosed). A call written without parentheses has neither, and no list.
+     *
+     * @param array<Token> $tokens
+     */
+    private static function argumentListStart(CallLike|Attribute $call, array $tokens): ?int
+    {
+        $args = $call instanceof Attribute ? $call->args : $call->getRawArgs();
+        if ($args === []) {
+            $t = $call->getEndTokenPos();
+            if ($tokens[$t]->is(')')) {
+                $t--;
+            }
+        } else {
+            $t = $args[0]->getStartTokenPos() - 1;
+        }
+        while ($tokens[$t]->isIgnorable()) {
+            $t--;
+        }
+        return $tokens[$t]->is('(') ? $tokens[$t]->pos : null;
     }
 
     /**

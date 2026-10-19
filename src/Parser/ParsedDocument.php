@@ -24,10 +24,15 @@ use PhpParser\Node\Stmt;
  * - On every call and attribute, an {@see self::ARGUMENT_SEPARATORS} attribute:
  *   the file positions, in order, of the commas within its span that separate
  *   its own arguments, a trailing comma included.
+ * - On every call and attribute, an {@see self::ARGUMENT_LIST_START} attribute:
+ *   the file position of the `(` that opens its own argument list, or null when
+ *   it is written without one (`new Foo`, `#[Foo]`).
  */
 final readonly class ParsedDocument
 {
     public const string ARGUMENT_SEPARATORS = 'argumentSeparators';
+
+    public const string ARGUMENT_LIST_START = 'argumentListStart';
 
     /**
      * @param array<Stmt> $tree
@@ -36,6 +41,16 @@ final readonly class ParsedDocument
         public TextDocument $document,
         public array $tree,
     ) {
+    }
+
+    /**
+     * The {@see self::ARGUMENT_LIST_START} a call carries, or null when it has
+     * no argument list or the position is missing.
+     */
+    public static function argumentListStartOf(Node $call): ?int
+    {
+        $recorded = $call->getAttribute(self::ARGUMENT_LIST_START);
+        return is_int($recorded) ? $recorded : null;
     }
 
     /**
