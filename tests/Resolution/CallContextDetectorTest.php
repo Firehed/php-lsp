@@ -9,12 +9,10 @@ use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
-use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
-use LogicException;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\StaticCall;
@@ -73,6 +71,74 @@ final class CallContextDetectorTest extends TestCase
             $this->detectAt('SignatureHelp.php', 'outside_call'),
             'an assignment outside any call has no call context',
         );
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function namesOfCalls(): array
+    {
+        return [
+            'a static method' => ['on_call_name'],
+            'an instance method' => ['on_method_name'],
+            'the class after new' => ['on_new_class_name'],
+            'a space before the (' => ['before_spaced_paren'],
+            'the } closing an expression callee' => ['after_expression_callee'],
+            'a nullsafe method' => ['on_nullsafe_name'],
+            'an attribute' => ['on_attribute_name'],
+        ];
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function functionBodiesInArguments(): array
+    {
+        return [
+            'a call\'s name in a closure argument' => ['on_name_in_closure'],
+            'a statement in a closure argument' => ['in_closure_body'],
+        ];
+    }
+
+    #[DataProvider('functionBodiesInArguments')]
+    public function testAFunctionBodyIsNotTheEnclosingCallsArgument(string $marker): void
+    {
+        self::assertNull(
+            $this->detectAt('SignatureHelp.php', $marker),
+            'inside a function body only the calls in that body count, not the call the function is passed to',
+        );
+    }
+
+    public function testACallInsideAFunctionBodyIsFound(): void
+    {
+        $detection = $this->detectAt('SignatureHelp.php', 'in_arrow_fn_call');
+
+        self::assertNotNull($detection, 'the cursor is in a call within the arrow function\'s body');
+        [$call] = $detection;
+        self::assertInstanceOf(FuncCall::class, $call, 'the call in the body is found');
+        self::assertInstanceOf(Name::class, $call->name);
+        self::assertSame('strlen', $call->name->toString(), 'the body\'s call, not the one the function is passed to');
+    }
+
+    #[DataProvider('namesOfCalls')]
+    public function testACallsOwnNameIsOutsideItsArguments(string $marker): void
+    {
+        self::assertNull(
+            $this->detectAt('SignatureHelp.php', $marker),
+            'the cursor on the called name is not in the argument list, so no call is being typed',
+        );
+    }
+
+    public function testAnInnerCallsNameIsInTheOuterCallsArguments(): void
+    {
+        $detection = $this->detectAt('SignatureHelp.php', 'on_inner_call_name');
+
+        self::assertNotNull($detection, 'the inner call\'s name sits in the outer call\'s first argument');
+        [$call, $active] = $detection;
+        self::assertInstanceOf(FuncCall::class, $call, 'the outer call encloses the cursor');
+        self::assertInstanceOf(Name::class, $call->name);
+        self::assertSame('signatureHelpAdd', $call->name->toString(), 'the outer call, not the inner one');
+        self::assertSame(0, $active, 'the inner call is the first argument');
     }
 
     /**
@@ -175,19 +241,6 @@ final class CallContextDetectorTest extends TestCase
 
         self::assertNotNull($detection, 'the cursor is inside a call');
         self::assertSame($expected, $detection[4], 'whether a value, where no argument name fits, is being typed');
-    }
-
-    public function testRejectsACallWithoutItsArgumentSeparators(): void
-    {
-        $locator = self::createStub(NodeLocatorInterface::class);
-        $locator->method('nodeAt')->willReturn(new FuncCall(new Name('f')));
-
-        $this->expectException(LogicException::class);
-
-        (new CallContextDetector($locator))->detect(
-            new ParsedDocument(new TextDocument('file:///f.php', 'php', 1, ''), []),
-            0,
-        );
     }
 
     /**
