@@ -49,3 +49,7 @@ $selfProp = self::$prop; //hover:self_prop_outside
 // Class without explicit constructor
 class NoConstructor {}
 $noConst = new NoConstructor(/*|no_constructor*/);
+
+// The cursor on a call's name, not in its argument list
+$onName = Priority::fromScore/*|on_call_name*/(50);
+$onInnerName = signatureHelpAdd(strlen/*|on_inner_call_name*/('x'), 2);

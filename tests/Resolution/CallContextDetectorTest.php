@@ -75,6 +75,26 @@ final class CallContextDetectorTest extends TestCase
         );
     }
 
+    public function testACallsOwnNameIsOutsideItsArguments(): void
+    {
+        self::assertNull(
+            $this->detectAt('SignatureHelp.php', 'on_call_name'),
+            'the cursor on the called name is not in the argument list, so no call is being typed',
+        );
+    }
+
+    public function testAnInnerCallsNameIsInTheOuterCallsArguments(): void
+    {
+        $detection = $this->detectAt('SignatureHelp.php', 'on_inner_call_name');
+
+        self::assertNotNull($detection, 'the inner call\'s name sits in the outer call\'s first argument');
+        [$call, $active] = $detection;
+        self::assertInstanceOf(FuncCall::class, $call, 'the outer call encloses the cursor');
+        self::assertInstanceOf(Name::class, $call->name);
+        self::assertSame('signatureHelpAdd', $call->name->toString(), 'the outer call, not the inner one');
+        self::assertSame(0, $active, 'the inner call is the first argument');
+    }
+
     /**
      * @return array<string, array{string, int, int}>
      */
