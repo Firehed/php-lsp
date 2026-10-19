@@ -47,7 +47,7 @@ return [
     'file-level variable' => $complete(
         'TopLevel/global_scope_completion.php',
         'global_member_access',
-        new Expectation\Offers('getName'),
+        new Expectation\Offers('getName', 'manager'),
     ),
     'from another class, public members only' => $complete(
         'src/Completion/ExternalAccess.php',
@@ -157,16 +157,16 @@ return [
     '$this inside an unfinished if' => $complete(
         'src/IncompleteCode/SingleIncomplete.php',
         'this_in_if',
-        new Expectation\Offers('getName', 'name'),
+        new Expectation\Offers('getName', 'name', 'test'),
     ),
     '$this in a file with no closing braces' => $complete(
         'src/IncompleteCode/VeryBroken.php',
         'this_in_if',
-        new Expectation\Offers('getName', 'name'),
+        new Expectation\Offers('getName', 'name', 'test'),
     ),
     'chain inside an unfinished if' => $complete(
         'src/IncompleteCode/ChainedAccess.php',
         'chained_in_if',
-        new Expectation\Offers('getName'),
+        new Expectation\Offers('getName', 'manager'),
     ),
 ];
