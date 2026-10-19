@@ -362,12 +362,9 @@ final class BuiltinBackendTest extends TestCase
             'a reflected method carries its visibility and typed parameters, not just its name',
         );
         foreach (['ArrayAccess', 'Countable', 'IteratorAggregate'] as $interface) {
-            self::assertContains(
-                $interface,
-                array_map(
-                    static fn (ClasslikeName $name): string => $name->qualifiedName->fullyQualifiedName(),
-                    $info->interfaces,
-                ),
+            self::assertContainsEquals(
+                ClasslikeName::fromFullyQualified($interface),
+                $info->interfaces,
                 "ArrayObject implements {$interface}",
             );
         }
