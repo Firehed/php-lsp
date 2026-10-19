@@ -200,13 +200,14 @@ final class CallContextDetectorTest extends TestCase
     public function testRejectsACallWithoutItsArgumentSeparators(): void
     {
         $locator = self::createStub(NodeLocatorInterface::class);
-        $locator->method('nodeAt')->willReturn(new FuncCall(new Name('f')));
+        $locator->method('nodeAt')->willReturn(new FuncCall(new Name('f', ['endFilePos' => 0])));
 
         $this->expectException(LogicException::class);
 
+        // The cursor is just inside `f(`.
         (new CallContextDetector($locator))->detect(
-            new ParsedDocument(new TextDocument('file:///f.php', 'php', 1, ''), []),
-            0,
+            new ParsedDocument(new TextDocument('file:///f.php', 'php', 1, 'f('), []),
+            2,
         );
     }
 
