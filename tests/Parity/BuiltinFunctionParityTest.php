@@ -23,10 +23,6 @@ use PHPUnit\Framework\TestCase;
  * in the same way `TypeGraphParityTest` uses reflection as the oracle for member
  * resolution.
  *
- * Freezing the shape of that path's output is the function-surface golden's job
- * ({@see FunctionSurfaceParityTest}); proving the backend supplies the same
- * *set* of names is this test's.
- *
  * Note the two sides are not trivially the same call: reflection produces a flat
  * list of names, while the backend files each name under the namespace it
  * carries (an extension may declare namespaced functions) and answers one

@@ -8,14 +8,12 @@ resolution; this covers the knowledge surfaces:
 | class-like lookup | `SymbolSourceInterface::lookupClassLike()` | `goldens/class-like-lookup.json` |
 | prefix search | `SymbolSourceInterface::search()` | `goldens/prefix-search.json` |
 | document write path | open/update/close symbol state | `goldens/write-path.json` |
-| function completion | `SymbolCandidates::find()` with `[NameKind::Function_]` | `goldens/function-surface.json` |
 | broken-file completion | `CompletionHandler::handle()` at cursors in broken fixtures | `goldens/completion-broken-first-open.json`, `goldens/completion-broken-mid-edit.json` |
 
-Alongside the function surface, `BuiltinFunctionParityTest` is an **oracle, not a golden**: it asserts
+`BuiltinFunctionParityTest` is an **oracle, not a golden**: it asserts
 the built-in backend enumerates exactly the functions `get_defined_functions()`
 reports, the way `TypeGraphParityTest` uses reflection as the oracle for members.
-That is what makes the version-fragile half of the function surface checkable at
-all — the set cannot be frozen, but it can be compared against the runtime truth
+The set cannot be frozen, but it can be compared against the runtime truth
 the production path reads today.
 
 Each surface's observable output over a curated fixture corpus is captured once,
@@ -65,10 +63,7 @@ is correct. Recapture is deliberate, not a way to make a red run pass.
 Goldens are frozen only over inputs that are identical across the CI PHP matrix:
 in-repo fixtures and the locked `psr/http-message` dependency.
 Built-in symbols (reflection) are version-fragile, so they are covered by
-stable-subset assertions instead of being frozen. Each surface picks the queries
-that keep that true: `function-surface` queries only prefixes narrow enough to match a
-single long-stable core function (`arr` shifts between 8.3 and 8.5; `array_map`
-does not). Absolute paths are relativized to the repo root so a golden does not
+stable-subset assertions instead of being frozen. Absolute paths are relativized to the repo root so a golden does not
 embed the machine it was captured on.
 
 ## Surface coverage (the corpus-gap check)
