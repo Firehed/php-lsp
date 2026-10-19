@@ -41,6 +41,10 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     /** Declares all three kinds, so a lookup reading the wrong list is visible. */
     private const string FIXTURE = 'AutoloadFiles/helpers.php';
 
+    private const array PARENT_CLASS = ['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
+
+    private const array USER = ['src/Domain/User.php', 'Fixtures\Domain\User'];
+
     private DeclarationSymbolInfoFactory $factory;
     private FileDeclarations $declarations;
     private string $path;
@@ -527,10 +531,9 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
      */
     public static function methodModifiers(): iterable
     {
-        $parent = ['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
-        yield 'public static' => [...$parent, 'staticMethod', Visibility::Public, true, false];
-        yield 'private static' => [...$parent, 'privateStaticMethod', Visibility::Private, true, false];
-        yield 'protected' => [...$parent, 'protectedMethod', Visibility::Protected, false, false];
+        yield 'public static' => [...self::PARENT_CLASS, 'staticMethod', Visibility::Public, true, false];
+        yield 'private static' => [...self::PARENT_CLASS, 'privateStaticMethod', Visibility::Private, true, false];
+        yield 'protected' => [...self::PARENT_CLASS, 'protectedMethod', Visibility::Protected, false, false];
         yield 'abstract' => [
             'src/Utility/ClassModifiers.php',
             'Fixtures\Utility\AbstractBase',
@@ -577,15 +580,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
                 ClasslikeName::fromFullyQualified('Fixtures\Traits\SingletonTrait'),
             ),
         ];
-        yield 'nullable class' => [
-            'src/Domain/User.php',
-            'Fixtures\Domain\User',
-            'getTeam',
-            new UnionType([
-                new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Domain\Team')),
-                new PrimitiveType('null'),
-            ]),
-        ];
+        yield 'nullable class' => [...self::USER, 'getTeam', self::nullable('Fixtures\Domain\Team')];
     }
 
     #[DataProvider('methodReturnTypes')]
@@ -598,22 +593,24 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         self::assertEquals(
             $returnType,
             $this->buildClassInfoFromFixture($fixture, $fqn)->methods[$method]->returnType,
-            'a return type of self or static is kept late-bound so a subclass can resolve it',
+            'self and static are kept late-bound so a subclass can resolve them; ?T is T|null',
         );
     }
 
-    public function testMethodParametersCarryTypesAndDefaults(): void
+    /**
+     * @return iterable<string, array{string, string, string, int, ParameterInfo}>
+     */
+    public static function methodParameters(): iterable
     {
-        $parameters = $this->buildClassInfoFromFixture('src/Domain/User.php', 'Fixtures\Domain\User')
-            ->methods['__construct']
-            ->parameters;
-
-        self::assertEquals(
+        $constructor = [...self::USER, '__construct'];
+        yield 'scalar default' => [
+            ...$constructor,
+            3,
             new ParameterInfo('age', new PrimitiveType('int'), '0', 3, false, false),
-            $parameters[3],
-            'a scalar default is kept as PHP source',
-        );
-        self::assertEquals(
+        ];
+        yield 'class-constant default, printed with its resolved name' => [
+            ...$constructor,
+            4,
             new ParameterInfo(
                 'status',
                 new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Enum\Status')),
@@ -622,37 +619,47 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
                 false,
                 false,
             ),
-            $parameters[4],
-            'a class-constant default is printed with its resolved name',
-        );
+        ];
+        yield 'nullable with a null default' => [
+            ...$constructor,
+            5,
+            new ParameterInfo('manager', self::nullable('Fixtures\Domain\User'), 'null', 5, false, false),
+        ];
+        yield 'untyped' => [
+            'vendor/psr/http-message/src/ServerRequestInterface.php',
+            'Psr\Http\Message\ServerRequestInterface',
+            'getAttribute',
+            1,
+            new ParameterInfo('default', null, 'null', 1, false, false),
+        ];
+    }
+
+    #[DataProvider('methodParameters')]
+    public function testMethodParameterCarriesItsTypeAndDefault(
+        string $fixture,
+        string $fqn,
+        string $method,
+        int $position,
+        ParameterInfo $parameter,
+    ): void {
         self::assertEquals(
-            new ParameterInfo(
-                'manager',
-                new UnionType([
-                    new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Domain\User')),
-                    new PrimitiveType('null'),
-                ]),
-                'null',
-                5,
-                false,
-                false,
-            ),
-            $parameters[5],
-            'a nullable parameter carries the null member of its type',
+            $parameter,
+            $this->buildClassInfoFromFixture($fixture, $fqn)->methods[$method]->parameters[$position],
+            'a parameter carries its declared type (if any) and its default as PHP source',
         );
     }
 
-    public function testUntypedParameterHasNoType(): void
+    public function testNestedAnonymousClassMembersStayOutOfTheEnclosingClass(): void
     {
-        $parameters = $this->buildClassInfoFromFixture(
-            'vendor/psr/http-message/src/ServerRequestInterface.php',
-            'Psr\Http\Message\ServerRequestInterface',
-        )->methods['getAttribute']->parameters;
+        $info = $this->buildClassInfoFromFixture(
+            'src/TypeInference/AnonymousClass.php',
+            'Fixtures\TypeInference\AnonymousClass',
+        );
 
-        self::assertEquals(
-            new ParameterInfo('default', null, 'null', 1, false, false),
-            $parameters[1],
-            'a parameter declared without a type has none',
+        self::assertSame(
+            ['getAnonymous'],
+            array_keys($info->methods),
+            'a method of an anonymous class inside a method body is not the enclosing class\'s',
         );
     }
 
@@ -661,25 +668,20 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
      */
     public static function properties(): iterable
     {
-        $user = ['src/Domain/User.php', 'Fixtures\Domain\User'];
-        $parent = ['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
         $int = new PrimitiveType('int');
         $string = new PrimitiveType('string');
-        yield 'private static' => [...$user, 'instanceCount', Visibility::Private, true, false, $int];
-        yield 'private readonly' => [...$user, 'id', Visibility::Private, false, true, $string];
+        yield 'private static' => [...self::USER, 'instanceCount', Visibility::Private, true, false, $int];
+        yield 'private readonly' => [...self::USER, 'id', Visibility::Private, false, true, $string];
         yield 'public nullable' => [
-            ...$user,
+            ...self::USER,
             'manager',
             Visibility::Public,
             false,
             false,
-            new UnionType([
-                new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Domain\User')),
-                new PrimitiveType('null'),
-            ]),
+            self::nullable('Fixtures\Domain\User'),
         ];
-        yield 'public static' => [...$parent, 'staticProperty', Visibility::Public, true, false, $string];
-        yield 'protected' => [...$parent, 'protectedProperty', Visibility::Protected, false, false, $int];
+        yield 'public static' => [...self::PARENT_CLASS, 'staticProperty', Visibility::Public, true, false, $string];
+        yield 'protected' => [...self::PARENT_CLASS, 'protectedProperty', Visibility::Protected, false, false, $int];
     }
 
     #[DataProvider('properties')]
@@ -705,15 +707,8 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
      */
     public static function classConstants(): iterable
     {
-        $parent = ['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
-        yield 'public' => [...$parent, 'PARENT_CONST', Visibility::Public];
-        yield 'protected' => [...$parent, 'PROTECTED_CONST', Visibility::Protected];
-        yield 'interface' => [
-            'src/Hierarchy/BaseInterface.php',
-            'Fixtures\Hierarchy\BaseInterface',
-            'BASE_CONST',
-            Visibility::Public,
-        ];
+        yield 'public' => [...self::PARENT_CLASS, 'PARENT_CONST', Visibility::Public];
+        yield 'protected' => [...self::PARENT_CLASS, 'PROTECTED_CONST', Visibility::Protected];
     }
 
     #[DataProvider('classConstants')]
@@ -772,6 +767,14 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         self::assertArrayHasKey('cases', $info->methods, 'every enum has cases()');
         self::assertArrayNotHasKey('from', $info->methods, 'only a backed enum has from()');
         self::assertArrayNotHasKey('value', $info->properties, 'only a backed enum has $value');
+    }
+
+    private static function nullable(string $fqn): UnionType
+    {
+        return new UnionType([
+            new ClasslikeType(ClasslikeName::fromFullyQualified($fqn)),
+            new PrimitiveType('null'),
+        ]);
     }
 
     private function build(string $fqn, NameKind $kind): ?SymbolInfoInterface
