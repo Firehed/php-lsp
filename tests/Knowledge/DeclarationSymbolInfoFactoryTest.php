@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -335,6 +336,86 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         );
         self::assertSame('onlyInA', $info->traitAliases[0]->method);
         self::assertSame('renamedOnlyInA', $info->traitAliases[0]->newName);
+    }
+
+    /**
+     * @return iterable<string, array{string, string, ClassKind, bool, bool, bool, bool}>
+     */
+    public static function classLikeShapes(): iterable
+    {
+        yield 'final attribute class' => [
+            'src/Attributes/NoConstructorAttribute.php',
+            'Fixtures\Attributes\NoConstructorAttribute',
+            ClassKind::Class_,
+            false,
+            true,
+            false,
+            true,
+        ];
+        yield 'final readonly class' => [
+            'src/Domain/Money.php',
+            'Fixtures\Domain\Money',
+            ClassKind::Class_,
+            false,
+            true,
+            true,
+            false,
+        ];
+        yield 'abstract class' => [
+            'src/Hierarchy/AbstractImplementor.php',
+            'Fixtures\Hierarchy\AbstractImplementor',
+            ClassKind::Class_,
+            true,
+            false,
+            false,
+            false,
+        ];
+        yield 'interface' => [
+            'src/Domain/Entity.php',
+            'Fixtures\Domain\Entity',
+            ClassKind::Interface_,
+            false,
+            false,
+            false,
+            false,
+        ];
+        yield 'trait' => [
+            'src/Hierarchy/InnerTrait.php',
+            'Fixtures\Hierarchy\InnerTrait',
+            ClassKind::Trait_,
+            false,
+            false,
+            false,
+            false,
+        ];
+        yield 'enum' => [
+            'src/Enum/Status.php',
+            'Fixtures\Enum\Status',
+            ClassKind::Enum_,
+            false,
+            false,
+            false,
+            false,
+        ];
+    }
+
+    #[DataProvider('classLikeShapes')]
+    public function testClassLikeCarriesItsKindAndModifiers(
+        string $fixture,
+        string $fqn,
+        ClassKind $kind,
+        bool $isAbstract,
+        bool $isFinal,
+        bool $isReadonly,
+        bool $isAttribute,
+    ): void {
+        $info = $this->buildClassInfoFromFixture($fixture, $fqn);
+
+        self::assertSame($kind, $info->kind, 'the declaration keyword decides the kind');
+        self::assertSame($isAbstract, $info->isAbstract, 'only an abstract class is abstract');
+        self::assertSame($isFinal, $info->isFinal, 'only a final class is final');
+        self::assertSame($isReadonly, $info->isReadonly, 'only a readonly class is readonly');
+        self::assertSame($isAttribute, $info->isAttribute, 'a class declared with #[Attribute] is an attribute');
     }
 
     private function build(string $fqn, NameKind $kind): ?SymbolInfoInterface
