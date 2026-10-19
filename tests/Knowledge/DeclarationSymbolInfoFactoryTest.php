@@ -6,15 +6,22 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FunctionInfo;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
+use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\ParameterInfo;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
+use Firehed\PhpLsp\Domain\TypeInterface;
+use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
-use Firehed\PhpLsp\Knowledge\FileDeclarations;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -32,19 +39,18 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     /** Declares all three kinds, so a lookup reading the wrong list is visible. */
     private const string FIXTURE = 'AutoloadFiles/helpers.php';
 
-    private DeclarationSymbolInfoFactory $factory;
-    private FileDeclarations $declarations;
+    private const array PARENT_CLASS = ['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
+
+    private const array USER = ['src/Domain/User.php', 'Fixtures\Domain\User'];
+
+    /** @var list<DeclaredSymbol> */
+    private array $declared;
     private string $path;
 
     protected function setUp(): void
     {
-        $this->factory = new DeclarationSymbolInfoFactory();
         $this->path = $this->fixturePath(self::FIXTURE);
-
-        $production = ProductionSyntaxSource::create();
-        $document = $production->reader->read($this->path);
-        self::assertNotNull($document, 'the fixture must be readable so declarations can be scanned');
-        $this->declarations = (new DeclarationScanner())->scan($production->source->parse($document)->tree);
+        $this->declared = $this->declaredIn(self::FIXTURE);
     }
 
     public function testBuildsClassInfoForAClassLikeDeclaration(): void
@@ -117,11 +123,6 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
 
     public function testConstantsAreBuilt(): void
     {
-        self::assertNotSame(
-            [],
-            $this->declarations->constants,
-            'the fixture must declare constants, or this test would pass vacuously',
-        );
         $info = $this->build('Fixtures\Helpers\HELPER_LIMIT', NameKind::Constant);
         self::assertInstanceOf(
             \Firehed\PhpLsp\Domain\ConstantInfo::class,
@@ -133,7 +134,7 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     public function testAllInReportsEveryBuildableDeclarationWithItsKind(): void
     {
         $reported = [];
-        foreach ($this->factory->allIn($this->declarations, $this->path) as $symbol) {
+        foreach ($this->declared as $symbol) {
             $reported[] = $symbol->kind->name . '|' . $symbol->name->fullyQualifiedName();
         }
 
@@ -156,12 +157,8 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
 
     public function testAllInKeepsTheFirstOfDuplicateDeclarations(): void
     {
-        $content = $this->loadFixture('MultiClass/DuplicateDeclarations.php');
-        $document = new TextDocument('file:///dupes.php', 'php', 1, $content);
-        $ast = ProductionSyntaxSource::create()->source->parse($document)->tree;
-
         $names = [];
-        foreach ($this->factory->allIn((new DeclarationScanner())->scan($ast), '/dupes.php') as $symbol) {
+        foreach ($this->declaredIn('MultiClass/DuplicateDeclarations.php') as $symbol) {
             $names[] = $symbol->kind->name . '|' . $symbol->name->fullyQualifiedName();
         }
 
@@ -301,15 +298,9 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
     {
         // Same shape as the promoted-property fixture, in a free-standing
         // function's parameter list.
-        $path = $this->fixturePath('src/IncompleteCode/BrokenParameters.php');
-        $production = ProductionSyntaxSource::create();
-        $document = $production->reader->read($path);
-        self::assertNotNull($document);
-        $declarations = (new DeclarationScanner())->scan($production->source->parse($document)->tree);
-
         $name = QualifiedName::fromFullyQualified('Fixtures\IncompleteCode\brokenFreeStandingParam');
         $info = array_find(
-            $this->factory->allIn($declarations, $path),
+            $this->declaredIn('src/IncompleteCode/BrokenParameters.php'),
             static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, NameKind::Function_),
         )?->info;
 
@@ -337,29 +328,463 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         self::assertSame('renamedOnlyInA', $info->traitAliases[0]->newName);
     }
 
+    /**
+     * @return iterable<string, array{string, string, ClassKind, bool, bool, bool, bool}>
+     */
+    public static function classLikeShapes(): iterable
+    {
+        yield 'final attribute class' => [
+            'src/Attributes/NoConstructorAttribute.php',
+            'Fixtures\Attributes\NoConstructorAttribute',
+            ClassKind::Class_,
+            false,
+            true,
+            false,
+            true,
+        ];
+        yield 'final readonly class' => [
+            'src/Domain/Money.php',
+            'Fixtures\Domain\Money',
+            ClassKind::Class_,
+            false,
+            true,
+            true,
+            false,
+        ];
+        yield 'abstract class' => [
+            'src/Hierarchy/AbstractImplementor.php',
+            'Fixtures\Hierarchy\AbstractImplementor',
+            ClassKind::Class_,
+            true,
+            false,
+            false,
+            false,
+        ];
+        yield 'interface' => [
+            'src/Domain/Entity.php',
+            'Fixtures\Domain\Entity',
+            ClassKind::Interface_,
+            false,
+            false,
+            false,
+            false,
+        ];
+        yield 'trait' => [
+            'src/Hierarchy/InnerTrait.php',
+            'Fixtures\Hierarchy\InnerTrait',
+            ClassKind::Trait_,
+            false,
+            false,
+            false,
+            false,
+        ];
+        yield 'enum' => [
+            'src/Enum/Status.php',
+            'Fixtures\Enum\Status',
+            ClassKind::Enum_,
+            false,
+            false,
+            false,
+            false,
+        ];
+    }
+
+    #[DataProvider('classLikeShapes')]
+    public function testClassLikeCarriesItsKindAndModifiers(
+        string $fixture,
+        string $fqn,
+        ClassKind $kind,
+        bool $isAbstract,
+        bool $isFinal,
+        bool $isReadonly,
+        bool $isAttribute,
+    ): void {
+        $info = $this->buildClassInfoFromFixture($fixture, $fqn);
+
+        self::assertSame($kind, $info->kind, 'the declaration keyword decides the kind');
+        self::assertSame($isAbstract, $info->isAbstract, 'only an abstract class is abstract');
+        self::assertSame($isFinal, $info->isFinal, 'only a final class is final');
+        self::assertSame($isReadonly, $info->isReadonly, 'only a readonly class is readonly');
+        self::assertSame($isAttribute, $info->isAttribute, 'a class declared with #[Attribute] is an attribute');
+    }
+
+    /**
+     * @return iterable<string, array{string, string, ?string, list<string>, list<string>}>
+     */
+    public static function supertypes(): iterable
+    {
+        yield 'class extending a class and implementing an interface' => [
+            'src/Exception/AppException.php',
+            'Fixtures\Exception\AppException',
+            'RuntimeException',
+            ['Fixtures\Exception\ExceptionInterface'],
+            [],
+        ];
+        yield 'class implementing interfaces and using a trait' => [
+            'src/Domain/User.php',
+            'Fixtures\Domain\User',
+            null,
+            ['Fixtures\Domain\Entity', 'Fixtures\Domain\Person'],
+            ['Fixtures\Traits\HasTimestamps'],
+        ];
+        yield 'interface extending several' => [
+            'src/Hierarchy/LeafInterface.php',
+            'Fixtures\Hierarchy\LeafInterface',
+            null,
+            ['Fixtures\Hierarchy\MiddleInterface', 'Countable'],
+            [],
+        ];
+        yield 'trait using a trait' => [
+            'src/Hierarchy/OuterTrait.php',
+            'Fixtures\Hierarchy\OuterTrait',
+            null,
+            [],
+            ['Fixtures\Hierarchy\InnerTrait'],
+        ];
+        yield 'pure enum' => [
+            'src/Enum/Status.php',
+            'Fixtures\Enum\Status',
+            null,
+            ['UnitEnum'],
+            [],
+        ];
+        yield 'backed enum implementing an interface' => [
+            'src/Enum/SerializableStatus.php',
+            'Fixtures\Enum\SerializableStatus',
+            null,
+            ['JsonSerializable', 'UnitEnum', 'BackedEnum'],
+            [],
+        ];
+    }
+
+    /**
+     * @param list<string> $interfaces
+     * @param list<string> $traits
+     */
+    #[DataProvider('supertypes')]
+    public function testClassLikeCarriesItsSupertypes(
+        string $fixture,
+        string $fqn,
+        ?string $parent,
+        array $interfaces,
+        array $traits,
+    ): void {
+        $info = $this->buildClassInfoFromFixture($fixture, $fqn);
+
+        self::assertEquals(
+            $parent === null ? null : ClasslikeName::fromFullyQualified($parent),
+            $info->parent,
+            'only a class has a parent, from its extends clause',
+        );
+        self::assertEquals(
+            array_map(ClasslikeName::fromFullyQualified(...), $interfaces),
+            $info->interfaces,
+            'a class or enum implements, an interface extends, and an enum also has its implicit interfaces',
+        );
+        self::assertEquals(
+            array_map(ClasslikeName::fromFullyQualified(...), $traits),
+            $info->traits,
+            'every trait a class-like uses is recorded',
+        );
+    }
+
+    public function testClassLikeCarriesItsDocblockAndFile(): void
+    {
+        $info = $this->buildClassInfoFromFixture('src/Domain/Entity.php', 'Fixtures\Domain\Entity');
+
+        self::assertSame(
+            "/**\n * Base interface for all domain entities.\n */",
+            $info->docblock,
+            'the declaration\'s doc comment is kept as written',
+        );
+        self::assertSame(
+            $this->fixturePath('src/Domain/Entity.php'),
+            $info->file,
+            'the declaring file is recorded from the path given',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, Visibility, bool, bool}>
+     */
+    public static function methodModifiers(): iterable
+    {
+        yield 'public static' => [...self::PARENT_CLASS, 'staticMethod', Visibility::Public, true, false];
+        yield 'private static' => [...self::PARENT_CLASS, 'privateStaticMethod', Visibility::Private, true, false];
+        yield 'protected' => [...self::PARENT_CLASS, 'protectedMethod', Visibility::Protected, false, false];
+        yield 'abstract' => [
+            'src/Utility/ClassModifiers.php',
+            'Fixtures\Utility\AbstractBase',
+            'doSomething',
+            Visibility::Public,
+            false,
+            true,
+        ];
+    }
+
+    #[DataProvider('methodModifiers')]
+    public function testMethodCarriesItsModifiers(
+        string $fixture,
+        string $fqn,
+        string $method,
+        Visibility $visibility,
+        bool $isStatic,
+        bool $isAbstract,
+    ): void {
+        $info = $this->buildClassInfoFromFixture($fixture, $fqn)->methods[$method];
+
+        self::assertSame($visibility, $info->visibility, 'the visibility keyword decides visibility');
+        self::assertSame($isStatic, $info->isStatic, 'only a static method is static');
+        self::assertSame($isAbstract, $info->isAbstract, 'only an abstract method is abstract');
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, TypeInterface}>
+     */
+    public static function methodReturnTypes(): iterable
+    {
+        yield 'self stays late-bound' => [
+            'src/Domain/Team.php',
+            'Fixtures\Domain\Team',
+            'withLeader',
+            new LateStaticType(LateBindingKeyword::Self, ClasslikeName::fromFullyQualified('Fixtures\Domain\Team')),
+        ];
+        yield 'static stays late-bound' => [
+            'src/Traits/SingletonTrait.php',
+            'Fixtures\Traits\SingletonTrait',
+            'instance',
+            new LateStaticType(
+                LateBindingKeyword::Static,
+                ClasslikeName::fromFullyQualified('Fixtures\Traits\SingletonTrait'),
+            ),
+        ];
+        yield 'nullable class' => [...self::USER, 'getTeam', self::nullable('Fixtures\Domain\Team')];
+    }
+
+    #[DataProvider('methodReturnTypes')]
+    public function testMethodCarriesItsReturnType(
+        string $fixture,
+        string $fqn,
+        string $method,
+        TypeInterface $returnType,
+    ): void {
+        self::assertEquals(
+            $returnType,
+            $this->buildClassInfoFromFixture($fixture, $fqn)->methods[$method]->returnType,
+            'self and static are kept late-bound so a subclass can resolve them; ?T is T|null',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, int, ParameterInfo}>
+     */
+    public static function methodParameters(): iterable
+    {
+        $constructor = [...self::USER, '__construct'];
+        yield 'scalar default' => [
+            ...$constructor,
+            3,
+            new ParameterInfo('age', new PrimitiveType('int'), '0', 3, false, false),
+        ];
+        yield 'class-constant default, printed with its resolved name' => [
+            ...$constructor,
+            4,
+            new ParameterInfo(
+                'status',
+                new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Enum\Status')),
+                '\Fixtures\Enum\Status::Active',
+                4,
+                false,
+                false,
+            ),
+        ];
+        yield 'nullable with a null default' => [
+            ...$constructor,
+            5,
+            new ParameterInfo('manager', self::nullable('Fixtures\Domain\User'), 'null', 5, false, false),
+        ];
+        yield 'untyped' => [
+            'vendor/psr/http-message/src/ServerRequestInterface.php',
+            'Psr\Http\Message\ServerRequestInterface',
+            'getAttribute',
+            1,
+            new ParameterInfo('default', null, 'null', 1, false, false),
+        ];
+    }
+
+    #[DataProvider('methodParameters')]
+    public function testMethodParameterCarriesItsTypeAndDefault(
+        string $fixture,
+        string $fqn,
+        string $method,
+        int $position,
+        ParameterInfo $parameter,
+    ): void {
+        self::assertEquals(
+            $parameter,
+            $this->buildClassInfoFromFixture($fixture, $fqn)->methods[$method]->parameters[$position],
+            'a parameter carries its declared type (if any) and its default as PHP source',
+        );
+    }
+
+    public function testNestedAnonymousClassMembersStayOutOfTheEnclosingClass(): void
+    {
+        $info = $this->buildClassInfoFromFixture(
+            'src/TypeInference/AnonymousClass.php',
+            'Fixtures\TypeInference\AnonymousClass',
+        );
+
+        self::assertSame(
+            ['getAnonymous'],
+            array_keys($info->methods),
+            'a method of an anonymous class inside a method body is not the enclosing class\'s',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, Visibility, bool, bool, TypeInterface}>
+     */
+    public static function properties(): iterable
+    {
+        $int = new PrimitiveType('int');
+        $string = new PrimitiveType('string');
+        yield 'private static' => [...self::USER, 'instanceCount', Visibility::Private, true, false, $int];
+        yield 'private readonly' => [...self::USER, 'id', Visibility::Private, false, true, $string];
+        yield 'public nullable' => [
+            ...self::USER,
+            'manager',
+            Visibility::Public,
+            false,
+            false,
+            self::nullable('Fixtures\Domain\User'),
+        ];
+        yield 'public static' => [...self::PARENT_CLASS, 'staticProperty', Visibility::Public, true, false, $string];
+        yield 'protected' => [...self::PARENT_CLASS, 'protectedProperty', Visibility::Protected, false, false, $int];
+    }
+
+    #[DataProvider('properties')]
+    public function testPropertyCarriesItsModifiersAndType(
+        string $fixture,
+        string $fqn,
+        string $property,
+        Visibility $visibility,
+        bool $isStatic,
+        bool $isReadonly,
+        TypeInterface $type,
+    ): void {
+        $info = $this->buildClassInfoFromFixture($fixture, $fqn)->properties[$property];
+
+        self::assertSame($visibility, $info->visibility, 'the visibility keyword decides visibility');
+        self::assertSame($isStatic, $info->isStatic, 'only a static property is static');
+        self::assertSame($isReadonly, $info->isReadonly, 'only a readonly property is readonly');
+        self::assertEquals($type, $info->type, 'the declared type is carried');
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, Visibility}>
+     */
+    public static function classConstants(): iterable
+    {
+        yield 'public' => [...self::PARENT_CLASS, 'PARENT_CONST', Visibility::Public];
+        yield 'protected' => [...self::PARENT_CLASS, 'PROTECTED_CONST', Visibility::Protected];
+    }
+
+    #[DataProvider('classConstants')]
+    public function testClassConstantCarriesItsVisibility(
+        string $fixture,
+        string $fqn,
+        string $constant,
+        Visibility $visibility,
+    ): void {
+        $constants = $this->buildClassInfoFromFixture($fixture, $fqn)->constants;
+
+        self::assertArrayHasKey($constant, $constants, 'a class-like\'s own constant is recorded');
+        self::assertSame($visibility, $constants[$constant]->visibility, 'the visibility keyword decides visibility');
+    }
+
+    /**
+     * @return iterable<string, array{string, string, string, int|string|null}>
+     */
+    public static function enumCases(): iterable
+    {
+        yield 'int-backed' => ['src/Enum/Priority.php', 'Fixtures\Enum\Priority', 'Low', 1];
+        yield 'string-backed' => ['src/Enum/Color.php', 'Fixtures\Enum\Color', 'Red', 'red'];
+        yield 'pure' => ['src/Enum/Status.php', 'Fixtures\Enum\Status', 'Active', null];
+    }
+
+    #[DataProvider('enumCases')]
+    public function testEnumCaseCarriesItsBackingValue(
+        string $fixture,
+        string $fqn,
+        string $case,
+        int|string|null $backingValue,
+    ): void {
+        $cases = $this->buildClassInfoFromFixture($fixture, $fqn)->enumCases;
+
+        self::assertArrayHasKey($case, $cases, 'each declared case is recorded');
+        self::assertSame($backingValue, $cases[$case]->backingValue, 'the backing value is kept with its type');
+    }
+
+    public function testBackedEnumAddsImplicitMembersTypedByItsBackingType(): void
+    {
+        $info = $this->buildClassInfoFromFixture('src/Enum/Priority.php', 'Fixtures\Enum\Priority');
+
+        self::assertArrayHasKey('fromScore', $info->methods, 'a declared method is kept alongside the implicit ones');
+        self::assertEquals(
+            new PrimitiveType('int'),
+            $info->methods['from']->parameters[0]->type,
+            'from() takes the backing type',
+        );
+        self::assertEquals(new PrimitiveType('int'), $info->properties['value']->type, '$value has the backing type');
+    }
+
+    public function testPureEnumHasNoBackedMembers(): void
+    {
+        $info = $this->buildClassInfoFromFixture('src/Enum/Status.php', 'Fixtures\Enum\Status');
+
+        self::assertArrayHasKey('cases', $info->methods, 'every enum has cases()');
+        self::assertArrayNotHasKey('from', $info->methods, 'only a backed enum has from()');
+        self::assertArrayNotHasKey('value', $info->properties, 'only a backed enum has $value');
+    }
+
+    private static function nullable(string $fqn): UnionType
+    {
+        return new UnionType([
+            new ClasslikeType(ClasslikeName::fromFullyQualified($fqn)),
+            new PrimitiveType('null'),
+        ]);
+    }
+
     private function build(string $fqn, NameKind $kind): ?SymbolInfoInterface
     {
         $name = QualifiedName::fromFullyQualified($fqn);
         return array_find(
-            $this->factory->allIn($this->declarations, $this->path),
+            $this->declared,
             static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, $kind),
         )?->info;
     }
 
     private function buildClassInfoFromFixture(string $fixturePath, string $fqn): ClassInfo
     {
-        $path = $this->fixturePath($fixturePath);
-        $production = ProductionSyntaxSource::create();
-        $document = $production->reader->read($path);
-        self::assertNotNull($document, "the fixture $fixturePath must be readable");
-        $declarations = (new DeclarationScanner())->scan($production->source->parse($document)->tree);
-
         $name = QualifiedName::fromFullyQualified($fqn);
         $info = array_find(
-            $this->factory->allIn($declarations, $path),
+            $this->declaredIn($fixturePath),
             static fn(DeclaredSymbol $symbol): bool => $symbol->declares($name, NameKind::ClassLike),
         )?->info;
         self::assertInstanceOf(ClassInfo::class, $info, "the fixture must declare $fqn as a class-like");
         return $info;
+    }
+
+    /**
+     * What the one production route reports for a fixture, so these cases
+     * describe the {@see \Firehed\PhpLsp\Knowledge\DeclarationSourceInterface} contract callers rely on.
+     *
+     * @return list<DeclaredSymbol>
+     */
+    private function declaredIn(string $fixture): array
+    {
+        return ProductionSyntaxSource::create()->declarations->declarationsIn(
+            new TextDocument($this->fixturePath($fixture), 'php', 1, $this->loadFixture($fixture)),
+        );
     }
 }

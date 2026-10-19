@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
@@ -350,8 +351,23 @@ final class BuiltinBackendTest extends TestCase
         $info = self::classLikeIn($this->backend, \ArrayObject::class);
 
         self::assertInstanceOf(ClassInfo::class, $info);
-        self::assertNotEmpty($info->methods, 'a built-in class must report its methods');
-        self::assertNotEmpty($info->interfaces, 'ArrayObject implements several built-in interfaces');
+        foreach (['append', 'count', 'getArrayCopy', 'getIterator', 'offsetGet', 'offsetSet'] as $method) {
+            self::assertArrayHasKey($method, $info->methods, "a built-in class must report ArrayObject::{$method}");
+        }
+        // Parameter names can vary between PHP versions, so the prefix stops before
+        // them; return types are omitted because ArrayObject's are tentative.
+        self::assertStringStartsWith(
+            'public function offsetSet(mixed $',
+            $info->methods['offsetSet']->format(),
+            'a reflected method carries its visibility and typed parameters, not just its name',
+        );
+        foreach (['ArrayAccess', 'Countable', 'IteratorAggregate'] as $interface) {
+            self::assertContainsEquals(
+                ClasslikeName::fromFullyQualified($interface),
+                $info->interfaces,
+                "ArrayObject implements {$interface}",
+            );
+        }
     }
 
     public function testClassInfoCarriesConstants(): void

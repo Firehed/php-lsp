@@ -1767,6 +1767,16 @@ final class MemberResolverTest extends TestCase
             'App\\IfaceBase',
             true,
         ];
+        yield 'interface reached through the parent' => [
+            [
+                ['App\\Child', ClassKind::Class_, 'App\\ParentClass', []],
+                ['App\\ParentClass', ClassKind::Class_, null, ['App\\IfaceA']],
+                ['App\\IfaceA', ClassKind::Interface_, null, []],
+            ],
+            'App\\Child',
+            'App\\IfaceA',
+            true,
+        ];
         yield 'unrelated type' => [
             [
                 ['App\\Child', ClassKind::Class_, 'App\\ParentClass', []],
