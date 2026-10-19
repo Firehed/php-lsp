@@ -22,7 +22,7 @@ return [
     ])),
     'completion at a static method call' => $at(new Step\Complete($user, $create, expect: [
         new Expectation\Offers('create'),
-        new Expectation\Withholds('setName'),
+        new Expectation\Withholds('manager'),
     ])),
     'completion at a trait method call' => $at(new Step\Complete($user, $markCreated, expect: [
         new Expectation\Offers('markCreated'),
