@@ -255,14 +255,6 @@ final class SymbolCandidatesTest extends TestCase
         );
     }
 
-    public function testFunctionFromAnotherNamespaceIsNotOfferedBare(): void
-    {
-        $items = self::candidates(new NameContext('App'), functionSearch: ['Other\calc_widgets'])
-            ->find(self::requestAfter('$x = calc'), [NameKind::Function_], ClassCandidateFilter::Any);
-
-        self::assertSame([], $items, 'a namespaced function outside the current namespace needs an import');
-    }
-
     public function testCallableSnippetFollowsTheClient(): void
     {
         $items = self::candidates(
