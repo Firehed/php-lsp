@@ -266,6 +266,23 @@ class CursorTextNodeLocatorTest extends TestCase
         );
     }
 
+    public function testRecordsWhereTheCallsArgumentListOpens(): void
+    {
+        $content = "<?php\nfoo(bar(1), ";
+        $document = new TextDocument('file:///t.php', 'php', 1, $content);
+
+        $call = self::enclosingCall(
+            (new CursorTextNodeLocator())->nodeAt(new ParsedDocument($document, []), strlen($content)),
+        );
+
+        self::assertNotNull($call, 'the cursor is inside an unclosed call');
+        self::assertSame(
+            strpos($content, '('),
+            ParsedDocument::argumentListStartOf($call),
+            'the unclosed `(` the call was rebuilt from opens its argument list',
+        );
+    }
+
     public function testNamedArgInTrailingSegmentIsCaptured(): void
     {
         $call = self::synthesizeCallAtCursor("<?php\nfoo(name: ");
