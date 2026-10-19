@@ -75,10 +75,23 @@ final class CallContextDetectorTest extends TestCase
         );
     }
 
-    public function testACallsOwnNameIsOutsideItsArguments(): void
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function namesOfCalls(): array
+    {
+        return [
+            'a static method' => ['on_call_name'],
+            'an instance method' => ['on_method_name'],
+            'the class after new' => ['on_new_class_name'],
+        ];
+    }
+
+    #[DataProvider('namesOfCalls')]
+    public function testACallsOwnNameIsOutsideItsArguments(string $marker): void
     {
         self::assertNull(
-            $this->detectAt('SignatureHelp.php', 'on_call_name'),
+            $this->detectAt('SignatureHelp.php', $marker),
             'the cursor on the called name is not in the argument list, so no call is being typed',
         );
     }
@@ -204,9 +217,9 @@ final class CallContextDetectorTest extends TestCase
 
         $this->expectException(LogicException::class);
 
-        // The cursor is just inside `f(`.
+        // Past the callee, as if just inside `f(`.
         (new CallContextDetector($locator))->detect(
-            new ParsedDocument(new TextDocument('file:///f.php', 'php', 1, 'f('), []),
+            new ParsedDocument(new TextDocument('file:///f.php', 'php', 1, ''), []),
             2,
         );
     }

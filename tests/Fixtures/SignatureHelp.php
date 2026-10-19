@@ -52,4 +52,6 @@ $noConst = new NoConstructor(/*|no_constructor*/);
 
 // The cursor on a call's name, not in its argument list
 $onName = Priority::fromScore/*|on_call_name*/(50);
+$onClassName = new User/*|on_new_class_name*/('id', 'name', 'email@example.com');
+$onMethodName = $user->setName/*|on_method_name*/('name');
 $onInnerName = signatureHelpAdd(strlen/*|on_inner_call_name*/('x'), 2);
