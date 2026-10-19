@@ -261,8 +261,22 @@ class CursorTextNodeLocatorTest extends TestCase
         self::assertNotNull($call, 'the cursor is inside an unclosed call');
         self::assertSame(
             [$offset - 2],
-            $call->getAttribute(ParsedDocument::ARGUMENT_SEPARATORS),
+            ParsedDocument::argumentListOf($call)?->separators,
             'only the comma after the nested call is the call\'s own',
+        );
+    }
+
+    public function testRecordsWhereTheCallsArgumentListOpens(): void
+    {
+        $content = "<?php\nfoo(bar(1), ";
+
+        $call = self::synthesizeCallAtCursor($content);
+
+        self::assertNotNull($call, 'the cursor is inside an unclosed call');
+        self::assertSame(
+            strpos($content, '('),
+            ParsedDocument::argumentListOf($call)?->opensAt,
+            'the unclosed `(` the call was rebuilt from opens its argument list',
         );
     }
 

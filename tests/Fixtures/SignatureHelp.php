@@ -49,3 +49,19 @@ $selfProp = self::$prop; //hover:self_prop_outside
 // Class without explicit constructor
 class NoConstructor {}
 $noConst = new NoConstructor(/*|no_constructor*/);
+
+// The cursor on a call's name, not in its argument list
+$onName = Priority::fromScore/*|on_call_name*/(50);
+$onClassName = new User/*|on_new_class_name*/('id', 'name', 'email@example.com');
+$onMethodName = $user->setName/*|on_method_name*/('name');
+$beforeSpacedParen = signatureHelpAdd /*|before_spaced_paren*/(1, 2);
+$afterExpressionCallee = $user->{'setName'}/*|after_expression_callee*/('name');
+$onNullsafeName = $user?->setName/*|on_nullsafe_name*/('name');
+#[\Attribute/*|on_attribute_name*/(\Attribute::TARGET_ALL)]
+class OnAttributeName {}
+
+// A function body is not the enclosing call's argument
+$onNameInClosure = array_map(function ($x) { return strlen/*|on_name_in_closure*/($x); }, ['a']);
+$inClosureBody = array_map(function ($x) { $y/*|in_closure_body*/ = $x; return $y; }, ['a']);
+$inArrowFnCall = array_map(fn ($x) => strlen(/*|in_arrow_fn_call*/$x), ['a']);
+$onInnerName = signatureHelpAdd(strlen/*|on_inner_call_name*/('x'), 2);

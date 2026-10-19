@@ -20,7 +20,7 @@ use PhpParser\Token;
 /**
  * The parent-connecting and name-resolving pass every
  * {@see SyntaxSource\SyntaxSourceInterface} runs on its own result, which
- * also records argument separators when given the tree's tokens.
+ * also records each call's argument list when given the tree's tokens.
  *
  * A skeleton tree ({@see SyntaxSource\SkeletonSyntaxSource})
  * is annotated by the same code as a parsed one, so a downstream
@@ -58,31 +58,29 @@ final class TreeAnnotator
     /**
      * @param array<Node> $tree
      * @param array<Token> $tokens The tokens the tree was parsed from, or none
-     *        when no lexer produced it; a source that builds nodes itself sets
-     *        {@see ParsedDocument::ARGUMENT_SEPARATORS} on them.
+     *        when no lexer produced it; a source that builds calls itself sets
+     *        {@see ParsedDocument::ARGUMENT_LIST} on them.
      * @return array<Stmt>
      */
     public function annotate(array $tree, array $tokens): array
     {
         $traverser = new NodeTraverser($this->parents, $this->names);
         if ($tokens !== []) {
-            $traverser->addVisitor(new class (
-                static fn (CallLike|Attribute $call): array => self::argumentSeparators($call, $tokens),
-            ) extends NodeVisitorAbstract {
+            $annotateCall = static function (CallLike|Attribute $call) use ($tokens): void {
+                $call->setAttribute(ParsedDocument::ARGUMENT_LIST, self::argumentList($call, $tokens));
+            };
+            $traverser->addVisitor(new class ($annotateCall) extends NodeVisitorAbstract {
                 /**
-                 * @param Closure(CallLike|Attribute): list<int> $separatorsOf
+                 * @param Closure(CallLike|Attribute): void $annotateCall
                  */
-                public function __construct(private readonly Closure $separatorsOf)
+                public function __construct(private readonly Closure $annotateCall)
                 {
                 }
 
                 public function enterNode(Node $node): null
                 {
                     if ($node instanceof CallLike || $node instanceof Attribute) {
-                        $node->setAttribute(
-                            ParsedDocument::ARGUMENT_SEPARATORS,
-                            ($this->separatorsOf)($node),
-                        );
+                        ($this->annotateCall)($node);
                     }
                     return null;
                 }
@@ -94,16 +92,51 @@ final class TreeAnnotator
     }
 
     /**
+     * @param array<Token> $tokens
+     */
+    private static function argumentList(CallLike|Attribute $call, array $tokens): ?ArgumentList
+    {
+        $args = $call instanceof Attribute ? $call->args : $call->getRawArgs();
+        $opensAt = self::argumentListStart($call, $args, $tokens);
+
+        return $opensAt === null ? null : new ArgumentList($opensAt, self::argumentSeparators($call, $args, $tokens));
+    }
+
+    /**
+     * The `(` is the last real token before the first argument, or, with none,
+     * before the `)` that closes the list (absent when recovery left it
+     * unclosed). A call written without parentheses has neither, and no list.
+     *
+     * @param array<Node\Arg|Node\ArgPlaceholder|Node\VariadicPlaceholder> $args
+     * @param array<Token> $tokens
+     */
+    private static function argumentListStart(CallLike|Attribute $call, array $args, array $tokens): ?int
+    {
+        if ($args === []) {
+            $t = $call->getEndTokenPos();
+            if ($tokens[$t]->is(')')) {
+                $t--;
+            }
+        } else {
+            $t = $args[0]->getStartTokenPos() - 1;
+        }
+        while ($tokens[$t]->isIgnorable()) {
+            $t--;
+        }
+        return $tokens[$t]->is('(') ? $tokens[$t]->pos : null;
+    }
+
+    /**
      * A call's own commas sit only in the gaps between its arguments, or after
      * the last one before the `)` that closes the list (the call's last token,
      * when recovery left it unclosed), so only those gaps are scanned.
      *
+     * @param array<Node\Arg|Node\ArgPlaceholder|Node\VariadicPlaceholder> $args
      * @param array<Token> $tokens
      * @return list<int>
      */
-    private static function argumentSeparators(CallLike|Attribute $call, array $tokens): array
+    private static function argumentSeparators(CallLike|Attribute $call, array $args, array $tokens): array
     {
-        $args = $call instanceof Attribute ? $call->args : $call->getRawArgs();
         $separators = [];
         foreach ($args as $i => $arg) {
             $next = $args[$i + 1] ?? null;

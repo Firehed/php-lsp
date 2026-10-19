@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
@@ -16,6 +15,7 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\FunctionLike;
 
 /**
  * Detects call context (function/method/constructor calls) at a cursor
@@ -43,22 +43,33 @@ final class CallContextDetector
      */
     public function detect(ParsedDocument $parsed, int $offset): ?array
     {
+        // The tree annotator sets the parent attribute, so this is a pointer walk,
+        // not a traversal. A function body is not the enclosing call's argument:
+        // inside one, only the calls in that body count.
         $node = $this->locator->nodeAt($parsed, $offset);
-        // Walk parents until an enclosing call is found. The tree annotator sets
-        // the parent attribute, so this is a pointer walk, not a traversal.
-        while ($node !== null && !self::isCallLike($node)) {
+        while ($node !== null && !$node instanceof FunctionLike) {
+            if (self::isCallLike($node)) {
+                $list = ParsedDocument::argumentListOf($node);
+                if ($list !== null && $offset > $list->opensAt) {
+                    return self::detection($node, $list->separators, $offset);
+                }
+            }
             $parent = $node->getAttribute('parent');
             $node = $parent instanceof Node ? $parent : null;
         }
 
-        if (!self::isCallLike($node)) {
-            return null;
-        }
+        return null;
+    }
 
-        $separators = ParsedDocument::argumentSeparatorsOf($node);
-        if ($separators === null) {
-            throw new LogicException('A syntax source returned a call without its argument separators');
-        }
+    /**
+     * @param list<int> $separators
+     * @return RawDetection
+     */
+    private static function detection(
+        FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $node,
+        array $separators,
+        int $offset,
+    ): array {
         $activeParam = count(array_filter($separators, static fn (int $pos): bool => $pos < $offset));
         $usedNames = [];
         $positionalCount = 0;
