@@ -84,6 +84,8 @@ final class CallContextDetectorTest extends TestCase
             'a static method' => ['on_call_name'],
             'an instance method' => ['on_method_name'],
             'the class after new' => ['on_new_class_name'],
+            'a space before the (' => ['before_spaced_paren'],
+            'the } closing an expression callee' => ['after_expression_callee'],
         ];
     }
 
@@ -213,11 +215,13 @@ final class CallContextDetectorTest extends TestCase
     public function testRejectsACallWithoutItsArgumentSeparators(): void
     {
         $locator = self::createStub(NodeLocatorInterface::class);
-        $locator->method('nodeAt')->willReturn(new FuncCall(new Name('f', ['endFilePos' => 0])));
+        $locator->method('nodeAt')->willReturn(
+            new FuncCall(new Name('f'), attributes: [ParsedDocument::ARGUMENT_LIST_START => 1]),
+        );
 
         $this->expectException(LogicException::class);
 
-        // Past the callee, as if just inside `f(`.
+        // Past the `(`, as if just inside `f(`.
         (new CallContextDetector($locator))->detect(
             new ParsedDocument(new TextDocument('file:///f.php', 'php', 1, ''), []),
             2,

@@ -54,4 +54,6 @@ $noConst = new NoConstructor(/*|no_constructor*/);
 $onName = Priority::fromScore/*|on_call_name*/(50);
 $onClassName = new User/*|on_new_class_name*/('id', 'name', 'email@example.com');
 $onMethodName = $user->setName/*|on_method_name*/('name');
+$beforeSpacedParen = signatureHelpAdd /*|before_spaced_paren*/(1, 2);
+$afterExpressionCallee = $user->{'setName'}/*|after_expression_callee*/('name');
 $onInnerName = signatureHelpAdd(strlen/*|on_inner_call_name*/('x'), 2);
