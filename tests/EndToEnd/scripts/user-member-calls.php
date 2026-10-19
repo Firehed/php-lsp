@@ -16,15 +16,18 @@ $create = new Marker\SymbolMarker('create');
 $markCreated = new Marker\SymbolMarker('markCreated');
 
 return [
-    'completion at an instance method call' => $at(
-        new Step\Complete($user, $setName, expect: [new Expectation\Offers('setName')]),
-    ),
-    'completion at a static method call' => $at(
-        new Step\Complete($user, $create, expect: [new Expectation\Offers('create')]),
-    ),
-    'completion at a trait method call' => $at(
-        new Step\Complete($user, $markCreated, expect: [new Expectation\Offers('markCreated')]),
-    ),
+    'completion at an instance method call' => $at(new Step\Complete($user, $setName, expect: [
+        new Expectation\Offers('setName'),
+        new Expectation\Withholds('DEFAULT_ROLE'),
+    ])),
+    'completion at a static method call' => $at(new Step\Complete($user, $create, expect: [
+        new Expectation\Offers('create'),
+        new Expectation\Withholds('setName'),
+    ])),
+    'completion at a trait method call' => $at(new Step\Complete($user, $markCreated, expect: [
+        new Expectation\Offers('markCreated'),
+        new Expectation\Withholds('DEFAULT_ROLE'),
+    ])),
     'signature help at an instance method call' => $at(
         new Step\SignatureHelp($user, $setName, expect: new Expectation\SignatureShows('setName', 'string $name')),
     ),
