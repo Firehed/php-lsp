@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Parity;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
+use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use PHPUnit\Framework\TestCase;
 
@@ -22,10 +23,6 @@ use PHPUnit\Framework\TestCase;
  * That makes the comparison version-agnostic
  * in the same way `TypeGraphParityTest` uses reflection as the oracle for member
  * resolution.
- *
- * Freezing the shape of that path's output is the function-surface golden's job
- * ({@see FunctionSurfaceParityTest}); proving the backend supplies the same
- * *set* of names is this test's.
  *
  * Note the two sides are not trivially the same call: reflection produces a flat
  * list of names, while the backend files each name under the namespace it
@@ -56,6 +53,28 @@ final class BuiltinFunctionParityTest extends TestCase
             $expected,
             $enumerated,
             'the built-in backend must enumerate exactly the internal functions reflection reports',
+        );
+    }
+
+    /**
+     * Completion reads `search()`, which draws on an index of its own, so the
+     * enumeration above does not vouch for it.
+     */
+    public function testSearchedFunctionsMatchReflection(): void
+    {
+        $expected = get_defined_functions()['internal'];
+        sort($expected);
+
+        $searched = array_map(
+            static fn (Symbol $symbol): string => strtolower($symbol->fullyQualifiedName),
+            $this->backend->search('', NameKind::Function_),
+        );
+        sort($searched);
+
+        self::assertSame(
+            $expected,
+            $searched,
+            'searching every name must find exactly the internal functions reflection reports',
         );
     }
 

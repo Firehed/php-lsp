@@ -243,6 +243,18 @@ final class SymbolCandidatesTest extends TestCase
         );
     }
 
+    public function testCurrentNamespaceFunctionRanksAboveAGlobalOne(): void
+    {
+        $items = self::candidates(new NameContext('App'), functionSearch: ['App\calc_widgets', 'calc_total'])
+            ->find(self::requestAfter('$x = calc'), [NameKind::Function_], ClassCandidateFilter::Any);
+
+        self::assertSame(
+            ['calc_widgets' => '0_calc_widgets', 'calc_total' => '3_calc_total'],
+            array_column($items, 'sortText', 'label'),
+            'a function in the current namespace sorts ahead of a global one, such as a built-in',
+        );
+    }
+
     public function testCallableSnippetFollowsTheClient(): void
     {
         $items = self::candidates(

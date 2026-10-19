@@ -28,6 +28,14 @@ return [
         'builtin_function',
         new Expectation\Offers('array_map', 'array_filter'),
     ),
+    'a built-in function shows its signature' => $complete(
+        $functions,
+        'builtin_function',
+        new Expectation\Details(
+            'array_map',
+            'function array_map(?callable $callback, array $array, array ...$arrays): array',
+        ),
+    ),
     'a user function shows its signature' => $complete(
         $global,
         'user_defined_function',

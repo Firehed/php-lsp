@@ -255,6 +255,23 @@ final class CompletionItemFactoryTest extends TestCase
         self::assertSame('A person who signs in.', $item['documentation'] ?? null, 'the description is documentation');
     }
 
+    public function testResolvedSymbolWithoutADocblockHasNoDocumentation(): void
+    {
+        $symbol = self::createStub(ResolvedSymbolInterface::class);
+        $symbol->method('format')->willReturn('function getConfig(): Config');
+        $symbol->method('getDocumentation')->willReturn(null);
+
+        $item = self::factory()->forSymbol(
+            'getConfig',
+            'App\getConfig',
+            NameKind::Function_,
+            Range::onLine(0, 0, 0),
+            symbol: $symbol,
+        );
+
+        self::assertArrayNotHasKey('documentation', $item, 'an undocumented symbol sends no empty documentation');
+    }
+
     public function testResolvedMemberShowsItsSignature(): void
     {
         $case = new EnumCaseInfo(
