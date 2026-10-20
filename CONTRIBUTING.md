@@ -47,15 +47,7 @@ Recapture with `UPDATE_GOLDENS=1` and review the diff; see `tests/Parity/README.
 
 ### Helpers
 
-`OpensDocumentsTrait` serves handler tests:
-
-```php
-$uri = $this->openFixture('src/Domain/User.php');
-$cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
-$result = $this->handler->handle($this->completionRequestAt($cursor));
-```
-
-`LoadsFixturesTrait` serves unit tests with no handler infrastructure:
+`LoadsFixturesTrait` loads a fixture's text for unit tests:
 
 ```php
 $content = $this->loadFixture('src/TypeInference/NewKeywords.php');

@@ -8,11 +8,6 @@ use Firehed\PhpLsp\Protocol\PositionEncoding;
 
 /**
  * Provides fixture file loading for unit tests.
- *
- * Use this for tests that need fixture file contents without the full
- * handler infrastructure (document manager, sync handler, etc.).
- *
- * For handler tests, use OpensDocumentsTrait instead.
  */
 trait LoadsFixturesTrait
 {
