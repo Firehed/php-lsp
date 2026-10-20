@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Parity;
+namespace Firehed\PhpLsp\Tests\Repository;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\MemberKind;
@@ -27,7 +27,7 @@ use ReflectionProperty;
  * misses an edge cannot pass by agreeing with a hand-written expectation.
  */
 #[CoversClass(MemberResolver::class)]
-final class TypeGraphParityTest extends TestCase
+final class MemberResolverTypeGraphTest extends TestCase
 {
     private MemberResolver $resolver;
 
