@@ -363,6 +363,44 @@ class MemberAccessDetectorTest extends TestCase
     }
 
     /**
+     * @return iterable<string, array{string, string, MemberAccessContext}>
+     */
+    public static function cursorInsideNameCases(): iterable
+    {
+        $subject = self::type('Fixtures\Completion\PrefixInsideName');
+        yield 'instance property' => [
+            'before_instance_property',
+            '$this->la',
+            MemberAccessContext::forInstance($subject, Visibility::Private, 'la'),
+        ];
+        yield 'static property, whose name omits its `$`' => [
+            'before_static_property',
+            'self::$na',
+            self::static($subject, Visibility::Private, 'na'),
+        ];
+        yield 'static property, right after its `$`' => [
+            'before_static_property',
+            'self::$',
+            self::static($subject, Visibility::Private),
+        ];
+    }
+
+    #[DataProvider('cursorInsideNameCases')]
+    public function testPrefixIsTheNameUpToTheCursor(string $marker, string $typed, MemberAccessContext $expected): void
+    {
+        $fixture = 'src/Completion/PrefixInsideName.php';
+        $content = $this->loadFixture($fixture);
+        ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
+        $markerLength = strlen("/*|{$marker}*/");
+
+        self::assertEquals(
+            $expected,
+            $this->detect($fixture, $line, $character + $markerLength + strlen($typed)),
+            'only what precedes the cursor has been typed',
+        );
+    }
+
+    /**
      * Members the fixtures declare, so chains and static calls resolve; every
      * other lookup finds nothing.
      */
