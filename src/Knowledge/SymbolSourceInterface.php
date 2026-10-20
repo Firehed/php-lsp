@@ -13,7 +13,7 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\Symbol;
+use Firehed\PhpLsp\Domain\QualifiedName;
 
 /**
  * The read contract for symbol knowledge: every query for symbol
@@ -71,7 +71,7 @@ interface SymbolSourceInterface
      * the partial fragment the user is typing, not a complete identifier, so a
      * bare string is correct here.
      *
-     * @return list<Symbol>
+     * @return list<QualifiedName>
      */
     public function search(string $prefix, NameKind $kind): array;
 }

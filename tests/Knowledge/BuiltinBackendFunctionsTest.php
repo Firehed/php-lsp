@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Knowledge;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\Symbol;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -58,7 +58,7 @@ final class BuiltinBackendFunctionsTest extends TestCase
         sort($expected);
 
         $searched = array_map(
-            static fn (Symbol $symbol): string => strtolower($symbol->fullyQualifiedName),
+            static fn (QualifiedName $name): string => strtolower($name->fullyQualifiedName()),
             $this->backend->search('', NameKind::Function_),
         );
         sort($searched);

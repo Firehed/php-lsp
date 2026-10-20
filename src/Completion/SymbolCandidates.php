@@ -255,8 +255,8 @@ final class SymbolCandidates
         array &$seen,
     ): array {
         $items = [];
-        foreach ($this->symbolSource->search($prefix, $kind) as $symbol) {
-            $fqn = $symbol->fullyQualifiedName;
+        foreach ($this->symbolSource->search($prefix, $kind) as $name) {
+            $fqn = $name->fullyQualifiedName();
             if (array_key_exists($fqn, $seen)) {
                 continue;
             }

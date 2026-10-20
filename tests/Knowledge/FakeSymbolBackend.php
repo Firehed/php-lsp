@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Knowledge\LooksUpByKindTrait;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
@@ -32,7 +31,7 @@ final class FakeSymbolBackend implements SymbolSourceInterface
     /**
      * @param list<DeclaredSymbol> $symbols Keyed here by each one's own case rule
      * @param array<string, NamespaceContents> $namespaces Path -> contents
-     * @param list<Symbol> $searchResults Returned (prefix-filtered on short name)
+     * @param list<QualifiedName> $searchResults Returned (prefix-filtered on short name)
      */
     public function __construct(
         array $symbols = [],
@@ -50,14 +49,14 @@ final class FakeSymbolBackend implements SymbolSourceInterface
     }
 
     /**
-     * @return list<Symbol>
+     * @return list<QualifiedName>
      */
     public function search(string $prefix, NameKind $kind): array
     {
         return array_values(array_filter(
             $this->searchResults,
-            static fn(Symbol $symbol): bool => str_starts_with(
-                strtolower($symbol->name),
+            static fn(QualifiedName $name): bool => str_starts_with(
+                strtolower($name->shortName),
                 strtolower($prefix),
             ),
         ));

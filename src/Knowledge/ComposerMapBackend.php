@@ -11,15 +11,12 @@ use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
 use Firehed\PhpLsp\Domain\FileUri;
-use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
-use Firehed\PhpLsp\Domain\SymbolKind;
 
 /**
  * A {@see SymbolSourceInterface} over PHP files on disk, resolved through
@@ -51,9 +48,6 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
 
     /** @var array<string, CatalogSymbol> Kind-qualified key -> catalog entry */
     private array $catalog = [];
-
-    /** @var array<string, string> Kind-qualified key -> real path of the file that declares it */
-    private array $pathByKey = [];
 
     /** @var array<string, string> Real path -> the FQN the walk derived for it, so a change on that path can adjust one name */
     private array $fqnByWalkedPath = [];
@@ -105,18 +99,18 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         if ($prior !== null) {
             unset($this->fqnByWalkedPath[$path]);
             $priorKey = NameKind::ClassLike->keyFor(QualifiedName::fromFullyQualified($prior));
-            unset($this->catalog[$priorKey], $this->pathByKey[$priorKey]);
+            unset($this->catalog[$priorKey]);
         }
         if ($current !== null) {
             $this->fqnByWalkedPath[$path] = $current;
-            $this->addToCatalog($current, $path);
+            $this->addToCatalog($current);
         }
 
         $this->byNamespace = NamespaceContents::indexByNamespace($this->catalog);
     }
 
     /**
-     * @return list<Symbol>
+     * @return list<QualifiedName>
      */
     public function search(string $prefix, NameKind $kind): array
     {
@@ -127,43 +121,29 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
         $this->ensureIndex();
 
         $results = [];
-        foreach ($this->catalog as $key => $symbol) {
-            $short = NamespaceName::shortNameOf($symbol->fullyQualifiedName);
-            if (!PrefixMatcher::matches($short, $prefix)) {
-                continue;
+        foreach ($this->catalog as $symbol) {
+            if (PrefixMatcher::matches($symbol->shortName(), $prefix)) {
+                $results[] = QualifiedName::fromFullyQualified($symbol->fullyQualifiedName);
             }
-            $results[$key] = new Symbol(
-                name: $short,
-                fullyQualifiedName: $symbol->fullyQualifiedName,
-                kind: SymbolKind::Class_,
-                location: new Location(FileUri::fromPath($this->pathByKey[$key]), 0, 0, 0, 0),
-                nameKind: NameKind::ClassLike,
-            );
         }
 
-        return array_values($results);
+        return $results;
     }
 
-    private function addToCatalog(string $fqn, string $path): void
+    private function addToCatalog(string $fqn): void
     {
         $symbol = new CatalogSymbol($fqn, NameKind::ClassLike);
-        $key = $symbol->key();
-        if (array_key_exists($key, $this->catalog)) {
-            return;
-        }
-        $this->catalog[$key] = $symbol;
-        $this->pathByKey[$key] = $path;
+        $this->catalog[$symbol->key()] ??= $symbol;
     }
 
     private function buildIndex(ComposerAutoloadMap $map): void
     {
         $this->byNamespace = null;
         $this->catalog = [];
-        $this->pathByKey = [];
         $this->fqnByWalkedPath = [];
 
-        foreach ($map->classMap() as $fqn => $path) {
-            $this->addToCatalog($fqn, $path);
+        foreach (array_keys($map->classMap()) as $fqn) {
+            $this->addToCatalog($fqn);
         }
 
         $loader = $this->buildLoader($map);
@@ -184,7 +164,7 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
                     }
                     $candidate = self::psr4Candidate($prefixTrimmed, $directory, $file);
                     if ($candidate !== null && $loader->findFile($candidate) === $file) {
-                        $this->addToCatalog($candidate, $file);
+                        $this->addToCatalog($candidate);
                         $this->fqnByWalkedPath[$file] = $candidate;
                     }
                 }
@@ -199,7 +179,7 @@ final class ComposerMapBackend implements SymbolSourceInterface, InvalidatableIn
                     }
                     $candidate = self::psr0Candidate($prefixTrimmed, $directory, $file);
                     if ($candidate !== null && $loader->findFile($candidate) === $file) {
-                        $this->addToCatalog($candidate, $file);
+                        $this->addToCatalog($candidate);
                         $this->fqnByWalkedPath[$file] = $candidate;
                     }
                 }

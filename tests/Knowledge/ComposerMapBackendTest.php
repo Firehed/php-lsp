@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\DeclarationSourceInterface;
@@ -771,14 +772,11 @@ final class ComposerMapBackendTest extends TestCase
     }
 
     /**
-     * @param list<\Firehed\PhpLsp\Domain\Symbol> $results
+     * @param list<QualifiedName> $results
      * @return list<string>
      */
     private static function fqnsOfSearch(array $results): array
     {
-        return array_map(
-            static fn(\Firehed\PhpLsp\Domain\Symbol $symbol): string => $symbol->fullyQualifiedName,
-            $results,
-        );
+        return array_map(static fn(QualifiedName $name): string => $name->fullyQualifiedName(), $results);
     }
 }
