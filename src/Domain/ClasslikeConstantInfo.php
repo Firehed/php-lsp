@@ -67,9 +67,4 @@ final readonly class ClasslikeConstantInfo implements MemberInfoInterface, Symbo
     {
         return true;
     }
-
-    public function symbolKind(): SymbolKind
-    {
-        return SymbolKind::Constant;
-    }
 }

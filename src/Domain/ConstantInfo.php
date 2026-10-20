@@ -41,9 +41,4 @@ final readonly class ConstantInfo implements ResolvedSymbolInterface, SymbolInfo
     {
         return $this->type;
     }
-
-    public function symbolKind(): SymbolKind
-    {
-        return SymbolKind::Constant;
-    }
 }
