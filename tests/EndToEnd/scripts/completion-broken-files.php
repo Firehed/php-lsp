@@ -196,7 +196,7 @@ return [
     ),
     'static access inside an anonymous class' => $complete($staticAccess, 'anon_class_static', ...$userStatics),
     'self:: outside a class' => $complete($staticAccess, 'toplevel_self', $nothing),
-    'static:: outside a class' => $complete($staticAccess, 'toplevel_static', $nothing),
+    'static access on an imported class at file scope' => $complete($staticAccess, 'toplevel_static', ...$userStatics),
     'a chain on $this outside a class' => $complete($thisAccess, 'this_chained_toplevel', $nothing),
     '$this outside a class' => $complete($thisAccess, 'this_toplevel', $nothing),
     'a parsing file changed to broken text' => new Session\Script(

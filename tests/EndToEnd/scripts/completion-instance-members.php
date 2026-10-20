@@ -165,6 +165,11 @@ return [
         'this_in_if',
         new Expectation\Offers('getName', 'name', 'test'),
     ),
+    'the next statement parsed onto $this->' => $complete(
+        'src/Completion/NextLineParsedOnto.php',
+        'this_before_statement',
+        new Expectation\Offers('trigger'),
+    ),
     'chain inside an unfinished if' => $complete(
         'src/IncompleteCode/ChainedAccess.php',
         'chained_in_if',
