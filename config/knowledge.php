@@ -30,10 +30,8 @@ return [
     Knowledge\AutoloadFilesBackend::class,
     Knowledge\ComposerMapBackend::class,
     Knowledge\BuiltinBackend::class,
-    // Precedence: an open document overrides the autoload.files set, which
-    // overrides the file on disk resolved through Composer's maps, which
-    // overrides the built-ins. Composer requires the files entries before the
-    // autoloader is ever asked, so a name declared there wins over the map.
+    // Composer requires the autoload.files entries before the autoloader is
+    // ever asked, so a name declared there wins over the maps.
     Knowledge\CompositeSymbolSource::class => fn (TC $c) => new Knowledge\CompositeSymbolSource(
         $c->get(Knowledge\OpenDocumentBackend::class),
         $c->get(Knowledge\AutoloadFilesBackend::class),
