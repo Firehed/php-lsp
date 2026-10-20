@@ -28,4 +28,5 @@ Run all three and report each separately.
 
 - Verify every finding against the code with a concrete input or scenario before reporting it; mark anything unverified as such.
 - Keep findings terse: file, the problem, the failing input. No research narrative.
+- Mark each finding as introduced by this pull request or already present on the base branch.
 - An empty report is a valid result.
