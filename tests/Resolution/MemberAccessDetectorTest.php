@@ -241,6 +241,11 @@ class MemberAccessDetectorTest extends TestCase
             self::instance(self::type('Fixtures\Completion\SecondUnrelated'), Visibility::Private),
         ];
         yield 'unknown variable' => [self::PROCEDURAL, 'unknown_var', null];
+        yield 'the next statement parsed onto an instance access' => [
+            'src/Completion/NextLineParsedOnto.php',
+            'this_before_statement',
+            self::instance(self::type('Fixtures\Completion\NextLineParsedOnto'), Visibility::Private),
+        ];
     }
 
     /**
@@ -324,6 +329,11 @@ class MemberAccessDetectorTest extends TestCase
             $imports,
             'aliased_static',
             self::static(self::type('Fixtures\Namespacing\Models\UserModel'), Visibility::Public),
+        ];
+        yield 'the next statement parsed onto a static access' => [
+            'TopLevel/static_access.php',
+            'toplevel_static',
+            self::static(self::type('Fixtures\Domain\User'), Visibility::Public),
         ];
         yield 'an enum' => [
             'src/Completion/EnumUsage.php',
