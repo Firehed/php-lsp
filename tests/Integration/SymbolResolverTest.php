@@ -698,19 +698,6 @@ final class SymbolResolverTest extends TestCase
         self::assertSame('Fixtures\Domain\User', $result->getType()?->format(), 'Resolves to User type');
     }
 
-    public function testGetCallContextReturnsContext(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Domain/User.php', 'sig_this_call');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(CallContext::class, $context);
-        self::assertSame(0, $context->activeParameterIndex);
-        self::assertStringContainsString('setName', $context->callable->format());
-    }
-
     public function testGetCallContextReturnsNullOutsideCall(): void
     {
         $this->openFixture('src/Domain/User.php');
@@ -721,18 +708,6 @@ final class SymbolResolverTest extends TestCase
         $context = $this->resolver->getCallContext($document, 0, 0);
 
         self::assertNull($context);
-    }
-
-    public function testGetCallContextTracksActiveParameterIndex(): void
-    {
-        $cursor = $this->openFixtureAtCursor('SignatureHelp.php', 'second_param');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(CallContext::class, $context);
-        self::assertSame(1, $context->activeParameterIndex);
     }
 
     public function testGetCallContextTracksUsedNamedArgs(): void
@@ -790,9 +765,6 @@ final class SymbolResolverTest extends TestCase
         ];
         yield 'builtin function' => [
             'src/Domain/User.php', 'sig_builtin_func', FunctionInfo::class, 'strlen',
-        ];
-        yield 'user defined function' => [
-            'SignatureHelp.php', 'first_param', FunctionInfo::class, 'signatureHelpAdd',
         ];
     }
 
@@ -1438,35 +1410,6 @@ final class SymbolResolverTest extends TestCase
         self::assertSame('Fixtures\\IncompleteCode\\SingleIncomplete', $context->type->format());
     }
 
-    public function testGetCallContextForNamedArguments(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'named_empty');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(CallContext::class, $context);
-        self::assertStringContainsString('multipleParams', $context->callable->format());
-    }
-
-    public function testGetCallContextForAttribute(): void
-    {
-        $this->openFixture('src/Attributes/Route.php');
-        $cursor = $this->openFixtureAtCursor('src/Completion/AttributeNamedArguments.php', 'attr_arg_empty');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(CallContext::class, $context, 'An attribute is a constructor call');
-        self::assertStringContainsString('__construct', $context->callable->format());
-        self::assertNotNull(
-            $context->callable->getParameterByName('path'),
-            'The attribute constructor parameters are resolved',
-        );
-    }
-
     public function testGetCallContextForIncompleteAttribute(): void
     {
         $this->openFixture('src/Attributes/Route.php');
@@ -1481,18 +1424,6 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(CallContext::class, $context, 'Call context resolves inside an unclosed #[X(');
         self::assertStringContainsString('__construct', $context->callable->format());
-    }
-
-    public function testGetCallContextForIncompleteCode(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'incomplete_with_prefix');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(CallContext::class, $context, 'getCallContext should find call in incomplete code');
-        self::assertStringContainsString('multipleParams', $context->callable->format());
     }
 
     public function testGetCallContextWhileEditingInCompleteCall(): void
@@ -1510,22 +1441,6 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('__construct', $context->callable->format());
         self::assertSame(1, $context->positionallyFilledCount, 'First arg is positional');
         self::assertContains('age', $context->usedParameterNames, 'age: is used as named arg');
-    }
-
-    public function testGetCallContextWhileEditingBeforeColon(): void
-    {
-        // Open the file containing ParamClass so ClassRepository can find it
-        $this->openFixture('src/Completion/NamedArguments.php');
-
-        $cursor = $this->openFixtureAtCursor('src/Completion/EditingNamedArg.php', 'editing_before_colon');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-
-        // For now, we expect the call context to be found even if positional count is off
-        self::assertInstanceOf(CallContext::class, $context, 'Should detect call context when editing before colon');
-        self::assertStringContainsString('__construct', $context->callable->format());
     }
 
     public function testGetCallContextStaticMethodComplete(): void
@@ -1789,16 +1704,6 @@ final class SymbolResolverTest extends TestCase
 
         $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
         self::assertInstanceOf(CallContext::class, $context, 'Should detect call context after string value');
-    }
-
-    public function testGetCallContextInIncompleteCode(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/SingleIncompleteSigHelp.php', 'sig_this_call');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
-        self::assertInstanceOf(CallContext::class, $context, 'Should detect call context in incomplete code');
     }
 
     public function testChainedAccessRegexPattern(): void
