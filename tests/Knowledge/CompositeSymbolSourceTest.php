@@ -10,12 +10,10 @@ use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\Symbol;
-use Firehed\PhpLsp\Domain\SymbolKind;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\CompositeSymbolSource;
@@ -250,30 +248,26 @@ final class CompositeSymbolSourceTest extends TestCase
     public function testSearchMergesAndDeduplicatesByFqnEarlierWinning(): void
     {
         $source = self::compose(
-            disk: new FakeSymbolBackend(searchResults: [self::symbol('App\Log', 'disk.php')]),
+            disk: new FakeSymbolBackend(searchResults: [QualifiedName::fromFullyQualified('App\Log')]),
             builtin: new FakeSymbolBackend(searchResults: [
-                self::symbol('APP\LOG', 'builtin.php'),
-                self::symbol('App\Logger', 'builtin.php'),
+                QualifiedName::fromFullyQualified('APP\LOG'),
+                QualifiedName::fromFullyQualified('App\Logger'),
             ]),
         );
 
         $results = $source->search('Log', NameKind::ClassLike);
 
-        $byFqn = [];
-        foreach ($results as $symbol) {
-            $byFqn[$symbol->fullyQualifiedName] = $symbol->location->uri;
-        }
         self::assertSame(
-            ['App\Log' => 'file://disk.php', 'App\Logger' => 'file://builtin.php'],
-            $byFqn,
-            'results merge across backends, deduplicated by FQN with the earlier backend winning the clash',
+            ['App\Log', 'App\Logger'],
+            array_map(static fn (QualifiedName $name): string => $name->fullyQualifiedName(), $results),
+            'results merge across backends, deduplicated by FQN with the earlier backend\'s spelling winning the clash',
         );
     }
 
     public function testSearchReturnsEveryDeclaredConstantEvenWhenAnotherDiffersOnlyByCase(): void
     {
-        $upper = self::symbol('App\DEBUG', 'disk.php', SymbolKind::Constant);
-        $lower = self::symbol('App\debug', 'builtin.php', SymbolKind::Constant);
+        $upper = QualifiedName::fromFullyQualified('App\DEBUG');
+        $lower = QualifiedName::fromFullyQualified('App\debug');
         $source = self::compose(
             disk: new FakeSymbolBackend(searchResults: [$upper]),
             builtin: new FakeSymbolBackend(searchResults: [$lower]),
@@ -304,19 +298,6 @@ final class CompositeSymbolSourceTest extends TestCase
             new AutoloadFilesBackend($emptyReader, $production->reader, $production->declarations),
             $disk,
             $builtin,
-        );
-    }
-
-    private static function symbol(string $fqn, string $file, SymbolKind $kind = SymbolKind::Class_): Symbol
-    {
-        $shortName = strrchr($fqn, '\\');
-        $shortName = $shortName === false ? $fqn : substr($shortName, 1);
-
-        return new Symbol(
-            $shortName,
-            $fqn,
-            $kind,
-            new Location('file://' . $file, 0, 0, 0, 0),
         );
     }
 }

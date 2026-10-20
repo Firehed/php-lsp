@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Domain\ComposerAutoloadMap;
 use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\Symbol;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
@@ -159,11 +159,11 @@ final class CompositeInvalidatableTest extends TestCase
     }
 
     /**
-     * @param list<Symbol> $symbols
+     * @param list<QualifiedName> $names
      * @return list<string>
      */
-    private static function names(array $symbols): array
+    private static function names(array $names): array
     {
-        return array_map(static fn(Symbol $symbol): string => $symbol->fullyQualifiedName, $symbols);
+        return array_map(static fn(QualifiedName $name): string => $name->fullyQualifiedName(), $names);
     }
 }

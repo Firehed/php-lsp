@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\Symbol;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -319,7 +319,7 @@ final class OpenDocumentBackendTest extends TestCase
 
         $results = $this->backend->search('User', NameKind::ClassLike);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertContains('App\User', $fqns, 'a class-like matching the prefix must be found');
         self::assertContains('App\UserEnum', $fqns, 'another class-like matching the prefix must be found');
         self::assertContains('App\UserInterface', $fqns, 'a third class-like matching the prefix must be found');
@@ -343,7 +343,7 @@ final class OpenDocumentBackendTest extends TestCase
 
         $results = $this->backend->search('format', NameKind::Function_);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertContains('App\format', $fqns, 'a function matching the prefix must be found');
         self::assertNotContains(
             'App\Formatter',
@@ -363,7 +363,7 @@ final class OpenDocumentBackendTest extends TestCase
 
         $results = $this->backend->search('D', NameKind::Constant);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertContains('App\DEBUG', $fqns, 'a constant matching the prefix must be found');
         self::assertNotContains(
             'App\Debugger',
@@ -447,20 +447,15 @@ final class OpenDocumentBackendTest extends TestCase
             new TextDocument('file:///a.php', 'php', 1, "<?php\nnamespace App;\nclass Widget {}\n"),
         );
         $this->backend->openDocument(
-            new TextDocument('file:///b.php', 'php', 1, "<?php\nnamespace App;\nclass Widget {}\n"),
+            new TextDocument('file:///b.php', 'php', 1, "<?php\nnamespace App;\nclass WIDGET {}\n"),
         );
 
         $results = $this->backend->search('Widget', NameKind::ClassLike);
 
-        self::assertCount(
-            1,
-            $results,
-            'a name two documents declare must appear once in search, matching lookup',
-        );
         self::assertSame(
-            'file:///a.php',
-            $results[0]->location->uri,
-            'the first-declaring document wins the merged entry, matching lookup',
+            ['App\Widget'],
+            array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results),
+            'a name two documents declare appears once in search, spelled as the first declaration, matching lookup',
         );
     }
 

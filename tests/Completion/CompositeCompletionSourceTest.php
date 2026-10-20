@@ -23,8 +23,8 @@ use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
-use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Resolution\CallContext;
@@ -47,7 +47,7 @@ final class CompositeCompletionSourceTest extends TestCase
     {
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
-        $symbols->method('search')->willReturn([self::symbol('var_dump', SymbolKind::Function_)]);
+        $symbols->method('search')->willReturn([QualifiedName::fromFullyQualified('var_dump')]);
 
         self::assertSame(
             ['name:', '$variable'],
@@ -283,18 +283,14 @@ final class CompositeCompletionSourceTest extends TestCase
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
         $symbols->method('search')->willReturnCallback(
-            static fn (string $prefix, NameKind $kind): array => match ($kind) {
-                NameKind::ClassLike => [
-                    self::symbol('Widget', SymbolKind::Class_),
-                    self::symbol('Contract', SymbolKind::Interface_),
-                    self::symbol('Base', SymbolKind::Class_),
-                    self::symbol('Failure', SymbolKind::Class_),
-                    self::symbol('Marker', SymbolKind::Class_),
-                    self::symbol('Mixin', SymbolKind::Trait_),
-                ],
-                NameKind::Function_ => [self::symbol('strlen', SymbolKind::Function_)],
-                NameKind::Constant => [self::symbol('PHP_VERSION', SymbolKind::Constant)],
-            },
+            static fn (string $prefix, NameKind $kind): array => array_map(
+                QualifiedName::fromFullyQualified(...),
+                match ($kind) {
+                    NameKind::ClassLike => ['Widget', 'Contract', 'Base', 'Failure', 'Marker', 'Mixin'],
+                    NameKind::Function_ => ['strlen'],
+                    NameKind::Constant => ['PHP_VERSION'],
+                },
+            ),
         );
 
         return $symbols;

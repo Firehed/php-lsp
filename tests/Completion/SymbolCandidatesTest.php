@@ -18,8 +18,6 @@ use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\Symbol;
-use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
@@ -468,18 +466,12 @@ final class SymbolCandidatesTest extends TestCase
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('search')->willReturnCallback(
             static fn (string $prefix, NameKind $kind): array => array_values(array_filter(
-                match ($kind) {
-                    NameKind::ClassLike => array_map(
-                        static fn (string $fqn): Symbol => self::symbol($fqn, SymbolKind::Class_),
-                        $search,
-                    ),
-                    NameKind::Function_ => array_map(
-                        static fn (string $fqn): Symbol => self::symbol($fqn, SymbolKind::Function_),
-                        $functionSearch,
-                    ),
+                array_map(QualifiedName::fromFullyQualified(...), match ($kind) {
+                    NameKind::ClassLike => $search,
+                    NameKind::Function_ => $functionSearch,
                     NameKind::Constant => [],
-                },
-                static fn (Symbol $symbol): bool => PrefixMatcher::matches($symbol->name, $prefix),
+                }),
+                static fn (QualifiedName $name): bool => PrefixMatcher::matches($name->shortName, $prefix),
             )),
         );
         $symbols->method('childrenOf')->willReturnCallback(

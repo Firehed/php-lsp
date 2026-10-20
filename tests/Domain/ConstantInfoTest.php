@@ -51,23 +51,6 @@ class ConstantInfoTest extends TestCase
         self::assertNull($untyped->getType(), 'an untyped constant returns null');
     }
 
-    public function testSymbolKindIsConstant(): void
-    {
-        $constant = new ConstantInfo(
-            name: ConstantName::fromFullyQualified('DEBUG'),
-            type: null,
-            docblock: null,
-            file: null,
-            line: null,
-        );
-
-        self::assertSame(
-            SymbolKind::Constant,
-            $constant->symbolKind(),
-            'a free constant reports the Constant LSP kind',
-        );
-    }
-
     public function testFormatGlobalConstant(): void
     {
         $constant = new ConstantInfo(
