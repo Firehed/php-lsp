@@ -5,7 +5,14 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Closure;
+use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
+use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
+use Firehed\PhpLsp\Completion\KeywordCandidates;
+use Firehed\PhpLsp\Completion\MemberCandidates;
+use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
+use Firehed\PhpLsp\Completion\SymbolCandidates;
+use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
@@ -24,6 +31,7 @@ use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\NameContext;
+use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -34,7 +42,6 @@ use PHPUnit\Framework\TestCase;
 final class CompositeCompletionSourceTest extends TestCase
 {
     use BuildsCompletionInputsTrait;
-    use WiresCompletionSourceTrait;
 
     public function testVariableInsideACallOffersNamedArgumentsAndVariablesOnly(): void
     {
@@ -320,7 +327,17 @@ final class CompositeCompletionSourceTest extends TestCase
         SymbolSourceInterface $symbols,
         CodeResolverInterface $codeResolver,
     ): array {
-        $source = self::completionSourceFor($symbols, $codeResolver, self::capabilitiesProvider());
+        $capabilities = self::capabilitiesProvider();
+        $itemFactory = new CompletionItemFactory(new ResolvedSymbolPresenter());
+        $source = new CompositeCompletionSource(
+            $codeResolver,
+            new SymbolCandidates($symbols, $codeResolver, $capabilities, $itemFactory),
+            new KeywordCandidates($itemFactory),
+            new VariableCandidates($codeResolver, $itemFactory),
+            new MemberCandidates($codeResolver, $capabilities, $itemFactory),
+            new NamedArgumentCandidates($codeResolver, $itemFactory),
+            new BuiltinTypeCandidates($itemFactory),
+        );
 
         return array_column($source->find(self::requestAfter($code)), 'label');
     }
