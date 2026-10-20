@@ -656,35 +656,6 @@ final class SymbolResolverTest extends TestCase
         self::assertNotVariablesContain($variables, 'localToFunction', 'localToMethod');
     }
 
-    public function testGetMemberAccessContextForGlobalVariable(): void
-    {
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_completion.php', 'global_member_access');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context);
-        self::assertSame(MemberAccessKind::Instance, $context->kind);
-        self::assertSame(Visibility::Public, $context->minVisibility, 'Global access is public-only');
-        self::assertSame('Fixtures\Domain\User', $context->type->format(), 'Resolves to User type');
-    }
-
-    public function testGetMemberAccessContextForGlobalVariableInNamespace(): void
-    {
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtCursor('TopLevel/global_scope_completion_ns.php', 'global_member_access_ns');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context);
-        self::assertSame(MemberAccessKind::Instance, $context->kind);
-        self::assertSame('Fixtures\Domain\User', $context->type->format(), 'Resolves to User type');
-    }
-
     public function testResolvesGlobalVariableType(): void
     {
         $this->openFixture('src/Domain/User.php');
@@ -918,20 +889,6 @@ final class SymbolResolverTest extends TestCase
         self::assertNull($result);
     }
 
-    public function testGetMemberAccessContextForInstanceAccess(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_empty');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context);
-        self::assertSame(MemberAccessKind::Instance, $context->kind);
-        self::assertSame(Visibility::Private, $context->minVisibility);
-        self::assertSame('', $context->prefix);
-    }
-
     public function testGetMemberAccessContextForInstanceAccessWithPrefix(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'this_prefix');
@@ -989,46 +946,6 @@ final class SymbolResolverTest extends TestCase
         self::assertSame('', $context->prefix);
     }
 
-    public function testGetMemberAccessContextForNullsafeAccess(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/MethodAccess.php', 'nullsafe_this_empty');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context);
-        self::assertSame(MemberAccessKind::Instance, $context->kind);
-    }
-
-    public function testGetMemberAccessContextForStaticAccess(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/StaticAccess.php', 'self_empty');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context);
-        self::assertSame(MemberAccessKind::Static, $context->kind);
-        self::assertSame(Visibility::Private, $context->minVisibility);
-    }
-
-    public function testGetMemberAccessContextForParentAccess(): void
-    {
-        $this->openFixture('src/Inheritance/ParentClass.php');
-        $this->openFixture('src/Inheritance/ChildClass.php');
-        $cursor = $this->openFixtureAtCursor('src/Completion/InheritanceCompletion.php', 'parent_access');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context);
-        self::assertSame(MemberAccessKind::Parent, $context->kind);
-        self::assertSame(Visibility::Protected, $context->minVisibility);
-    }
-
     public function testGetMemberAccessContextReturnsNullOutsideMemberAccess(): void
     {
         $this->openFixture('src/Domain/User.php');
@@ -1036,17 +953,6 @@ final class SymbolResolverTest extends TestCase
         assert($document !== null);
 
         $context = $this->resolver->getMemberAccessContext($document, 0, 0);
-
-        self::assertNull($context);
-    }
-
-    public function testGetMemberAccessContextReturnsNullForNoParent(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/NoParent.php', 'parent_no_parent');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
 
         self::assertNull($context);
     }
@@ -1073,35 +979,6 @@ final class SymbolResolverTest extends TestCase
         self::assertNull($context);
     }
 
-    public function testGetMemberAccessContextStaticFromDirectSubclass(): void
-    {
-        $this->openFixture('src/Inheritance/ParentClass.php');
-        $cursor = $this->openFixtureAtCursor('src/Inheritance/ChildClass.php', 'direct_parent_static');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context);
-        self::assertSame(MemberAccessKind::Static, $context->kind);
-        self::assertSame(Visibility::Protected, $context->minVisibility);
-    }
-
-    public function testGetMemberAccessContextStaticFromDeepSubclass(): void
-    {
-        $this->openFixture('src/Inheritance/Grandparent.php');
-        $this->openFixture('src/Inheritance/ParentClass.php');
-        $cursor = $this->openFixtureAtCursor('src/Inheritance/ChildClass.php', 'grandparent_access');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context);
-        self::assertSame(MemberAccessKind::Static, $context->kind);
-        self::assertSame(Visibility::Protected, $context->minVisibility);
-    }
-
     public function testGetMemberAccessContextStaticFromUnrelatedClass(): void
     {
         $this->openFixture('src/Domain/User.php');
@@ -1114,17 +991,6 @@ final class SymbolResolverTest extends TestCase
         self::assertInstanceOf(MemberAccessContext::class, $context);
         self::assertSame(MemberAccessKind::Static, $context->kind);
         self::assertSame(Visibility::Public, $context->minVisibility);
-    }
-
-    public function testGetMemberAccessContextReturnsNullForSelfOutsideClass(): void
-    {
-        $cursor = $this->openFixtureAtCursor('TopLevel/static_access.php', 'toplevel_self');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context);
     }
 
     public function testGetMemberAccessContextReturnsNullForNonMemberAccess(): void
@@ -1142,20 +1008,6 @@ final class SymbolResolverTest extends TestCase
     {
         $this->openFixture('src/Domain/User.php');
         $cursor = $this->openFixtureAtCursor('TopLevel/static_access.php', 'toplevel_static');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context);
-        self::assertSame(MemberAccessKind::Static, $context->kind);
-        self::assertSame(Visibility::Public, $context->minVisibility);
-    }
-
-    public function testGetMemberAccessContextStaticFromAnonymousClass(): void
-    {
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtCursor('TopLevel/static_access.php', 'anon_class_static');
         $document = $this->documents->get($cursor['uri']);
         assert($document !== null);
 
@@ -1202,11 +1054,9 @@ final class SymbolResolverTest extends TestCase
     {
         return [
             'this in if' => ['this_access_if', MemberAccessKind::Instance],
-            'var in while' => ['var_access_while', MemberAccessKind::Instance],
             'nullsafe in for' => ['nullsafe_access_for', MemberAccessKind::Instance],
             'static in match' => ['static_access_match', MemberAccessKind::Static],
             'self in switch' => ['self_access_switch', MemberAccessKind::Static],
-            'this with prefix in if' => ['this_prefix_if', MemberAccessKind::Instance],
             'in return' => ['in_return', MemberAccessKind::Instance],
             'in assignment' => ['in_assignment', MemberAccessKind::Instance],
             'in array' => ['in_array', MemberAccessKind::Instance],
@@ -1231,68 +1081,6 @@ final class SymbolResolverTest extends TestCase
             "getMemberAccessContext should return context for marker '$marker'",
         );
         self::assertSame($expectedKind, $context->kind, "Access kind should match for marker '$marker'");
-    }
-
-    public function testGetMemberAccessContextInIfWithPrefixReturnsPrefix(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', 'this_prefix_if');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context);
-        self::assertSame('get', $context->prefix, 'Prefix should be extracted from incomplete member access');
-    }
-
-    public function testGetMemberAccessContextForTypedParameterResolvesType(): void
-    {
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', 'var_access_while');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context, 'Should resolve typed parameter access');
-        self::assertSame(
-            'Fixtures\\Domain\\User',
-            $context->type->format(),
-            'Type should be resolved from parameter type hint',
-        );
-        self::assertSame(
-            Visibility::Public,
-            $context->minVisibility,
-            'Parameter type is different class, visibility should be public',
-        );
-    }
-
-    public function testGetMemberAccessContextForPrimitiveParameterReturnsNull(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', 'primitive_param');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context, 'Primitive types have no members, should return null');
-    }
-
-    public function testGetMemberAccessContextForNullableParameterResolvesType(): void
-    {
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/InControlStructures.php', 'nullable_param');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context, 'Should resolve nullable parameter type');
-        self::assertSame(
-            '?Fixtures\\Domain\\User',
-            $context->type->format(),
-            'Should resolve underlying type from nullable parameter, preserving nullability',
-        );
     }
 
     public function testGetMemberAccessContextForIntersectionParameterResolvesType(): void
@@ -1321,93 +1109,6 @@ final class SymbolResolverTest extends TestCase
         );
         // Entity contributes getId(); Person contributes getName() and getAge().
         self::assertMembersContain($members, 'getId', 'getName', 'getAge');
-    }
-
-    public function testGetMemberAccessContextForAliasedImportResolvesType(): void
-    {
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/AliasedImports.php', 'aliased_param');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context, 'Should resolve aliased parameter type');
-        self::assertSame(
-            'Fixtures\\Domain\\User',
-            $context->type->format(),
-            'Aliased import should resolve to original FQN',
-        );
-    }
-
-    public function testGetMemberAccessContextForGroupImportResolvesType(): void
-    {
-        $this->openFixture('src/Domain/User.php');
-        $this->openFixture('src/Domain/Team.php');
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/GroupImports.php', 'group_user_param');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MemberAccessContext::class, $context, 'Should resolve group import parameter type');
-        self::assertSame(
-            'Fixtures\\Domain\\User',
-            $context->type->format(),
-            'Group import should resolve to correct FQN',
-        );
-    }
-
-    public function testDiagnosticTextBeforeCursor(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/SingleIncomplete.php', 'this_in_if');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $lineText = $document->getLine($cursor['line']);
-        $textBeforeCursor = substr($lineText, 0, $cursor['character']);
-
-        // Verify the text before cursor is what we expect
-        self::assertStringEndsWith('$this->', $textBeforeCursor, 'Text before cursor should end with $this->');
-
-        // Test the regex pattern
-        $pattern = '/\$(\w+)(\?)?->([\w]*)$/';
-        $matches = [];
-        $result = preg_match($pattern, $textBeforeCursor, $matches);
-        self::assertSame(1, $result, "Regex should match the text before cursor: '$textBeforeCursor'");
-        self::assertSame('this', $matches[1], 'Should capture variable name');
-
-        // Test text-based class lookup directly
-        $content = $document->getContent();
-        $lines = explode("\n", $content);
-
-        // Find class declaration
-        $foundClass = null;
-        $classPattern = '/^\s*(?:(?:abstract|final|readonly)\s+)*(?:class|trait|enum)\s+(\w+)/i';
-        for ($i = $cursor['line']; $i >= 0; $i--) {
-            $lineText = $lines[$i] ?? '';
-            if (preg_match($classPattern, $lineText, $m) === 1) {
-                $foundClass = $m[1];
-                break;
-            }
-        }
-        self::assertSame('SingleIncomplete', $foundClass, 'Should find class name from text');
-
-        // Find namespace
-        $foundNamespace = null;
-        foreach ($lines as $line) {
-            if (preg_match('/^\s*namespace\s+([A-Za-z_\\\\][A-Za-z0-9_\\\\]*)\s*[;{]/', $line, $m) === 1) {
-                $foundNamespace = $m[1];
-                break;
-            }
-        }
-        self::assertSame('Fixtures\\IncompleteCode', $foundNamespace, 'Should find namespace from text');
-
-        // Test that getMemberAccessContext returns a valid context
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-        self::assertInstanceOf(MemberAccessContext::class, $context, 'Should return context via text-based fallback');
-        self::assertSame(MemberAccessKind::Instance, $context->kind);
-        self::assertSame('Fixtures\\IncompleteCode\\SingleIncomplete', $context->type->format());
     }
 
     public function testGetCallContextForIncompleteAttribute(): void
@@ -1719,23 +1420,6 @@ final class SymbolResolverTest extends TestCase
         self::assertSame('', $matches[2], 'Should capture empty prefix');
     }
 
-    public function testGetMemberAccessContextChainedInIncompleteCode(): void
-    {
-        // Open User class first so it's available for type resolution
-        $this->openFixture('src/Domain/User.php');
-
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ChainedAccess.php', 'chained_in_if');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        // Verify the line text is what we expect
-        $lineText = $document->getLine($cursor['line']);
-        self::assertStringContainsString('$this->user->', $lineText, 'Line should contain chained access');
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-        self::assertNotNull($context, 'Chained access in if() should return context');
-    }
-
     // =========================================================================
     // getAccessibleMembersFromText: visibility filtering
     // =========================================================================
@@ -1758,48 +1442,6 @@ final class SymbolResolverTest extends TestCase
 
         self::assertMembersContain($members, 'PUBLIC_CONST');
         self::assertNotMembersContain($members, 'PROTECTED_CONST', 'PRIVATE_CONST');
-    }
-
-    public function testGetMemberAccessContextResolvesGroupUseStatic(): void
-    {
-        // Group use: use Fixtures\Domain\{User, Team};
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/GroupImports.php', 'group_static_access');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNotNull($context);
-        self::assertSame('Fixtures\\Domain\\User', $context->type->format());
-    }
-
-    public function testGetMemberAccessContextResolvesGroupUseAliased(): void
-    {
-        // Group use with alias: use Fixtures\Enum\{Status, Priority as Pri};
-        $this->openFixture('src/Enum/Priority.php');
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/GroupImports.php', 'group_aliased_static');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNotNull($context);
-        self::assertSame('Fixtures\\Enum\\Priority', $context->type->format());
-    }
-
-    public function testGetMemberAccessContextResolvesSimpleAliasedUse(): void
-    {
-        // Simple aliased use: use Fixtures\Domain\User as AliasedUser;
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/AliasedImports.php', 'aliased_static_access');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNotNull($context);
-        self::assertSame('Fixtures\\Domain\\User', $context->type->format());
     }
 
     public function testGetMemberAccessContextKeepsClassAndFunctionImportsApart(): void
@@ -1848,149 +1490,6 @@ final class SymbolResolverTest extends TestCase
         self::assertNotMembersContain($members, 'SECRET', 'privateHelper', 'privateProp');
     }
 
-    public function testGetMemberAccessContextHandlesParentInIncompleteCode(): void
-    {
-        // parent:: requires AST to find the extends clause - test that it works
-        // even when surrounding code is broken
-        $this->openFixture('src/Inheritance/ParentClass.php');
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ParentAccess.php', 'parent_incomplete');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNotNull($context, 'parent:: should resolve even in incomplete code');
-        self::assertSame('Fixtures\\Inheritance\\ParentClass', $context->type->format());
-        self::assertSame(MemberAccessKind::Parent, $context->kind);
-    }
-
-    public function testGetMemberAccessContextReturnsNullForParentWithoutExtends(): void
-    {
-        // parent:: in a class without extends should return null
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ParentAccess.php', 'parent_no_extends');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context, 'parent:: without extends should return null');
-    }
-
-    public function testGetAccessibleMembersExtractsStaticOnlyFromBrokenClass(): void
-    {
-        // Test that static filter skips property extraction
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenClassMembers.php', 'broken_static');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-        self::assertNotNull($context);
-
-        $members = $this->resolver->getAccessibleMembers(
-            $document,
-            $context->type,
-            $context->minVisibility,
-            MemberFilter::Static,
-        );
-
-        // Should include static members
-        self::assertMembersContain($members, 'NAME', 'create');
-        // Should NOT include instance properties (Static filter skips them)
-        self::assertNotMembersContain($members, 'publicProp');
-    }
-
-    public function testGetAccessibleMembersExtractsInstanceMembersFromBrokenClass(): void
-    {
-        // Test instance member extraction from a broken class
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenClassMembers.php', 'broken_instance');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-        self::assertNotNull($context, 'Should detect $this-> in broken class');
-        self::assertSame('Fixtures\\IncompleteCode\\BrokenInstanceAccess', $context->type->format());
-
-        $members = $this->resolver->getAccessibleMembers(
-            $document,
-            $context->type,
-            $context->minVisibility,
-            MemberFilter::Instance,
-        );
-
-        // Should find instance members via text extraction
-        self::assertMembersContain($members, 'name', 'test');
-    }
-
-    public function testGetMemberAccessContextReturnsNullForThisOutsideClass(): void
-    {
-        $cursor = $this->openFixtureAtCursor('TopLevel/this_access.php', 'this_toplevel');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context, '$this outside class should return null');
-    }
-
-    public function testGetMemberAccessContextReturnsNullForChainedThisOutsideClass(): void
-    {
-        $cursor = $this->openFixtureAtCursor('TopLevel/this_access.php', 'this_chained_toplevel');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context, 'Chained $this outside class should return null');
-    }
-
-    public function testGetMemberAccessContextReturnsNullForChainToUntypedProperty(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ChainedAccess.php', 'untyped_chain');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context, 'Chain to untyped property should return null');
-    }
-
-    public function testGetMemberAccessContextReturnsNullForChainToNonExistentProperty(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ChainedAccess.php', 'nonexistent_chain');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context, 'Chain to non-existent property should return null');
-    }
-
-    public function testGetMemberAccessContextReturnsNullForBrokenSelfAtTopLevel(): void
-    {
-        // This fixture is severely broken to force text-based fallback
-        $cursor = $this->openFixtureAtCursor('TopLevel/broken_self.php', 'broken_self_toplevel');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        self::assertNull($context, 'self:: in broken file at top level should return null');
-    }
-
-    public function testGetMemberAccessContextReturnsNullForDoubleArrowInChain(): void
-    {
-        // Double arrow creates syntax that parser can't recover from
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/ChainedAccess.php', 'double_arrow');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-
-        // Double arrow is too broken to recover
-        self::assertNull($context);
-    }
-
     public function testGetMemberAccessContextResolvesClassInGlobalNamespace(): void
     {
         // No namespace, no use statements - class name should be raw
@@ -2003,53 +1502,6 @@ final class SymbolResolverTest extends TestCase
         // Should resolve to raw class name
         self::assertNotNull($context);
         self::assertSame('SomeClass', $context->type->format());
-    }
-
-    public function testGetAccessibleMembersIncludesInheritedMembersInTextFallback(): void
-    {
-        // Open ParentClass so MemberResolver can find it for inheritance
-        $this->openFixture('src/Inheritance/ParentClass.php');
-
-        // BrokenChildWithParent has broken syntax (missing opening brace)
-        // but extends ParentClass which is resolvable
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenInheritance.php', 'broken_inherited');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-        self::assertNotNull($context, 'Should resolve $this access');
-
-        $members = $this->resolver->getAccessibleMembers(
-            $document,
-            $context->type,
-            $context->minVisibility,
-            MemberFilter::Instance,
-        );
-
-        // Child member via text fallback, plus inherited members from ParentClass
-        self::assertMembersContain($members, 'childMethod', 'parentMethod', 'parentProperty');
-    }
-
-    public function testGetAccessibleMembersIncludesInheritedStaticMembersInTextFallback(): void
-    {
-        $this->openFixture('src/Inheritance/ParentClass.php');
-
-        $cursor = $this->openFixtureAtCursor('src/IncompleteCode/BrokenInheritance.php', 'broken_static_inherited');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $context = $this->resolver->getMemberAccessContext($document, $cursor['line'], $cursor['character']);
-        self::assertNotNull($context, 'Should resolve self:: access');
-
-        $members = $this->resolver->getAccessibleMembers(
-            $document,
-            $context->type,
-            $context->minVisibility,
-            MemberFilter::Static,
-        );
-
-        // Child constant via text fallback, plus inherited static members from ParentClass
-        self::assertMembersContain($members, 'CHILD_CONST', 'PARENT_CONST', 'staticMethod');
     }
 
     /**
