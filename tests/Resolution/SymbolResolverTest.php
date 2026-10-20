@@ -271,6 +271,23 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
+    public function testAReassignedVariableIsInScopeOnce(): void
+    {
+        $fixture = 'src/Completion/Variables.php';
+        $content = $this->loadFixture($fixture);
+        ['line' => $line, 'character' => $character] = $this->locateCursor($content, 'reassigned_prefix');
+
+        $variables = self::parsingResolver(self::createStub(SymbolSourceInterface::class))
+            ->getVariablesInScope(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
+        $names = array_map(fn (ResolvedVariable $variable) => $variable->getName(), $variables);
+
+        self::assertSame(
+            1,
+            count(array_keys($names, 'counter', true)),
+            'a variable assigned twice is one variable',
+        );
+    }
+
     public function testNameContextCarriesTheImportsInEffect(): void
     {
         [$document, $line] = $this->signatureHelpCursor('first_param');
