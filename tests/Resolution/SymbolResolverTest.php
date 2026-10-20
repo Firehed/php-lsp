@@ -180,6 +180,34 @@ final class SymbolResolverTest extends TestCase
         self::assertSame($user, $resolved, 'the imported name is looked up by its fully qualified form');
     }
 
+    /**
+     * @return iterable<string, array{string, string}>
+     */
+    public static function positionsWithNothingToResolve(): iterable
+    {
+        yield 'a literal' => ['return 42; //hover:literal_number', '42'];
+        // The inner `$name` resolves; the outer variable's name is an expression.
+        yield 'the outer $ of a variable variable' => ['echo /*|outer_var_var*/$$name;', '$$name'];
+    }
+
+    #[DataProvider('positionsWithNothingToResolve')]
+    public function testNothingResolvesAtAPositionWithoutASymbol(string $lineText, string $target): void
+    {
+        $fixture = 'src/Domain/User.php';
+        $content = $this->loadFixture($fixture);
+        $lines = explode("\n", $content);
+        $line = array_key_first(array_filter($lines, fn (string $text): bool => str_contains($text, $lineText)));
+        assert(is_int($line));
+        $character = strpos($lines[$line], $target);
+        assert($character !== false);
+
+        self::assertNull(
+            self::parsingResolver(self::createStub(SymbolSourceInterface::class))
+                ->resolveAtPosition(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character),
+            'nothing at the cursor names a symbol',
+        );
+    }
+
     public function testCallContextCarriesTheArgumentAtTheCursor(): void
     {
         $fixture = 'src/Resolution/ArgumentBoundaries.php';
