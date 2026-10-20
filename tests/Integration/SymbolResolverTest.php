@@ -1116,6 +1116,18 @@ final class SymbolResolverTest extends TestCase
         self::assertStringContainsString('__construct', $context->callable->format());
     }
 
+    public function testGetCallContextForIncompleteCode(): void
+    {
+        $cursor = $this->openFixtureAtCursor('src/Completion/NamedArguments.php', 'incomplete_with_prefix');
+        $document = $this->documents->get($cursor['uri']);
+        assert($document !== null);
+
+        $context = $this->resolver->getCallContext($document, $cursor['line'], $cursor['character']);
+
+        self::assertInstanceOf(CallContext::class, $context, 'getCallContext should find call in incomplete code');
+        self::assertStringContainsString('multipleParams', $context->callable->format());
+    }
+
     public function testGetCallContextWhileEditingInCompleteCall(): void
     {
         // Open the file containing ParamClass so ClassRepository can find it
