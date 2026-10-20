@@ -76,6 +76,12 @@ return [
             ),
         ],
     ),
+    // A string value is not a receiver, so this is not member access.
+    'right after a string value, which is still the value' => $complete(
+        $editing,
+        'after_string_value',
+        new Expectation\Offers('new'),
+    ),
     'right after a numeric value, which is still the value' => $complete(
         $editing,
         'after_named_value',
