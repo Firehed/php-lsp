@@ -15,12 +15,32 @@ return [
         return new Knowledge\ComposerAutoloadMapReader($projectRoot);
     },
 
-    Knowledge\KnowledgeStack::class => fn (TC $c) => Knowledge\KnowledgeStack::forProject(
-        $c->get(Knowledge\ComposerAutoloadMapReader::class),
-        $c->get(Parser\SyntaxSource\SyntaxSourceInterface::class),
-        $c->get(Document\DocumentSourceInterface::class),
+    Knowledge\DeclarationScanner::class,
+    Knowledge\DeclarationSymbolInfoFactory::class,
+    Knowledge\ParsedDeclarationSource::class,
+    // Working-set target: a typical editing session touches fewer files than
+    // this, so nothing evicts. Not derived from measurement; picked as a
+    // comfortable bound above the observed working set.
+    Knowledge\DeclarationSourceInterface::class => fn (TC $c) => new Knowledge\CachingDeclarationSource(
+        $c->get(Knowledge\ParsedDeclarationSource::class),
+        Cache\CacheFactory::inMemory(maxItems: 2000),
     ),
-    Knowledge\SymbolSourceInterface::class => fn (TC $c) => $c->get(Knowledge\KnowledgeStack::class)->source,
-    Knowledge\SymbolSinkInterface::class => fn (TC $c) => $c->get(Knowledge\KnowledgeStack::class)->sink,
-    Cache\InvalidatableInterface::class => fn (TC $c) => $c->get(Knowledge\KnowledgeStack::class)->invalidator,
+
+    Knowledge\OpenDocumentBackend::class,
+    Knowledge\AutoloadFilesBackend::class,
+    Knowledge\ComposerMapBackend::class,
+    Knowledge\BuiltinBackend::class,
+    // Composer requires the autoload.files entries before the autoloader is
+    // ever asked, so a name declared there wins over the maps.
+    Knowledge\CompositeSymbolSource::class => fn (TC $c) => new Knowledge\CompositeSymbolSource(
+        $c->get(Knowledge\OpenDocumentBackend::class),
+        $c->get(Knowledge\AutoloadFilesBackend::class),
+        $c->get(Knowledge\ComposerMapBackend::class),
+        $c->get(Knowledge\BuiltinBackend::class),
+    ),
+    Knowledge\SymbolSourceInterface::class => Knowledge\CompositeSymbolSource::class,
+    Knowledge\SymbolSinkInterface::class => Knowledge\OpenDocumentBackend::class,
+
+    Knowledge\CompositeInvalidatable::class,
+    Cache\InvalidatableInterface::class => Knowledge\CompositeInvalidatable::class,
 ];
