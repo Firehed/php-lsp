@@ -28,6 +28,14 @@ return [
         new Expectation\LandsOn($user, line: 48),
     ),
     'property' => $definition('manager', new Expectation\LandsOn($user, line: 29)),
+    'the variable naming a variable variable' => $definition(
+        'variable_variable',
+        new Expectation\LandsOn($user, line: 275),
+    ),
+    'a namespaced constant from an autoloaded file' => $definition(
+        'user_constant',
+        new Expectation\LandsOn('AutoloadFiles/helpers.php', line: 14),
+    ),
     'promoted property' => $definition('promoted_property', new Expectation\LandsOn($user, line: 24)),
     'trait method' => $definition('markCreated', new Expectation\LandsOn($timestamps, line: 39)),
     'trait property' => $definition('trait_property_consumer', new Expectation\LandsOn($timestamps, line: 17)),

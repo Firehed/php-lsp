@@ -68,6 +68,30 @@ class MemberAccessDetectorTest extends TestCase
         );
     }
 
+    public function testDetectReturnsNullBeforeAnyCode(): void
+    {
+        self::assertNull($this->detect('src/Domain/User.php', 0, 0), 'the start of a file is not a member access');
+    }
+
+    public function testDetectReturnsNullOnABlankStatement(): void
+    {
+        self::assertNull(
+            $this->detectAtCursor('src/Completion/EdgeCases.php', 'not_member_access'),
+            'a statement with nothing typed is not a member access',
+        );
+    }
+
+    /**
+     * The statement does not parse, so the access is read from the text, where
+     * a `use function` of the same short name must not stand in for the class.
+     */
+    public function testDetectResolvesAClassImportedBesideAFunctionOfTheSameName(): void
+    {
+        $result = $this->detectAtCursor('src/IncompleteCode/AliasedImports.php', 'colliding_static');
+        self::assertInstanceOf(MemberAccessContext::class, $result);
+        self::assertSame('Fixtures\Namespacing\Models\Widget', $result->type->format());
+    }
+
     public function testDetectReturnsNullForSelfOutsideClass(): void
     {
         self::assertNull($this->detect('TopLevel/self_outside_class.php', 1, 6));
@@ -497,6 +521,12 @@ class MemberAccessDetectorTest extends TestCase
     private static function type(string $fqn): ClasslikeType
     {
         return new ClasslikeType(ClasslikeName::fromFullyQualified($fqn));
+    }
+
+    private function detectAtCursor(string $fixture, string $marker): ?MemberAccessContext
+    {
+        ['line' => $line, 'character' => $character] = $this->locateCursor($this->loadFixture($fixture), $marker);
+        return $this->detect($fixture, $line, $character);
     }
 
     private function detect(string $fixture, int $line, int $character): ?MemberAccessContext

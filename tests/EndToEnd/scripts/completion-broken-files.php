@@ -132,6 +132,34 @@ return [
         new Expectation\Withholds('test'),
     ),
     'a variable inside a while' => $complete($inControl, 'var_access_while', ...$userMembers),
+    '$this inside an if' => $complete($inControl, 'this_access_if', new Expectation\Offers('getName', 'name', 'test')),
+    'nullsafe $this inside a for' => $complete($inControl, 'nullsafe_access_for', new Expectation\Offers('test')),
+    'static access inside a match' => $complete(
+        $inControl,
+        'static_access_match',
+        new Expectation\Offers('create', 'DEFAULT_ROLE', 'class'),
+    ),
+    'self:: inside a switch' => $complete($inControl, 'self_access_switch', new Expectation\Offers('FOO', 'class')),
+    '$this in a return' => $complete($inControl, 'in_return', new Expectation\Offers('getName', 'name')),
+    '$this in an assignment' => $complete($inControl, 'in_assignment', new Expectation\Offers('getName', 'name')),
+    '$this in an array' => $complete($inControl, 'in_array', new Expectation\Offers('getName', 'name')),
+    '$this in a call argument' => $complete(
+        $inControl,
+        'in_call_arg',
+        new Expectation\Offers('getName', 'setName', 'name'),
+    ),
+    '$this in a ternary condition' => $complete($inControl, 'in_ternary', new Expectation\Offers('getName', 'name')),
+    // A multibyte character earlier on the line must not shift where the access is read.
+    'member access after a multibyte character' => $complete(
+        'src/IncompleteCode/MultibyteVarAccess.php',
+        'var_member_multibyte',
+        new Expectation\Offers('getValue'),
+    ),
+    'member access inside a while after a multibyte character' => $complete(
+        'src/IncompleteCode/MultibyteVarAccess.php',
+        'var_while_multibyte',
+        ...$userMembers,
+    ),
     'parent:: in a broken class' => $complete(
         $parentAccess,
         'parent_incomplete',

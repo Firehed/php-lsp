@@ -2,42 +2,34 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Parity;
+namespace Firehed\PhpLsp\Tests\Knowledge;
 
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Reflection-oracle parity for the built-in backend's *function* enumeration:
- * what `BuiltinBackend::childrenOf()` reports as functions must be exactly what
- * `get_defined_functions()['internal']` reports, name for name.
+ * The functions the backend reports must be exactly what
+ * `get_defined_functions()['internal']` reports, name for name. The list varies
+ * with the PHP version and loaded extensions, so it is compared against the
+ * running PHP rather than written down.
  *
- * This is an oracle, not a golden. The built-in function list differs across the
- * 8.3/8.4/8.5 CI matrix and with the extensions a machine happens to load, so it
- * cannot be frozen — but it can be compared against the same runtime truth the
- * production path reads today (`SymbolCandidates` via `SymbolSourceInterface::search()`).
- * That makes the comparison version-agnostic
- * in the same way `TypeGraphParityTest` uses reflection as the oracle for member
- * resolution.
- *
- * Note the two sides are not trivially the same call: reflection produces a flat
- * list of names, while the backend files each name under the namespace it
- * carries (an extension may declare namespaced functions) and answers one
- * namespace at a time. A name filed under the wrong namespace, or dropped while
- * indexing, fails here.
+ * The two sides are not the same call: reflection produces a flat list, while
+ * the backend files each name under its namespace (an extension may declare
+ * namespaced functions) and answers one namespace at a time. A name filed under
+ * the wrong namespace, or dropped while indexing, fails here.
  */
-final class BuiltinFunctionParityTest extends TestCase
+#[CoversClass(BuiltinBackend::class)]
+final class BuiltinBackendFunctionsTest extends TestCase
 {
     private BuiltinBackend $backend;
 
     protected function setUp(): void
     {
-        // Assembled exactly as `KnowledgeStack::forProject` assembles the lowest-
-        // precedence backend, so the oracle measures the shipped configuration.
         $this->backend = new BuiltinBackend();
     }
 

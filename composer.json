@@ -47,7 +47,6 @@
         "unit": "phpunit",
         "e2e": "paratest --functional --testsuite end-to-end",
         "coverage": "phpunit --testsuite unit --coverage-text",
-        "parity-coverage": "phpunit tests/Parity --coverage-text",
         "phpstan": "phpstan analyze",
         "deptrac": "deptrac analyse --no-progress",
         "layer-coverage": "deptrac debug:unassigned",

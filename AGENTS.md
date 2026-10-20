@@ -81,7 +81,7 @@ A change that needs more files than that has found a second route to a fact.
 Every question about the type graph goes to the member resolver, member lookup and subclass checks alike.
 Its implementation walks used traits, then the parent chain, then interfaces.
 No other class walks the graph, so no member kind can see a different hierarchy than another.
-`TypeGraphParityTest` checks the reported members against PHP's runtime reflection.
+`MemberResolverTypeGraphTest` checks the reported members against PHP's runtime reflection.
 
 ### Client capabilities
 

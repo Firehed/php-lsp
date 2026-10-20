@@ -177,6 +177,21 @@ final class CallContextDetectorTest extends TestCase
         self::assertSame($expected, $detection[4], 'whether a value, where no argument name fits, is being typed');
     }
 
+    public function testANamedArgumentAfterTheCursorIsStillUsed(): void
+    {
+        $detection = $this->detectAt(
+            'src/Completion/EditingNamedArg.php',
+            'editing_in_complete',
+            new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator()),
+        );
+
+        self::assertNotNull($detection, 'the cursor is inside a call');
+        [$call, , $used, $positional] = $detection;
+        self::assertInstanceOf(New_::class, $call, 'the enclosing call is the constructor');
+        self::assertSame(['age'], $used, 'a named argument later in the call is already supplied');
+        self::assertSame(1, $positional, 'the positional argument before the cursor is filled');
+    }
+
     public function testRejectsACallWithoutItsArgumentSeparators(): void
     {
         $locator = self::createStub(NodeLocatorInterface::class);

@@ -36,7 +36,7 @@ $mapped = array_map(/*|builtin*/fn($x) => $x * 2, [1, 2, 3]);
 $user = new User(/*|constructor*/"id", "name", "email@example.com"); //hover:class_instantiation
 $priority = Priority::fromScore(/*|static_call*/50);
 $x/*|outside_call*/ = 1;
-$namedArgs = signatureHelpAdd(a: 1, b: /*|named_arg*/2);
+$namedArgs = signatureHelpAdd(a: 1, b: /*|named_arg*/2); //hover:named_arg_b
 $undefinedNamedArg = undefinedFunction(badArg: 1); //hover:named_arg_undefined_func
 $wrongNamedArg = signatureHelpAdd(a: 1, wrongName: 2); //hover:named_arg_wrong_name
 $undefined = undefinedFunction(/*|undefined_func*/1);

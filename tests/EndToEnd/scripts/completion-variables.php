@@ -33,6 +33,21 @@ return [
     ),
     'closure local' => $complete($variables, 'closure_local', new Expectation\Offers('$localVar')),
     'foreach value' => $complete($variables, 'foreach_prefix', new Expectation\Offers('$item')),
+    'file scope leaves out variables of functions and methods' => new Session\Script(
+        project: 'tests/Fixtures',
+        steps: [
+            new Step\Open('TopLevel/global_scope_nested.php'),
+            new Step\Type('TopLevel/global_scope_nested.php', new Marker\CursorMarker('nested_marker'), '$'),
+            new Step\Complete(
+                'TopLevel/global_scope_nested.php',
+                new Marker\CursorMarker('nested_marker'),
+                expect: [
+                    new Expectation\Offers('$globalOne', '$globalTwo'),
+                    new Expectation\Withholds('$localToFunction', '$localToMethod'),
+                ],
+            ),
+        ],
+    ),
     'closures do not share scope' => $complete(
         'src/Completion/ClosureVariables.php',
         'closure_scope_isolated',

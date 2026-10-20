@@ -107,7 +107,7 @@ final class BuiltinBackendTest extends TestCase
         // The server is itself a PHP program, so reflection can see every function
         // its own dependencies declare. Those are not the project's, and answering
         // for one would report a function the user's code cannot call. The backend
-        // enumerates only internal functions (BuiltinFunctionParityTest), so lookup
+        // enumerates only internal functions (BuiltinBackendFunctionsTest), so lookup
         // must agree or a name resolves on hover yet never appears in completion.
         require_once dirname(__DIR__) . '/Domain/Fixtures/documented_function.php';
 

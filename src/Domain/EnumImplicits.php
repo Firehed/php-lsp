@@ -14,7 +14,7 @@ namespace Firehed\PhpLsp\Domain;
  * synthesized rather than written. Every one of those consumers reads this
  * one authority so the AST-derived and reflection-derived pictures agree, and
  * so a future implicit (say, a new method on backed enums) is a change to one
- * file rather than a fresh drift between them. {@see \Firehed\PhpLsp\Tests\Repository\TypeGraphParityTest}
+ * file rather than a fresh drift between them. {@see \Firehed\PhpLsp\Tests\Repository\MemberResolverTypeGraphTest}
  * is the oracle: it fails when reflection reports a member this authority did
  * not synthesize.
  */
