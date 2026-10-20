@@ -38,9 +38,6 @@ Code decides by what a symbol can do, such as whether it can be instantiated, no
 
 Instantiating services is to occur in one wiring place: a PSR-11 container.
 
-The `::forProject` static methods that exist are legacy and not the standard.
-However, until PSR-11 conversion is complete, it may be necessary to build on it.
-
 ### Interfaces, Implementations, and Composites
 
 Where services rely on other services, the references are to be named by interface only, never an implementation.
