@@ -88,7 +88,7 @@ final class MemberAccessDetector
                 }
             }
 
-            $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
+            $prefix = self::typedPrefix($node->name, $offset);
             $type = $this->expressionResolver($document)->resolve($node->var, $ast)?->getType();
             $vantage = self::vantageFor($node);
             $visibility = $this->visibilityForReceiver($vantage, $type);
@@ -105,10 +105,23 @@ final class MemberAccessDetector
                     return null;
                 }
             }
-            return $this->resolveStaticAccessContext($node);
+            return $this->resolveStaticAccessContext($node, $offset);
         }
 
         return null;
+    }
+
+    /**
+     * Only the part of the member name before the cursor has been typed. A
+     * statement on a later line can parse onto an unfinished access and lend
+     * it a name the person never typed.
+     */
+    private static function typedPrefix(Node $name, int $offset): string
+    {
+        if (!$name instanceof Identifier) {
+            return '';
+        }
+        return substr($name->toString(), 0, max(0, $offset - $name->getStartFilePos()));
     }
 
     /**
@@ -177,13 +190,14 @@ final class MemberAccessDetector
 
     private function resolveStaticAccessContext(
         StaticPropertyFetch|StaticCall|ClassConstFetch $node,
+        int $offset,
     ): ?MemberAccessContext {
         $class = $node->class;
         if (!$class instanceof Name) {
             return null;
         }
 
-        $prefix = $node->name instanceof Identifier ? $node->name->toString() : '';
+        $prefix = self::typedPrefix($node->name, $offset);
         $rawName = $class->toString();
         $keyword = LateBindingKeyword::tryFromName($rawName);
         $enclosingClassLike = ScopeFinder::findEnclosingClassNode($node);
