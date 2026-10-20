@@ -93,7 +93,7 @@ Every test here is `#[CoversNothing]`, and coverage cannot see the child process
 ## Where a test belongs
 
 - Behavior of the composed server, as an editor sees it: a script here.
-- Behavior of one composite: an integration test that constructs the composite and its members directly.
+- Behavior of one composite: a unit test that constructs the composite and its members directly.
 - Anything else: a unit test that constructs what it needs directly.
 
 No test uses the dependency container.
