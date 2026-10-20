@@ -6,11 +6,11 @@ namespace Firehed\PhpLsp\Tests\EndToEnd;
 
 $user = 'src/Domain/User.php';
 
-$hover = fn (string $marker, Expectation\HoverExpectationInterface $expect): Session\Script => new Session\Script(
+$hover = fn (string $marker, Expectation\HoverExpectationInterface ...$expect): Session\Script => new Session\Script(
     project: 'tests/Fixtures',
     steps: [
         new Step\Open($user),
-        new Step\Hover($user, new Marker\SymbolMarker($marker), expect: $expect),
+        new Step\Hover($user, new Marker\SymbolMarker($marker), expect: array_values($expect)),
     ],
 );
 
@@ -23,7 +23,12 @@ return [
     ),
     'nullsafe method call' => $hover('setName_nullsafe', new Expectation\Shows('setName', 'Updates the user')),
     'nullsafe property fetch' => $hover('manager_nullsafe', new Expectation\Shows('$manager', 'User')),
-    'typed variable' => $hover('variable_typed', new Expectation\Shows('User')),
+    // The variable's own hover shows its type, not the class or the property it came from.
+    'typed variable' => $hover(
+        'variable_typed',
+        new Expectation\Shows('User'),
+        new Expectation\Hides('Represents a system user', '$manager'),
+    ),
     'promoted property' => $hover('promoted_property', new Expectation\Shows('$id', 'string', 'readonly')),
     'trait method' => $hover('markCreated', new Expectation\Shows('markCreated')),
     'trait property' => $hover('trait_property_consumer', new Expectation\Shows('$createdAt', 'DateTimeImmutable')),
