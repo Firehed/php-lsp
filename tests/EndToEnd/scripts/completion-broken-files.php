@@ -149,6 +149,17 @@ return [
         new Expectation\Offers('getName', 'setName', 'name'),
     ),
     '$this in a ternary condition' => $complete($inControl, 'in_ternary', new Expectation\Offers('getName', 'name')),
+    // A multibyte character earlier on the line must not shift where the access is read.
+    'member access after a multibyte character' => $complete(
+        'src/IncompleteCode/MultibyteVarAccess.php',
+        'var_member_multibyte',
+        new Expectation\Offers('getValue'),
+    ),
+    'member access inside a while after a multibyte character' => $complete(
+        'src/IncompleteCode/MultibyteVarAccess.php',
+        'var_while_multibyte',
+        ...$userMembers,
+    ),
     'parent:: in a broken class' => $complete(
         $parentAccess,
         'parent_incomplete',
