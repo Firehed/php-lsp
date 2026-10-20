@@ -6,13 +6,11 @@ namespace Firehed\PhpLsp\Knowledge;
 
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\DeclaredSymbol;
-use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 
 /**
@@ -64,12 +62,12 @@ trait DeclaredSymbolStoreTrait
     }
 
     /**
-     * @return list<Symbol>
+     * @return list<QualifiedName>
      */
     public function search(string $prefix, NameKind $kind): array
     {
         $results = [];
-        foreach ($this->symbolsBySource as $source => $symbols) {
+        foreach ($this->symbolsBySource as $symbols) {
             foreach ($symbols as $symbol) {
                 if (!$symbol->kind->matches($kind)) {
                     continue;
@@ -77,14 +75,7 @@ trait DeclaredSymbolStoreTrait
                 if (!PrefixMatcher::matches($symbol->name->shortName, $prefix)) {
                     continue;
                 }
-                $key = $symbol->kind->keyFor($symbol->name);
-                $results[$key] ??= new Symbol(
-                    name: $symbol->name->shortName,
-                    fullyQualifiedName: $symbol->name->fullyQualifiedName(),
-                    kind: $symbol->info->symbolKind(),
-                    location: new Location($source, 0, 0, 0, 0),
-                    nameKind: $symbol->kind,
-                );
+                $results[$symbol->kind->keyFor($symbol->name)] ??= $symbol->name;
             }
         }
         return array_values($results);

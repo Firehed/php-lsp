@@ -12,8 +12,7 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\Symbol;
-use Firehed\PhpLsp\Domain\SymbolKind;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -138,7 +137,7 @@ final class BuiltinBackendTest extends TestCase
     {
         $results = $this->backend->search('str_contains', NameKind::Function_);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertContains(
             'str_contains',
             $fqns,
@@ -150,7 +149,7 @@ final class BuiltinBackendTest extends TestCase
     {
         $results = $this->backend->search('PHP_INT_M', NameKind::Constant);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertContains(
             'PHP_INT_MAX',
             $fqns,
@@ -162,7 +161,7 @@ final class BuiltinBackendTest extends TestCase
     {
         $results = $this->backend->search('STR_CONTAINS', NameKind::Function_);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertContains(
             'str_contains',
             $fqns,
@@ -174,7 +173,7 @@ final class BuiltinBackendTest extends TestCase
     {
         $results = $this->backend->search('Array', NameKind::Function_);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertNotContains(
             'ArrayObject',
             $fqns,
@@ -197,26 +196,12 @@ final class BuiltinBackendTest extends TestCase
 
         $results = $this->backend->search('testDocumented', NameKind::Function_);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertNotContains(
             'testDocumentedFunction',
             $fqns,
             'a userland function loaded in the server process must not appear in built-in search',
         );
-    }
-
-    public function testSearchReturnsCorrectSymbolKindForFunctions(): void
-    {
-        $results = $this->backend->search('str_contains', NameKind::Function_);
-
-        self::assertNotEmpty($results, 'the prefix must match at least one function');
-        foreach ($results as $symbol) {
-            self::assertSame(
-                SymbolKind::Function_,
-                $symbol->kind,
-                'every symbol returned for a Function_ search must carry SymbolKind::Function_',
-            );
-        }
     }
 
     /**

@@ -12,10 +12,4 @@ namespace Firehed\PhpLsp\Domain;
  */
 interface SymbolInfoInterface
 {
-    /**
-     * The LSP symbol kind for the symbol this metadata describes. Answered by the
-     * implementation because a class-like distinguishes between class/interface/trait/enum
-     * from its own {@see ClassKind}, and enumerating that from outside is a kind branch.
-     */
-    public function symbolKind(): SymbolKind;
 }

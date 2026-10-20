@@ -18,7 +18,6 @@ use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -29,9 +28,7 @@ use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
-use Firehed\PhpLsp\Domain\SymbolKind;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
 use ReflectionClass;
@@ -98,31 +95,20 @@ final class BuiltinBackend implements SymbolSourceInterface
      * not resolve unqualified in the file's namespace, which is auto-import,
      * a separate concern.
      *
-     * @return list<Symbol>
+     * @return list<QualifiedName>
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        $this->buildIndex();
-
-        $symbolKind = match ($kind) {
-            NameKind::Function_ => SymbolKind::Function_,
-            NameKind::Constant => SymbolKind::Constant,
-            NameKind::ClassLike => null,
-        };
-        if ($symbolKind === null) {
+        if ($kind->isClassLike()) {
             return [];
         }
+
+        $this->buildIndex();
 
         $results = [];
         foreach ($this->symbolsByKind[$kind->name] as $catalogSymbol) {
             if (PrefixMatcher::matches($catalogSymbol->shortName(), $prefix)) {
-                $results[] = new Symbol(
-                    name: $catalogSymbol->shortName(),
-                    fullyQualifiedName: $catalogSymbol->fullyQualifiedName,
-                    kind: $symbolKind,
-                    location: new Location('', 0, 0, 0, 0),
-                    nameKind: $kind,
-                );
+                $results[] = QualifiedName::fromFullyQualified($catalogSymbol->fullyQualifiedName);
             }
         }
         return $results;

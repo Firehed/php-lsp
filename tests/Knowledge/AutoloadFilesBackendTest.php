@@ -11,8 +11,7 @@ use Firehed\PhpLsp\Domain\FileUri;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
-use Firehed\PhpLsp\Domain\Symbol;
-use Firehed\PhpLsp\Domain\SymbolKind;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\AutoloadFilesBackend;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\DeclarationSourceInterface;
@@ -445,7 +444,7 @@ final class AutoloadFilesBackendTest extends TestCase
     {
         $results = self::backendForRoot(self::FIXTURES_ROOT)->search('helperF', NameKind::Function_);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertContains(
             'Fixtures\Helpers\helperFormat',
             $fqns,
@@ -457,7 +456,7 @@ final class AutoloadFilesBackendTest extends TestCase
     {
         $results = self::backendForRoot(self::FIXTURES_ROOT)->search('HELPER_L', NameKind::Constant);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertContains(
             'Fixtures\Helpers\HELPER_LIMIT',
             $fqns,
@@ -474,7 +473,7 @@ final class AutoloadFilesBackendTest extends TestCase
     {
         $results = self::backendForRoot(self::FIXTURES_ROOT)->search('HelperR', NameKind::ClassLike);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertContains(
             'Fixtures\Helpers\HelperRegistry',
             $fqns,
@@ -486,7 +485,7 @@ final class AutoloadFilesBackendTest extends TestCase
     {
         $results = self::backendForRoot(self::FIXTURES_ROOT)->search('HELPERF', NameKind::Function_);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertContains(
             'Fixtures\Helpers\helperFormat',
             $fqns,
@@ -503,39 +502,11 @@ final class AutoloadFilesBackendTest extends TestCase
         );
     }
 
-    public function testSearchReturnsSymbolsWithCorrectKind(): void
-    {
-        $results = self::backendForRoot(self::FIXTURES_ROOT)->search('helperF', NameKind::Function_);
-
-        self::assertNotEmpty($results, 'the prefix must match at least one function');
-        foreach ($results as $symbol) {
-            self::assertSame(
-                SymbolKind::Function_,
-                $symbol->kind,
-                'every symbol returned for a Function_ search must carry SymbolKind::Function_',
-            );
-        }
-    }
-
-    public function testSearchReturnsSymbolsWithFileLocation(): void
-    {
-        $results = self::backendForRoot(self::FIXTURES_ROOT)->search('helperF', NameKind::Function_);
-
-        self::assertNotEmpty($results, 'the prefix must match at least one function');
-        foreach ($results as $symbol) {
-            self::assertStringStartsWith(
-                'file://',
-                $symbol->location->uri,
-                'a symbol from an autoload.files entry must carry its declaring file as a URI, not a path',
-            );
-        }
-    }
-
     public function testSearchDoesNotCrossKindBoundaries(): void
     {
         $results = self::backendForRoot(self::FIXTURES_ROOT)->search('Helper', NameKind::Function_);
 
-        $fqns = array_map(static fn(Symbol $s): string => $s->fullyQualifiedName, $results);
+        $fqns = array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results);
         self::assertNotContains(
             'Fixtures\Helpers\HelperRegistry',
             $fqns,

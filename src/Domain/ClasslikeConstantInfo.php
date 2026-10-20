@@ -11,7 +11,7 @@ namespace Firehed\PhpLsp\Domain;
  * or enum. The declaring class is carried on the {@see ClasslikeConstantName}
  * identity; the free-standing sibling is {@see ConstantInfo}.
  */
-final readonly class ClasslikeConstantInfo implements MemberInfoInterface, SymbolInfoInterface
+final readonly class ClasslikeConstantInfo implements MemberInfoInterface
 {
     use HasSymbolLocationTrait;
 
@@ -66,10 +66,5 @@ final readonly class ClasslikeConstantInfo implements MemberInfoInterface, Symbo
     public function isStatic(): bool
     {
         return true;
-    }
-
-    public function symbolKind(): SymbolKind
-    {
-        return SymbolKind::Constant;
     }
 }

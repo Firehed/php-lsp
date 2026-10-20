@@ -30,11 +30,6 @@ final readonly class FunctionInfo implements ResolvedCallableInterface, SymbolIn
         return $this->returnType;
     }
 
-    public function symbolKind(): SymbolKind
-    {
-        return SymbolKind::Function_;
-    }
-
     public function format(): string
     {
         $sig = 'function ' . $this->name->qualifiedName->shortName . $this->formatParameterList();

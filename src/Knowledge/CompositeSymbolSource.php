@@ -14,7 +14,6 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
-use Firehed\PhpLsp\Domain\Symbol;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 
 /**
@@ -76,18 +75,18 @@ final class CompositeSymbolSource implements SymbolSourceInterface
     }
 
     /**
-     * @return list<Symbol>
+     * @return list<QualifiedName>
      */
     public function search(string $prefix, NameKind $kind): array
     {
-        $byFqn = [];
+        $byKey = [];
         foreach ($this->backends as $backend) {
-            foreach ($backend->search($prefix, $kind) as $symbol) {
-                $byFqn[self::normalizeKey($symbol->fullyQualifiedName, $kind)] ??= $symbol;
+            foreach ($backend->search($prefix, $kind) as $name) {
+                $byKey[$kind->normalize($name)] ??= $name;
             }
         }
 
-        return array_values($byFqn);
+        return array_values($byKey);
     }
 
     /**
@@ -105,10 +104,5 @@ final class CompositeSymbolSource implements SymbolSourceInterface
         }
 
         return null;
-    }
-
-    private static function normalizeKey(string $fqn, NameKind $kind): string
-    {
-        return $kind->normalize(QualifiedName::fromFullyQualified($fqn));
     }
 }
