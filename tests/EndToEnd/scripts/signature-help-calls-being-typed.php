@@ -65,7 +65,11 @@ return [
         new Expectation\SignatureShows('methodWithNamed'),
     ),
     'new on a fully qualified class' => $signatureHelp($edgeCases, 'fqn_new', $userConstructor),
-    'new on an imported class' => $signatureHelp('src/Completion/UseStatementCall.php', 'imported_new', $userConstructor),
+    'new on an imported class' => $signatureHelp(
+        'src/Completion/UseStatementCall.php',
+        'imported_new',
+        $userConstructor,
+    ),
     'new on a class imported outside any namespace' => $signatureHelp(
         'NoNamespace/TopLevelUse.php',
         'top_level_use',
