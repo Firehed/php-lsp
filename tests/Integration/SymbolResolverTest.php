@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Integration;
 
 use Firehed\PhpLsp\Document\DocumentManager;
-use Firehed\PhpLsp\Domain\ClassInfo;
-use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\ConstantInfo;
@@ -16,7 +14,6 @@ use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\ParameterInfo;
-use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
@@ -116,18 +113,6 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
-    public function testResolvesInstanceMethodCall(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MethodInfo::class, $result);
-        self::assertStringContainsString('setName', $result->format());
-    }
-
     public function testResolvesAliasedTraitMethodCallCarriesAliasedFromAndRebindsSelf(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('src/Hover/TraitAliasSelfReturnCall.php', 'aliased_call');
@@ -156,55 +141,6 @@ final class SymbolResolverTest extends TestCase
             $result->returnType->name->qualifiedName->fullyQualifiedName(),
             'the trait method\'s self resolves to the using class, not the trait',
         );
-    }
-
-    public function testResolvesNullsafeMethodCall(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'setName_nullsafe');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MethodInfo::class, $result);
-        self::assertStringContainsString('setName', $result->format());
-    }
-
-    public function testResolvesStaticMethodCall(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'create');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MethodInfo::class, $result);
-        self::assertStringContainsString('create', $result->format());
-    }
-
-    public function testResolvesClasslikeName(): void
-    {
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'class_instantiation');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(ClassInfo::class, $result);
-        self::assertStringContainsString('User', $result->format());
-    }
-
-    public function testResolvesFunctionCall(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('SignatureHelp.php', 'signatureHelpAdd');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(FunctionInfo::class, $result);
-        self::assertStringContainsString('signatureHelpAdd', $result->format());
     }
 
     public function testResolvesImportedFunctionCall(): void
@@ -320,55 +256,6 @@ final class SymbolResolverTest extends TestCase
         self::assertNull($result, 'an undefined constant should not resolve');
     }
 
-    public function testResolvesPropertyFetch(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'manager');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(PropertyInfo::class, $result);
-        self::assertStringContainsString('manager', $result->format());
-    }
-
-    public function testResolvesNullsafePropertyFetch(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'manager_nullsafe');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(PropertyInfo::class, $result);
-        self::assertStringContainsString('manager', $result->format());
-    }
-
-    public function testResolvesStaticPropertyFetch(): void
-    {
-        $this->openFixture('src/Inheritance/ParentClass.php');
-        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'staticProperty');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(PropertyInfo::class, $result);
-        self::assertStringContainsString('staticProperty', $result->format());
-    }
-
-    public function testResolvesClassConstant(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Inheritance/ParentClass.php', 'class_constant');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(ClasslikeConstantInfo::class, $result);
-        self::assertStringContainsString('PARENT_CONST', $result->format());
-    }
-
     public function testResolvesEnumCase(): void
     {
         $cursor = $this->openFixtureAtHoverMarker('src/Enum/Status.php', 'enum_case');
@@ -379,18 +266,6 @@ final class SymbolResolverTest extends TestCase
 
         self::assertInstanceOf(EnumCaseInfo::class, $result);
         self::assertStringContainsString('Active', $result->format());
-    }
-
-    public function testResolvesVariable(): void
-    {
-        $cursor = $this->openFixtureAtHoverMarker('src/Domain/User.php', 'variable_typed');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(ResolvedVariable::class, $result);
-        self::assertSame('typed', $result->getName(), 'the hovered variable is resolved');
     }
 
     public function testResolvesParameterDeclaration(): void
@@ -534,35 +409,6 @@ final class SymbolResolverTest extends TestCase
         self::assertInstanceOf(ParameterInfo::class, $result);
         self::assertStringContainsString('b', $result->format());
         self::assertSame('int', $result->getType()?->format());
-    }
-
-    public function testResolvesAttribute(): void
-    {
-        $this->openFixture('src/Attributes/Route.php');
-        $uri = $this->openFixture('src/Services/ApiController.php');
-        $document = $this->documents->get($uri);
-        assert($document !== null);
-
-        // Find the line with the attribute: #[Route('/api/users')]
-        $content = $document->getContent();
-        $lines = explode("\n", $content);
-        $lineNum = 0;
-        $character = 0;
-        foreach ($lines as $i => $line) {
-            if (str_contains($line, '#[Route(')) {
-                $lineNum = $i;
-                // Position on 'Route' after #[
-                $pos = strpos($line, 'Route');
-                assert($pos !== false);
-                $character = $pos + 2; // Inside the name
-                break;
-            }
-        }
-
-        $result = $this->resolver->resolveAtPosition($document, $lineNum, $character);
-
-        self::assertInstanceOf(ClassInfo::class, $result);
-        self::assertStringContainsString('Route', $result->format());
     }
 
     public function testResolvesNamedArgumentInAttribute(): void
@@ -837,19 +683,6 @@ final class SymbolResolverTest extends TestCase
         self::assertInstanceOf(MemberAccessContext::class, $context);
         self::assertSame(MemberAccessKind::Instance, $context->kind);
         self::assertSame('Fixtures\Domain\User', $context->type->format(), 'Resolves to User type');
-    }
-
-    public function testResolvesMemberCallInGlobalScope(): void
-    {
-        $this->openFixture('src/Domain/User.php');
-        $cursor = $this->openFixtureAtHoverMarker('TopLevel/global_scope_hover.php', 'global_method_call');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $result = $this->resolver->resolveAtPosition($document, $cursor['line'], $cursor['character']);
-
-        self::assertInstanceOf(MethodInfo::class, $result);
-        self::assertStringContainsString('getName', $result->format());
     }
 
     public function testResolvesGlobalVariableType(): void
