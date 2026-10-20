@@ -29,6 +29,7 @@ return [
         'named_empty',
         new Expectation\Offers('name:', 'count:', 'active:'),
         new Expectation\Details('name:', 'string $name'),
+        new Expectation\Details('count:', 'int $count'),
     ),
     'static call' => $complete($named, 'static_named_empty', new Expectation\Offers('value:', 'limit:')),
     'constructor' => $complete($named, 'new_named_empty', new Expectation\Offers('name:', 'age:')),
