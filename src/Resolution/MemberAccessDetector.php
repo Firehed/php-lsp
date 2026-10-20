@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use LogicException;
 use PhpParser\Node;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\Error;
 use PhpParser\Node\Expr\MethodCall;
@@ -116,12 +117,16 @@ final class MemberAccessDetector
      * statement on a later line can parse onto an unfinished access and lend
      * it a name the person never typed.
      */
-    private static function typedPrefix(Node $name, int $offset): string
+    private static function typedPrefix(Identifier|Expr $name, int $offset): string
     {
         if (!$name instanceof Identifier) {
             return '';
         }
-        return substr($name->toString(), 0, max(0, $offset - $name->getStartFilePos()));
+        $text = $name->toString();
+        // Measured from the end: a static property's name starts at its `$`,
+        // which the name itself omits.
+        $start = $name->getEndFilePos() + 1 - strlen($text);
+        return substr($text, 0, max(0, $offset - $start));
     }
 
     /**
