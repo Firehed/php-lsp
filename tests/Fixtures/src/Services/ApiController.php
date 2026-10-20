@@ -15,7 +15,7 @@ class ApiController
         return [];
     }
 
-    #[Route(path: '/api/posts', method: 'POST')]
+    #[Route(method: 'POST', path: '/api/posts')] //hover:attr_named_arg
     public function createPost(): array
     {
         return [];

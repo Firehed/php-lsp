@@ -40,7 +40,7 @@ class HelperRegistry implements HelperContract
     use HelperFallback;
 }
 
-function helperFormat(string $value): string
+function helperFormat(string $value): string //jtd:helper_format_param value
 {
     return trim($value);
 }

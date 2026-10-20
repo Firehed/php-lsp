@@ -8,7 +8,7 @@ final class ClosureParameter
 {
     public function withClosure(): callable
     {
-        return function (string $captured): string {
+        return function (string $captured): string { //jtd:closure_param captured
             return $captured;
         };
     }

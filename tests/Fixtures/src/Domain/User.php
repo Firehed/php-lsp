@@ -24,7 +24,7 @@ class User implements Entity, Person
         private readonly string $id,
         private string $name,
         private string $email,
-        private int $age = 0,
+        private int $age = 0, //jtd:promoted_age age
         private Status $status = Status::Active,
         public ?self $manager = null,
         public ?Team $team = null,
@@ -45,7 +45,7 @@ class User implements Entity, Person
     /**
      * Updates the user's display name.
      */
-    public function setName(string $name): void
+    public function setName(string $name): void //jtd:set_name_param name
     {
         $this->name = $name; /*|inside_setName*/
     }
