@@ -42,8 +42,6 @@ Files that intentionally break PSR-4, such as multi-class files, live in top-lev
 
 Additive changes to shared fixtures are fine.
 Renames, removals, and signature changes need coordination.
-Some fixtures back the parity goldens under `tests/Parity/`; any change to one changes its golden.
-Recapture with `UPDATE_GOLDENS=1` and review the diff; see `tests/Parity/README.md`.
 
 ### Helpers
 

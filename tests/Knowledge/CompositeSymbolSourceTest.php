@@ -31,8 +31,7 @@ use PHPUnit\Framework\TestCase;
  * these prove the fixed precedence — an earlier (more authoritative) backend wins a
  * lookup, a merge, and a name clash. The concrete slots (openDocuments,
  * autoloadFiles) start empty so the fake-backed disk and built-in slots — the two
- * the composite types on the interface — carry every assertion. Parity with the
- * real backends is frozen by the parity harness.
+ * the composite types on the interface — carry every assertion.
  */
 #[CoversClass(CompositeSymbolSource::class)]
 final class CompositeSymbolSourceTest extends TestCase
