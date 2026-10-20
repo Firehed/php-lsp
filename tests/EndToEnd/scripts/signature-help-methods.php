@@ -43,7 +43,7 @@ $setName = [
 ];
 
 return [
-    'method' => $signatureHelp($user, 'sig_this_call', ...$setName),
+    'method' => $signatureHelp($user, 'sig_this_call', new Expectation\ActiveParameter(0), ...$setName),
     'nullsafe method call' => $signatureHelp($user, 'sig_nullsafe_property', ...$setName),
     'typed variable method call' => $signatureHelp($calls, 'typed_param', ...$setName),
     'assigned variable method call' => $signatureHelp($calls, 'assigned_var', ...$setName),

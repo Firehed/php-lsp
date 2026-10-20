@@ -48,6 +48,7 @@ return [
         'TopLevel/global_scope_completion.php',
         'global_member_access',
         new Expectation\Offers('getName', 'manager'),
+        new Expectation\Withholds('email'),
     ),
     'from another class, public members only' => $complete(
         'src/Completion/ExternalAccess.php',
