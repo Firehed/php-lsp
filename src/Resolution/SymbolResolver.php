@@ -128,10 +128,6 @@ final class SymbolResolver implements CodeResolverInterface
         MemberFilter $filter = MemberFilter::Instance,
     ): array {
         $classNames = $type->getResolvableClasslikeNames();
-        if ($classNames === []) {
-            return [];
-        }
-
         $members = [];
         // Keyed by MemberFilter case name so the choice reads as a lookup, not
         // an enum comparison the kind-branch rule flags.
