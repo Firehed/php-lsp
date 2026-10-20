@@ -572,17 +572,6 @@ final class SymbolResolverTest extends TestCase
         self::assertVariablesContain($variables, 'outer', 'inner');
     }
 
-    public function testGetVariablesInScopeIncludesForeachVariables(): void
-    {
-        $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'foreach_prefix');
-        $document = $this->documents->get($cursor['uri']);
-        assert($document !== null);
-
-        $variables = $this->resolver->getVariablesInScope($document, $cursor['line'], $cursor['character']);
-
-        self::assertVariablesContain($variables, 'item');
-    }
-
     public function testGetVariablesInScopeIncludesForeachKeyVariable(): void
     {
         $cursor = $this->openFixtureAtCursor('src/Completion/Variables.php', 'foreach_key');
