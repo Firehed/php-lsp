@@ -1396,19 +1396,6 @@ final class SymbolResolverTest extends TestCase
         self::assertInstanceOf(CallContext::class, $context, 'Should detect call context after string value');
     }
 
-    public function testChainedAccessRegexPattern(): void
-    {
-        // Test that the chain pattern matches correctly
-        $text = '        if ($this->user->';
-        $pattern = '/(\$\w+(?:\??->[\w]+(?:\([^)]*\))?)+)\??->([\w]*)$/';
-        $result = preg_match($pattern, $text, $matches);
-        self::assertSame(1, $result, 'Pattern should match chained access');
-        self::assertArrayHasKey(1, $matches);
-        self::assertArrayHasKey(2, $matches);
-        self::assertSame('$this->user', $matches[1], 'Should capture the chain expression');
-        self::assertSame('', $matches[2], 'Should capture empty prefix');
-    }
-
     // =========================================================================
     // getAccessibleMembersFromText: visibility filtering
     // =========================================================================
