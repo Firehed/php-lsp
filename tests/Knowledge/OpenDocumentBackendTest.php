@@ -447,15 +447,15 @@ final class OpenDocumentBackendTest extends TestCase
             new TextDocument('file:///a.php', 'php', 1, "<?php\nnamespace App;\nclass Widget {}\n"),
         );
         $this->backend->openDocument(
-            new TextDocument('file:///b.php', 'php', 1, "<?php\nnamespace App;\nclass Widget {}\n"),
+            new TextDocument('file:///b.php', 'php', 1, "<?php\nnamespace App;\nclass WIDGET {}\n"),
         );
 
         $results = $this->backend->search('Widget', NameKind::ClassLike);
 
-        self::assertCount(
-            1,
-            $results,
-            'a name two documents declare must appear once in search, matching lookup',
+        self::assertSame(
+            ['App\Widget'],
+            array_map(static fn(QualifiedName $s): string => $s->fullyQualifiedName(), $results),
+            'a name two documents declare appears once in search, spelled as the first declaration, matching lookup',
         );
     }
 
