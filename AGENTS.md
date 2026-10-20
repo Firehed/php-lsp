@@ -144,6 +144,7 @@ Before each new change in a session, check it against the original request:
 - Does this change satisfy the wording of a tool's rule or a test while doing what that rule or test exists to prevent?
 
 If any answer is yes, stop and report what is happening instead of continuing.
+A review finding in code the pull request did not introduce becomes a new issue, linked from the pull request, not a change to it.
 When a tool such as PHPStan or deptrac blocks a change, the intent of its rule matters, not its wording: ask before working around it.
 
 ## Development Workflow
