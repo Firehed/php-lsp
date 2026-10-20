@@ -69,7 +69,7 @@ return [
         $brokenClass,
         'broken_static',
         new Expectation\Offers('NAME', 'class', 'create'),
-        new Expectation\Withholds('SECRET', 'privateHelper', 'instanceMethod'),
+        new Expectation\Withholds('SECRET', 'privateHelper', 'instanceMethod', 'publicProp'),
     ),
     'inherited instance members of a broken class' => $complete(
         $brokenInheritance,
