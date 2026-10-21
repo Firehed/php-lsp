@@ -59,3 +59,12 @@ Each incomplete statement needs its own method; two in one method confuse parser
 
 `//hover:marker` puts the cursor on the last member access or function call on that line.
 Use it for complete code such as `$this->method()`.
+
+## Code Reviews
+
+Reviewing code should focus on things not covered by CI or automated tooling:
+
+- Does the code make sense in the context of the project?
+- Does it agree with the actual Language Server Protocol specs?
+- Does it adhere to the architectural guidance covered in ADR docs (`docs/adrs`)?
+- Can the code be simplified, DRYed out, or better follow general software best practices?
