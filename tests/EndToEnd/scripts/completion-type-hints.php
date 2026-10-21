@@ -48,7 +48,20 @@ return [
         'Countable&',
         new Expectation\Offers(...$returnTypes),
     ),
-    'return type after ?' => $typeThenComplete($hints, 'return_type', '?', new Expectation\Offers(...$returnTypes)),
+    // A DNF group in a return type completes as a parameter type (#782).
+    // 'return type inside a DNF group' => $typeThenComplete(
+    //     $hints,
+    //     'return_type',
+    //     '(Countable&',
+    //     new Expectation\Offers(...$returnTypes),
+    // ),
+    // 'return type after a DNF group' => $typeThenComplete(
+    //     $hints,
+    //     'return_type',
+    //     '(Countable&Iterator)|',
+    //     new Expectation\Offers(...$returnTypes),
+    // ),
+    'return type after ?' =>$typeThenComplete($hints, 'return_type', '?', new Expectation\Offers(...$returnTypes)),
     'return type after ? and a space' => $typeThenComplete(
         $hints,
         'return_type',
@@ -56,6 +69,18 @@ return [
         new Expectation\Offers(...$returnTypes),
     ),
     'parameter type' => $typeThenComplete($hints, 'param_type', '', new Expectation\Offers(...$parameterTypes)),
+    'parameter type inside a DNF group' => $typeThenComplete(
+        $hints,
+        'param_type',
+        '(Countable&',
+        new Expectation\Offers(...$parameterTypes),
+    ),
+    'parameter type after a DNF group' => $typeThenComplete(
+        $hints,
+        'param_type',
+        '(Countable&Iterator)|',
+        new Expectation\Offers(...$parameterTypes),
+    ),
     'property type after ?' => $typeThenComplete($hints, 'nullable_property', '', new Expectation\Offers(...$common)),
     'property type after |' => $typeThenComplete($hints, 'property_type', 'int|', new Expectation\Offers(...$common)),
     'property type after &' => $typeThenComplete(
