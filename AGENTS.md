@@ -96,11 +96,10 @@ Positions use one encoding inside the server and are converted only where messag
 Bad input, from the client or from the project's files, never ends the process.
 Every request is answered correctly without background work, and background work never delays a request.
 
-### Completion detection stays text-based
+### Code that does not parse
 
-`ContextDetector` and `CompletionClassifier` read text and tokens on purpose.
-Completion must keep working on code that does not parse mid-edit.
-Do not convert them to tree analysis.
+Code being edited usually does not parse, and every feature must keep working on it.
+At any position, every feature sees the same structure, and it is the structure the code will have once completed.
 
 
 ### Source text
