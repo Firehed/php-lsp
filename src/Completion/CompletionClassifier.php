@@ -8,10 +8,8 @@ namespace Firehed\PhpLsp\Completion;
  * Classifies a cursor position into a {@see CompletionKind} using only the text
  * before the cursor.
  *
- * Detection is deliberately text-based rather than AST-based: this is a live
- * language server, and completion must keep working while code is temporarily
- * broken mid-edit (see CompletionHandlerTest::testCompletionThisInVeryBrokenFile,
- * where the parser produces no AST at all). Member, static, and call-argument
+ * Detection reads text rather than a syntax tree, so it still answers while code
+ * is broken mid-edit. Member, static, and call-argument
  * contexts are AST-first with a text fallback and are detected upstream via
  * {@see \Firehed\PhpLsp\Resolution\CodeResolverInterface}, so they never reach here.
  *
