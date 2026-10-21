@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\EndToEnd;
 
 $union = 'src/Union/UnionReceiver.php';
 $intersection = 'src/Intersection/IntersectionReceiver.php';
+$dnf = 'src/Dnf/DnfReceiver.php';
 $person = 'src/Domain/Person.php';
 $entity = 'src/Domain/Entity.php';
 
@@ -17,7 +18,7 @@ $script = fn (string $file, Step\StepInterface $ask): Session\Script => new Sess
 // Entity declares only getId() and Person only getName(), so each member
 // resolves through exactly one constituent of the receiver's type.
 $cases = [];
-foreach (['union' => $union, 'intersection' => $intersection] as $kind => $file) {
+foreach (['union' => $union, 'intersection' => $intersection, 'dnf' => $dnf] as $kind => $file) {
     $cases += [
         "{$kind}: hover member on second constituent" => $script($file, new Step\Hover(
             $file,
