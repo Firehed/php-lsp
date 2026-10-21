@@ -141,8 +141,8 @@ CompletionHandler (coordinator)
 Sources live in `src/Completion/*Candidates`; each owns lookup + prefix filter +
 item construction (`CompletionItemFactory`). Parser-derived data (imports, file
 functions, members, variables, types) flows through `CodeResolverInterface`, so sources are
-agnostic to the parsing strategy. Detection stays text/token-based (`ContextDetector`,
-`CompletionClassifier`) so completion keeps working on temporarily-broken code.
+agnostic to the parsing strategy. Detection reads text and tokens (`ContextDetector`,
+`CompletionClassifier`), so completion keeps working on temporarily-broken code.
 
 ## Testing
 
