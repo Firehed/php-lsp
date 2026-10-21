@@ -355,8 +355,8 @@ class MemberAccessDetectorTest extends TestCase
             self::static(self::type('Fixtures\Namespacing\Models\UserModel'), Visibility::Public),
         ];
         yield 'the next statement parsed onto a static access' => [
-            'TopLevel/static_access.php',
-            'toplevel_static',
+            'TopLevel/static_before_statement.php',
+            'static_before_statement',
             self::static(self::type('Fixtures\Domain\User'), Visibility::Public),
         ];
         yield 'an enum' => [
