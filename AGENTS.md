@@ -34,26 +34,6 @@ It never says where the answer comes from, and it never takes a parser node or a
 
 Code decides by what a symbol can do, such as whether it can be instantiated, not by checking which kind of symbol it is.
 
-### One wiring place
-
-Instantiating services is to occur in one wiring place: a PSR-11 container.
-
-### Interfaces, Implementations, and Composites
-
-Where services rely on other services, the references are to be named by interface only, never an implementation.
-
-Concrete implementations may be referenced in exactly two places:
-1) the interface-to-implementation mapping in the PSR-11 container
-2) the constructor arguments for a composite service.
-
-A composite is defined as an implementation of an interface that wires together two or more other implementations of the same interface.
-
-A composite MUST be added once an interface gains a second implementation and MUST be the only place that contains logic of how to switch between the implementations.
-Stated directly: there should never be only two implementations of an interface; there's a single one wired directly, or 2+ functional implementations with a composite with the composite wired.
-Composites SHOULD name the other concrete classes as their constructor arguments.
-
-Note: applying decorators to the wired class (example: caching) is still permitted, and this should also be done in the PSR-11 wiring.
-
 ### Factories
 
 A factory must justify its existence.
