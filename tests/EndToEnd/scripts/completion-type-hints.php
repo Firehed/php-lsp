@@ -61,7 +61,7 @@ return [
     //     '(Countable&Iterator)|',
     //     new Expectation\Offers(...$returnTypes),
     // ),
-    'return type after ?' =>$typeThenComplete($hints, 'return_type', '?', new Expectation\Offers(...$returnTypes)),
+    'return type after ?' => $typeThenComplete($hints, 'return_type', '?', new Expectation\Offers(...$returnTypes)),
     'return type after ? and a space' => $typeThenComplete(
         $hints,
         'return_type',
