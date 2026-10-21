@@ -13,6 +13,7 @@
          displayDetailsOnTestsThatTriggerWarnings="true"
          failOnDeprecation="true"
          failOnNotice="true"
+         failOnRisky="true"
          failOnWarning="true"
          requireCoverageMetadata="true">
     <testsuites>
