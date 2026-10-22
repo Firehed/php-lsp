@@ -14,6 +14,7 @@ use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\Recovery\CompositeRecovery;
 use Firehed\PhpLsp\Parser\Recovery\EndOfFileRecovery;
+use Firehed\PhpLsp\Parser\Recovery\GapGraftingRecovery;
 use Firehed\PhpLsp\Parser\Recovery\SkeletonRecovery;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\ParsingSyntaxSource;
@@ -65,7 +66,11 @@ final readonly class ProductionSyntaxSource
         $parser = new PhpParserCodeParser();
         return new ParsingSyntaxSource(
             $parser,
-            new CompositeRecovery(new EndOfFileRecovery($parser), new SkeletonRecovery()),
+            new CompositeRecovery(
+                new EndOfFileRecovery($parser),
+                new SkeletonRecovery(),
+                new GapGraftingRecovery($parser),
+            ),
             new TreeAnnotator(),
         );
     }

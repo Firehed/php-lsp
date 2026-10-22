@@ -8,8 +8,9 @@ use Firehed\PhpLsp\Parser\SyntaxSource\ParseAttempt;
 
 /**
  * The one-route composite for {@see RecoveryInterface}: each step receives the
- * attempt the steps before it left, in order from the most faithful recovery
- * to the last resort.
+ * attempt the steps before it left. A tree comes from the parser, else from
+ * finishing the file, else from the skeleton; then what that tree dropped is
+ * grafted back into it.
  */
 final class CompositeRecovery implements RecoveryInterface
 {
@@ -19,8 +20,9 @@ final class CompositeRecovery implements RecoveryInterface
     public function __construct(
         EndOfFileRecovery $endOfFile,
         SkeletonRecovery $skeleton,
+        GapGraftingRecovery $gaps,
     ) {
-        $this->steps = [$endOfFile, $skeleton];
+        $this->steps = [$endOfFile, $skeleton, $gaps];
     }
 
     public function recover(string $code, ParseAttempt $attempt): ParseAttempt

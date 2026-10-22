@@ -36,6 +36,7 @@ return [
     Parser\SyntaxSource\CodeParserInterface::class => Parser\SyntaxSource\PhpParserCodeParser::class,
     Parser\Recovery\EndOfFileRecovery::class,
     Parser\Recovery\SkeletonRecovery::class,
+    Parser\Recovery\GapGraftingRecovery::class,
     Parser\Recovery\CompositeRecovery::class,
     Parser\Recovery\RecoveryInterface::class => Parser\Recovery\CompositeRecovery::class,
     Parser\SyntaxSource\ParsingSyntaxSource::class,

@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Parser\Recovery;
 
 use Firehed\PhpLsp\Parser\Recovery\CompositeRecovery;
 use Firehed\PhpLsp\Parser\Recovery\EndOfFileRecovery;
+use Firehed\PhpLsp\Parser\Recovery\GapGraftingRecovery;
 use Firehed\PhpLsp\Parser\Recovery\SkeletonRecovery;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserCodeParser;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -47,7 +48,11 @@ final class CompositeRecoveryTest extends TestCase
     {
         $code = $this->loadFixture($fixture);
         $parser = new PhpParserCodeParser();
-        $recovery = new CompositeRecovery(new EndOfFileRecovery($parser), new SkeletonRecovery());
+        $recovery = new CompositeRecovery(
+            new EndOfFileRecovery($parser),
+            new SkeletonRecovery(),
+            new GapGraftingRecovery($parser),
+        );
         return $recovery->recover($code, $parser->parse($code))->tree;
     }
 }
