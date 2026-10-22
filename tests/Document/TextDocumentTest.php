@@ -61,13 +61,13 @@ class TextDocumentTest extends TestCase
         $doc = new TextDocument('file:///test.php', 'php', 1, $content);
 
         // Line 0, char 0 = offset 0
-        self::assertSame(0, $doc->offsetAt(line: 0, character: 0));
+        self::assertSame(0, $doc->offsetAt(line: 0, character: 0)->value);
         // Line 0, char 5 = offset 5 (the newline)
-        self::assertSame(5, $doc->offsetAt(line: 0, character: 5));
+        self::assertSame(5, $doc->offsetAt(line: 0, character: 5)->value);
         // Line 1, char 0 = offset 6 (after newline)
-        self::assertSame(6, $doc->offsetAt(line: 1, character: 0));
+        self::assertSame(6, $doc->offsetAt(line: 1, character: 0)->value);
         // Line 1, char 4 = offset 10 (the space in "echo ")
-        self::assertSame(10, $doc->offsetAt(line: 1, character: 4));
+        self::assertSame(10, $doc->offsetAt(line: 1, character: 4)->value);
     }
 
     public function testPositionAtOffset(): void
@@ -101,7 +101,7 @@ class TextDocumentTest extends TestCase
 
         self::assertSame(
             $byteOffset,
-            $doc->offsetAt(line: 1, character: $character),
+            $doc->offsetAt(line: 1, character: $character)->value,
             'a UTF-16 column must resolve to the byte offset the AST uses, past any multibyte characters',
         );
         self::assertSame(

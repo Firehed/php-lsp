@@ -226,7 +226,7 @@ final class AstTextAgreementTest extends TestCase
         $parsed = $this->parser->parse($document);
 
         ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
-        $offset = $document->offsetAt($line, $character);
+        $offset = $document->offsetAt($line, $character)->value;
         // Match MemberAccessDetector's cursor semantic: probe the last char
         // before the cursor, so we land on the arrow rather than on the marker.
         $probe = $offset > 0 ? $offset - 1 : 0;

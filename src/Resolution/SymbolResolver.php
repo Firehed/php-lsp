@@ -93,7 +93,7 @@ final class SymbolResolver implements CodeResolverInterface
     ): ?ResolvedSymbolInterface {
         $parsed = $this->parser->parse($document);
 
-        $offset = $document->offsetAt($line, $character);
+        $offset = $document->offsetAt($line, $character)->value;
         $node = $this->locator->nodeAt($parsed, $offset);
 
         if ($node === null) {
@@ -284,7 +284,7 @@ final class SymbolResolver implements CodeResolverInterface
         $parsed = $this->parser->parse($document);
         $ast = $parsed->tree;
 
-        $offset = $document->offsetAt($line, $character);
+        $offset = $document->offsetAt($line, $character)->value;
         $scope = Scope::atOffset($ast, $offset);
 
         $nearest = [];
@@ -317,7 +317,7 @@ final class SymbolResolver implements CodeResolverInterface
     ): ?CallContext {
         $parsed = $this->parser->parse($document);
 
-        $offset = $document->offsetAt($line, $character);
+        $offset = $document->offsetAt($line, $character)->value;
 
         $callInfo = $this->callDetector->detect($parsed, $offset);
         if ($callInfo === null) {

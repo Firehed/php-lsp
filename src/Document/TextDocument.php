@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Document;
 
+use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Protocol\PositionEncoding;
 
 final class TextDocument
@@ -57,17 +58,21 @@ final class TextDocument
         return substr($lineText, 0, $this->encoding->characterToByteOffset($lineText, $character));
     }
 
-    public function offsetAt(int $line, int $character): int
+    /**
+     * Where a position a message names is in the text: the one conversion
+     * from the client's positions to the server's.
+     */
+    public function offsetAt(int $line, int $character): ByteOffset
     {
         if ($line < 0 || $line >= count($this->lineOffsets())) {
-            return 0;
+            return new ByteOffset(0);
         }
 
         // The negotiated encoding measures `character`; the interior is bytes.
         // Converting against the line content also clamps an over-long column
         // to the line's byte length, so no separate line-end clamp is needed.
-        return $this->lineOffsets()[$line]
-            + $this->encoding->characterToByteOffset($this->getLine($line), $character);
+        return new ByteOffset($this->lineOffsets()[$line]
+            + $this->encoding->characterToByteOffset($this->getLine($line), $character));
     }
 
     /**

@@ -29,8 +29,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
 
     public function find(CompletionRequest $request): array
     {
-        $offset = $request->document->offsetAt($request->line, $request->character);
-        $context = ContextDetector::getContext($request->document->getContent(), $offset);
+        $context = ContextDetector::getContext($request->document->getContent(), $request->offset->value);
         if ($context === CompletionContext::None) {
             return [];
         }
@@ -151,7 +150,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
      */
     private function useStatementItems(CompletionRequest $request): array
     {
-        $offset = $request->document->offsetAt($request->line, $request->character);
+        $offset = $request->offset->value;
         $content = $request->document->getContent();
         if (ContextDetector::isInsideClassBody($content, $offset)) {
             return $this->deduplicate(

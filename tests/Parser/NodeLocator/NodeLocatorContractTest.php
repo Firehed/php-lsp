@@ -140,7 +140,7 @@ final class NodeLocatorContractTest extends TestCase
     {
         return function (self $test, string $content) use ($marker): int {
             ['line' => $line, 'character' => $character] = $test->locateHoverMarker($content, $marker);
-            return (new TextDocument('file:///t.php', 'php', 1, $content))->offsetAt($line, $character);
+            return (new TextDocument('file:///t.php', 'php', 1, $content))->offsetAt($line, $character)->value;
         };
     }
 

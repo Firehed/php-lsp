@@ -54,7 +54,7 @@ final class MemberAccessDetector
     ): ?MemberAccessContext {
         $document = $parsed->document;
         $ast = $parsed->tree;
-        $offset = $document->offsetAt($line, $character);
+        $offset = $document->offsetAt($line, $character)->value;
 
         $node = $this->locator->nodeAt($parsed, $offset > 0 ? $offset - 1 : 0);
 

@@ -26,7 +26,7 @@ final class CompositeNodeLocatorTest extends TestCase
     {
         $parsed = (ParserOnlySyntaxSource::create())->parse($this->document());
         $position = $this->locateHoverMarker($parsed->document->getContent(), 'inherited_method');
-        $offset = $parsed->document->offsetAt($position['line'], $position['character']);
+        $offset = $parsed->document->offsetAt($position['line'], $position['character'])->value;
 
         self::assertSame(
             (new TreeNodeLocator())->nodeAt($parsed, $offset),

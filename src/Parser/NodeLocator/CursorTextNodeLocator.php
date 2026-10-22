@@ -66,7 +66,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
         }
 
         $line = $document->positionAt($offset)['line'];
-        $lineStart = $document->offsetAt($line, 0);
+        $lineStart = $document->offsetAt($line, 0)->value;
         $lineText = $document->getLine($line);
         $content = $document->getContent();
 

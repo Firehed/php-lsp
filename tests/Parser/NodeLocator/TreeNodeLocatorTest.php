@@ -30,7 +30,7 @@ final class TreeNodeLocatorTest extends TestCase
 
         $node = (new TreeNodeLocator())->nodeAt(
             $parsed,
-            $parsed->document->offsetAt($position['line'], $position['character']),
+            $parsed->document->offsetAt($position['line'], $position['character'])->value,
         );
 
         self::assertInstanceOf(Identifier::class, $node, 'the method name is the innermost node');

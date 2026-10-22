@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ByteOffset;
 
 /**
  * The position a completion source is asked about, plus the text-derived views
@@ -14,6 +15,7 @@ use Firehed\PhpLsp\Document\TextDocument;
  */
 final class CompletionRequest
 {
+    public readonly ByteOffset $offset;
     private ?string $textBeforeCursor = null;
     private ?CompletionClassification $classification = null;
 
@@ -22,6 +24,7 @@ final class CompletionRequest
         public readonly int $line,
         public readonly int $character,
     ) {
+        $this->offset = $document->offsetAt($line, $character);
     }
 
     public function textBeforeCursor(): string

@@ -31,7 +31,7 @@ class NodeAtPositionTest extends TestCase
 
         // Position on "MyClass" (line 0, char 10)
         $finder = new NodeAtPosition();
-        $node = $finder->find($ast, $doc->offsetAt(0, 10));
+        $node = $finder->find($ast, $doc->offsetAt(0, 10)->value);
 
         self::assertInstanceOf(Name::class, $node);
         self::assertSame('MyClass', $node->toString());
@@ -45,7 +45,7 @@ class NodeAtPositionTest extends TestCase
 
         // Position on "doSomething" (line 0, char 12)
         $finder = new NodeAtPosition();
-        $node = $finder->find($ast, $doc->offsetAt(0, 12));
+        $node = $finder->find($ast, $doc->offsetAt(0, 12)->value);
 
         // Returns the Identifier node for the method name
         self::assertInstanceOf(Identifier::class, $node);
@@ -60,7 +60,7 @@ class NodeAtPositionTest extends TestCase
 
         // Position on "MyClass" (line 0, char 8)
         $finder = new NodeAtPosition();
-        $node = $finder->find($ast, $doc->offsetAt(0, 8));
+        $node = $finder->find($ast, $doc->offsetAt(0, 8)->value);
 
         self::assertInstanceOf(Name::class, $node);
         self::assertSame('MyClass', $node->toString());
@@ -73,7 +73,7 @@ class NodeAtPositionTest extends TestCase
         $ast = $this->parser->parse($doc)->tree;
 
         $finder = new NodeAtPosition();
-        $node = $finder->find($ast, $doc->offsetAt(0, 10));
+        $node = $finder->find($ast, $doc->offsetAt(0, 10)->value);
 
         self::assertNull($node);
     }
@@ -87,11 +87,11 @@ class NodeAtPositionTest extends TestCase
         $finder = new NodeAtPosition();
 
         // Without filter: returns the deepest node (Identifier for method name)
-        $node = $finder->find($ast, $doc->offsetAt(0, 12));
+        $node = $finder->find($ast, $doc->offsetAt(0, 12)->value);
         self::assertInstanceOf(Identifier::class, $node, 'without filter, deepest node is returned');
 
         // With filter: returns the deepest node matching the filter
-        $node = $finder->find($ast, $doc->offsetAt(0, 12), fn (Node $n) => $n instanceof Node\Expr\MethodCall);
+        $node = $finder->find($ast, $doc->offsetAt(0, 12)->value, fn (Node $n) => $n instanceof Node\Expr\MethodCall);
         self::assertInstanceOf(
             Node\Expr\MethodCall::class,
             $node,
@@ -106,7 +106,7 @@ class NodeAtPositionTest extends TestCase
         $ast = $this->parser->parse($doc)->tree;
 
         $finder = new NodeAtPosition();
-        $node = $finder->find($ast, $doc->offsetAt(0, 12), fn (Node $n) => $n instanceof Node\Expr\StaticCall);
+        $node = $finder->find($ast, $doc->offsetAt(0, 12)->value, fn (Node $n) => $n instanceof Node\Expr\StaticCall);
         self::assertNull($node, 'filter that matches nothing returns null');
     }
 }
