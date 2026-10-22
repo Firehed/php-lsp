@@ -34,13 +34,12 @@ final class ParameterTyping
         Param $param,
         string $name,
         Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction $enclosingScope,
-        ?ClasslikeName $enclosingClass,
         ?string $selfContext,
         ?string $parentContext,
     ): ?TypeInterface {
-        if ($enclosingScope instanceof Stmt\ClassMethod && $enclosingClass !== null) {
+        if ($enclosingScope instanceof Stmt\ClassMethod && $selfContext !== null) {
             return $typeSource->forMethodParameter(
-                new MethodName($enclosingClass, $enclosingScope->name->toString()),
+                new MethodName(ClasslikeName::fromFullyQualified($selfContext), $enclosingScope->name->toString()),
                 $name,
             );
         }

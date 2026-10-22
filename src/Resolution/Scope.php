@@ -120,13 +120,18 @@ final class Scope
     }
 
     /**
-     * The type of `$this` in this scope, or null when `$this` is not bound
-     * (free functions, closures, and file-level code).
+     * The type of `$this` in this scope, or null where PHP does not bind it.
+     * An instance method binds it; a closure or arrow function inherits it
+     * unless declared `static` (PHP manual, Anonymous functions).
      */
     public function getThisType(): ?ClasslikeName
     {
+        $function = $this->sourceNode;
+        if ($function instanceof Closure || $function instanceof ArrowFunction) {
+            return $function->static ? null : $this->outer()?->getThisType();
+        }
         $self = $this->getSelfContext();
-        return $this->sourceNode instanceof Stmt\ClassMethod && $self !== null
+        return $function instanceof Stmt\ClassMethod && !$function->isStatic() && $self !== null
             ? ClasslikeName::fromFullyQualified($self)
             : null;
     }

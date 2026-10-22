@@ -67,6 +67,38 @@ class ScopeTest extends TestCase
         self::assertSame('Fixtures\Traits\HasTimestamps', $scope->getThisType()?->qualifiedName->fullyQualifiedName());
     }
 
+    #[DataProvider('thisBindings')]
+    public function testThisIsBoundWherePhpBindsIt(string $variable, ?string $expected): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
+        $node = self::findVariableNode($variable, $ast);
+        self::assertNotNull($node);
+
+        self::assertSame(
+            $expected,
+            Scope::at($node, $ast)->getThisType()?->qualifiedName->fullyQualifiedName(),
+            "\$this where \${$variable} is",
+        );
+    }
+
+    /**
+     * @return array<string, array{string, ?string}>
+     */
+    public static function thisBindings(): array
+    {
+        $class = 'Fixtures\ThisBinding\ThisBinding';
+        return [
+            'an instance method' => ['inInstanceMethod', $class],
+            'a closure in an instance method' => ['inClosure', $class],
+            'an arrow function in an instance method' => ['inArrow', $class],
+            'a static closure' => ['inStaticClosure', null],
+            'a static arrow function' => ['inStaticArrow', null],
+            'a static method' => ['inStaticMethod', null],
+            'a closure in a static method' => ['inClosureInStaticMethod', null],
+            'a closure in a free function' => ['inClosureInFunction', null],
+        ];
+    }
+
     public function testAClosureExposesItsUseCaptures(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));

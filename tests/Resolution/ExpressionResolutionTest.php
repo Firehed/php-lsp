@@ -219,6 +219,26 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testThisIsUntypedWhereTheScopeDoesNotBindIt(): void
+    {
+        self::assertEquals(
+            new ResolvedVariable('this', null),
+            $this->resolveVariableAt('TopLevel/this_binding.php', 'static_method_this'),
+            'a static method has no $this, though a class encloses it',
+        );
+    }
+
+    public function testAStaticMethodsParameterIsTypedByItsMethod(): void
+    {
+        $this->typeEveryParameterAs(new PrimitiveType('int'));
+
+        self::assertEquals(
+            new PrimitiveType('int'),
+            $this->resolveVariableAt('TopLevel/this_binding.php', 'static_method_param')?->getType(),
+            'the method\'s parameter types are looked up by its class, which a static method still has',
+        );
+    }
+
     public function testUnboundVariableInAClosureWithoutCaptureIsUntyped(): void
     {
         self::assertEquals(
