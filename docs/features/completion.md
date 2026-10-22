@@ -7,8 +7,8 @@ This document tracks the current state of code completion in php-lsp.
 | Context | Trigger | What's Suggested | Status |
 |---------|---------|------------------|--------|
 | `$this->` member access | `$this->` or `$this?->` | Methods and properties from current class + inherited via reflection | ✅ Working |
-| Typed variable member access | `$user->` or `$user?->` | Public methods and properties when type is known (parameter types, `new` expressions) | ✅ Working |
-| Variable completions | `$log` | Local variables, parameters, `$this` in methods, and file-level variables in procedural code | ✅ Working |
+| Typed variable member access | `$user->` or `$user?->` | Methods and properties visible from where the access is written, when the type is known (parameter types, `new` expressions) | ✅ Working |
+| Variable completions | `$log` | Local variables, parameters, `$this` where PHP binds it (instance methods and the non-static closures in them), variables an arrow function captures, and file-level variables in procedural code | ✅ Working |
 | Static access | `ClassName::` | Static methods, constants, static properties (visibility-aware) | ✅ Working |
 | `new` expression | `new ` | Instantiable classes from imports + workspace index, with namespace-correct references | ✅ Working |
 | Function calls | identifier at expression start | Built-in PHP functions + file-local functions | ✅ Working |
@@ -103,7 +103,6 @@ text is aligned to that word boundary rather than spanning the whole qualified n
 
 ## Limitations
 
-- **Visibility**: Typed variable completions only show public members. Use `$this->` for protected/private access within the class.
 - **Union types**: Completions on union types (e.g., `User|Admin`) show only members that exist on ALL types in the union (intersection of members). This is type-safe but may show fewer completions than expected. For intersection types (`User&Admin`), all members from all types are shown.
 - **Trait conflict resolution**: `insteadof` and `as` adaptations are ignored (#73). Methods aliased with `as` are not offered, and when two traits declare the same method the first one listed wins regardless of `insteadof`.
 
