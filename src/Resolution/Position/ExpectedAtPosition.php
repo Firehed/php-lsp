@@ -19,7 +19,6 @@ use Firehed\PhpLsp\Resolution\Expected;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
-use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\NameQuery;
 use PhpParser\Node\Name;
 
@@ -105,7 +104,7 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
     {
         // A static property's name is written with its `$`; a member's name is not.
         $prefix = ltrim($located->prefix, '$');
-        $vantageName = LateBindingKeyword::Self->resolveIn($located->classLike);
+        $vantageName = $located->scope->getSelfContext();
         $vantage = $vantageName === null ? null : ClasslikeName::fromFullyQualified($vantageName);
         $receiver = $located->receiver;
 
@@ -123,7 +122,7 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
             return null;
         }
         $keyword = LateBindingKeyword::tryFromName($receiver->toString());
-        $targetName = $keyword === null ? $receiver->toString() : $keyword->resolveIn($located->classLike);
+        $targetName = $located->scope->resolveClasslikeName($receiver);
         if ($targetName === null) {
             return null;
         }
@@ -200,7 +199,7 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
         return new NameQuery(
             $kinds,
             $filter,
-            NameContextFactory::in($located->namespace, $located->parsed->tree),
+            $located->scope->nameContext(),
             $absolute,
         );
     }

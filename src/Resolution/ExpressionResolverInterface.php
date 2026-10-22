@@ -36,7 +36,7 @@ interface ExpressionResolverInterface
     /**
      * A parameter as its declaration declares it.
      */
-    public function resolveParameter(Param $param): ParameterInfo;
+    public function resolveParameter(Param $param, ParsedDocument $parsed): ParameterInfo;
 
     /**
      * A variable as a binding in a scope declares it.

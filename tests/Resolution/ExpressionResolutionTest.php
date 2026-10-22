@@ -82,21 +82,21 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
-    public function testTopLevelArrowFunctionHasNoScopeToCaptureFrom(): void
+    public function testTopLevelArrowFunctionCapturesFromTheFile(): void
     {
         self::assertEquals(
-            new ResolvedVariable('outer', null),
+            new ResolvedVariable('outer', self::dateTimeType(), self::bindingAt(self::TOP_LEVEL, 7, 0)),
             $this->resolveVariableAt(self::TOP_LEVEL, 'top_arrow_capture'),
-            'a file-scope assignment is not an enclosing function scope, so no binding is found',
+            'an arrow function at file level captures the file-level assignment',
         );
     }
 
-    public function testTopLevelClosureUseBindsWithoutAType(): void
+    public function testTopLevelClosureUseTakesTheTypeOfTheFileLevelVariable(): void
     {
         self::assertEquals(
-            new ResolvedVariable('closureOuter', null, self::bindingAt(self::TOP_LEVEL, 14, 28)),
+            new ResolvedVariable('closureOuter', self::dateTimeType(), self::bindingAt(self::TOP_LEVEL, 14, 28)),
             $this->resolveVariableAt(self::TOP_LEVEL, 'top_closure_use_capture'),
-            'the use clause is the binding, but no enclosing function gives it a type',
+            'the use clause is the binding, typed by the file-level variable it captures',
         );
     }
 

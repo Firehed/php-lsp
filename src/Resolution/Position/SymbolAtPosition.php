@@ -37,7 +37,9 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
             Slot::Variable => $this->variable($written, $located->parsed),
             Slot::Member, Slot::StaticMember, Slot::CalledName => $this->usedBy($written, $located->parsed),
             Slot::ArgumentName => $this->parameterNamed($located),
-            Slot::DeclaredName => $parent instanceof Node\Param ? $this->expressions->resolveParameter($parent) : null,
+            Slot::DeclaredName => $parent instanceof Node\Param
+                ? $this->expressions->resolveParameter($parent, $located->parsed)
+                : null,
             Slot::Expression => $parent instanceof Expr\ConstFetch
                 ? $this->expressions->resolve($parent, $located->parsed)
                 : $this->classLike($written),

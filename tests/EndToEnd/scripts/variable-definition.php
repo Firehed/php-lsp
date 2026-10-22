@@ -82,12 +82,12 @@ return [
         'global_assignment_usage',
         new Expectation\LandsOn($global, line: 7),
     ),
-    // A top-level arrow function has no enclosing function to capture from, so
-    // the file-scope assignment is not its definition.
+    // A top-level arrow function captures from the file, so the file-level
+    // assignment is the definition.
     'top-level arrow capture' => $definition(
         $topLevel,
         'top_arrow_capture',
-        new Expectation\NoAnswer(),
+        new Expectation\LandsOn($topLevel, line: 8, column: 1),
     ),
     // A top-level closure's `use` clause binds the name, so it is the definition.
     'top-level closure use' => $definition(

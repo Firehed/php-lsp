@@ -24,7 +24,7 @@ class VariableBindingsTest extends TestCase
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
         $method = self::findMethodByName('method', $ast);
-        $scope = Scope::forNode($method);
+        $scope = Scope::at($method, $ast);
         $endOfMethod = $method->getEndFilePos();
 
         $names = self::namesOf(VariableBindings::before($scope, $endOfMethod));
@@ -45,7 +45,7 @@ class VariableBindingsTest extends TestCase
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
         $method = self::findMethodByName('method', $ast);
-        $scope = Scope::forNode($method);
+        $scope = Scope::at($method, $ast);
 
         $target = self::findAssignmentTarget('assigned', $ast);
         $offset = $target->getStartFilePos();
@@ -59,7 +59,7 @@ class VariableBindingsTest extends TestCase
         $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
         $closure = self::findFirst($ast, fn (Node $n) => $n instanceof Node\Expr\Closure);
         self::assertInstanceOf(Node\Expr\Closure::class, $closure);
-        $scope = Scope::forNode($closure);
+        $scope = Scope::at($closure, $ast);
 
         $names = self::namesOf(VariableBindings::before($scope, $closure->getEndFilePos()));
 
@@ -72,7 +72,7 @@ class VariableBindingsTest extends TestCase
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/BranchingBindingSites.php'));
         $method = self::findMethodByName('method', $ast);
-        $scope = Scope::forNode($method);
+        $scope = Scope::at($method, $ast);
 
         $names = self::namesOf(VariableBindings::before($scope, $method->getEndFilePos()));
 
@@ -88,7 +88,7 @@ class VariableBindingsTest extends TestCase
         $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
         $arrow = self::findFirst($ast, fn (Node $n) => $n instanceof Node\Expr\ArrowFunction);
         self::assertInstanceOf(Node\Expr\ArrowFunction::class, $arrow);
-        $scope = Scope::forNode($arrow);
+        $scope = Scope::at($arrow, $ast);
 
         $names = self::namesOf(VariableBindings::before($scope, $arrow->getEndFilePos()));
 

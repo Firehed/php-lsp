@@ -57,7 +57,7 @@ use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
  * One entry point that hover, definition, member-access typing, and variable
  * completion share. Variable resolution reads {@see VariableBindings} directly
  * so JTD on `$var` lands on the nearest preceding binding node (#301). What
- * encloses an expression is read by walking up from it.
+ * encloses an expression is its {@see Scope}.
  */
 final class ExpressionResolver implements ExpressionResolverInterface
 {
@@ -71,7 +71,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
     public function resolve(Expr $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
     {
         if ($expr instanceof Variable && $expr->name === 'this') {
-            $enclosing = ScopeFinder::findEnclosingClasslikeName($expr);
+            $enclosing = Scope::at($expr, $parsed->tree)->getSelfContext();
             if ($enclosing === null) {
                 return null;
             }
@@ -79,12 +79,12 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
 
         if ($expr instanceof Variable && is_string($expr->name)) {
-            $scope = Scope::enclosing($expr, $parsed->tree);
+            $scope = Scope::at($expr, $parsed->tree);
             return $this->resolveVariable($expr->name, $scope, $expr->getStartFilePos(), $parsed);
         }
 
         if ($expr instanceof New_) {
-            return $this->resolveNew($expr);
+            return $this->resolveNew($expr, $parsed);
         }
 
         if ($expr instanceof MethodCall || $expr instanceof NullsafeMethodCall) {
@@ -108,7 +108,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
 
         if ($expr instanceof ClassConstFetch) {
-            return $this->resolveClassConstFetch($expr);
+            return $this->resolveClassConstFetch($expr, $parsed);
         }
 
         if ($expr instanceof Expr\ConstFetch) {
@@ -153,12 +153,9 @@ final class ExpressionResolver implements ExpressionResolverInterface
                 return null;
             }
             $sourceNode = $scope->getSourceNode();
-            assert($sourceNode !== null, 'allowsImplicitCapture() implies an ArrowFunction source node');
-            $enclosingNode = ScopeFinder::findEnclosingScope($sourceNode);
-            if ($enclosingNode === null) {
-                return null;
-            }
-            $scope = Scope::forNode($enclosingNode);
+            $outer = $scope->outer();
+            assert($sourceNode !== null && $outer !== null, 'allowsImplicitCapture() implies an arrow function');
+            $scope = $outer;
             $offset = $sourceNode->getStartFilePos();
         }
     }
@@ -175,17 +172,18 @@ final class ExpressionResolver implements ExpressionResolverInterface
         return new ResolvedVariable($binding->name, $type, $location);
     }
 
-    public function resolveParameter(Param $param): ParameterInfo
+    public function resolveParameter(Param $param, ParsedDocument $parsed): ParameterInfo
     {
         assert($param->var instanceof Variable && is_string($param->var->name), 'a declared parameter is named');
-        $function = ScopeFinder::findEnclosingScope($param);
+        $scope = Scope::at($param, $parsed->tree);
+        $function = $scope->getSourceNode();
         assert($function !== null, 'a parameter is declared by a function-like');
         $position = array_search($param, $function->params, true);
         assert(is_int($position), 'a parameter is among those of the function-like declaring it');
 
         return new ParameterInfo(
             name: $param->var->name,
-            type: $this->typeOfParameterBinding($param, $param->var->name, Scope::forNode($function)),
+            type: $this->typeOfParameterBinding($param, $param->var->name, $scope),
             defaultValue: $param->default === null ? null : (new PrettyPrinter())->prettyPrintExpr($param->default),
             position: $position,
             isVariadic: $param->variadic,
@@ -215,14 +213,10 @@ final class ExpressionResolver implements ExpressionResolverInterface
             return count($classTypes) === 1 ? $classTypes[0] : TypeFactory::union($classTypes);
         }
         if ($parent instanceof Node\ClosureUse) {
-            $closure = $parent->getAttribute('parent');
-            assert($closure instanceof Node, 'ParentConnectingVisitor sets ClosureUse->parent');
-            $enclosingNode = ScopeFinder::findEnclosingScope($closure);
-            if ($enclosingNode === null) {
-                return null;
-            }
-            $outerScope = Scope::forNode($enclosingNode);
-            return $this->resolveVariable($node->name, $outerScope, $closure->getStartFilePos(), $parsed)?->getType();
+            $closure = $scope->getSourceNode();
+            $outer = $scope->outer();
+            assert($closure !== null && $outer !== null, 'a use clause binds in the scope of its closure');
+            return $this->resolveVariable($node->name, $outer, $closure->getStartFilePos(), $parsed)?->getType();
         }
         assert($parent instanceof Param, 'VariableBindings parent kinds are exhausted above');
         return $this->typeOfParameterBinding($parent, $node->name, $scope);
@@ -277,8 +271,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if (str_starts_with($shortOrFqn, '\\')) {
             return new ClasslikeType(ClasslikeName::fromFullyQualified($shortOrFqn));
         }
-        $context = NameContextFactory::in(ScopeFinder::findEnclosingNamespace($atNode), $parsed->tree);
-        $candidates = $context->candidates($shortOrFqn, NameKind::ClassLike);
+        $candidates = Scope::at($atNode, $parsed->tree)->nameContext()->candidates($shortOrFqn, NameKind::ClassLike);
         foreach ($candidates as $candidate) {
             /** @var class-string $candidate */
             $name = ClasslikeName::fromFullyQualified($candidate);
@@ -289,12 +282,12 @@ final class ExpressionResolver implements ExpressionResolverInterface
         return null;
     }
 
-    private function resolveNew(New_ $expr): ?ResolvedSymbolInterface
+    private function resolveNew(New_ $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
     {
         if (!$expr->class instanceof Name) {
             return null;
         }
-        $className = ScopeFinder::resolveClasslikeNameInContext($expr->class, $expr);
+        $className = Scope::at($expr, $parsed->tree)->resolveClasslikeName($expr->class);
         if ($className === null) {
             return null;
         }
@@ -365,7 +358,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
         // imported function; `NameContext::candidates` reads that as the caller
         // meaning exactly this FQN, no namespace prepend.
         $shortName = $expr->name->toCodeString();
-        $context = NameContextFactory::in(ScopeFinder::findEnclosingNamespace($expr), $parsed->tree);
+        $context = Scope::at($expr, $parsed->tree)->nameContext();
 
         foreach ($context->candidates($shortName, NameKind::Function_) as $candidate) {
             $funcInfo = $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($candidate));
@@ -398,7 +391,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
      * Access a member on the receiver, delegating the kind-specific lookup to
      * `$find`. The receiver-to-ClasslikeName dance — an instance expression that
      * resolves through `resolve()`, versus a class-name `Name` that resolves
-     * through `ScopeFinder` — is here, so a new member-access node kind adds
+     * through the {@see Scope} — is here, so a new member-access node kind adds
      * one call site rather than another copy of this dance.
      *
      * @template T of MemberInfoInterface
@@ -413,7 +406,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
         ParsedDocument $parsed,
     ): ?MemberInfoInterface {
         if ($receiver instanceof Name) {
-            $classNameStr = ScopeFinder::resolveClasslikeNameInContext($receiver, $context);
+            $classNameStr = Scope::at($context, $parsed->tree)->resolveClasslikeName($receiver);
             if ($classNameStr === null) {
                 return null;
             }
@@ -451,12 +444,12 @@ final class ExpressionResolver implements ExpressionResolverInterface
         return $this->memberResolver->findProperty($className, $name, Visibility::Private);
     }
 
-    private function resolveClassConstFetch(ClassConstFetch $expr): ?ResolvedSymbolInterface
+    private function resolveClassConstFetch(ClassConstFetch $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
     {
         if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
             return null;
         }
-        $classNameStr = ScopeFinder::resolveClasslikeNameInContext($expr->class, $expr);
+        $classNameStr = Scope::at($expr, $parsed->tree)->resolveClasslikeName($expr->class);
         if ($classNameStr === null) {
             return null;
         }
@@ -479,7 +472,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
         // have already turned `\Foo\BAR` or an imported constant into a
         // FullyQualified name.
         $shortName = $expr->name->toCodeString();
-        $context = NameContextFactory::in(ScopeFinder::findEnclosingNamespace($expr), $parsed->tree);
+        $context = Scope::at($expr, $parsed->tree)->nameContext();
 
         foreach ($context->candidates($shortName, NameKind::Constant) as $candidate) {
             $info = $this->symbolSource->lookupConstant(ConstantName::fromFullyQualified($candidate));
