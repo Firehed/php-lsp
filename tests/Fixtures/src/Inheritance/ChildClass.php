@@ -128,4 +128,10 @@ class ChildClass extends ParentClass
     protected function childProtectedMethod(): void
     {
     }
+
+    /** Child's own method of a name the parent declares privately. */
+    public function shadowedPrivate(): int|string
+    {
+        return 0;
+    }
 }

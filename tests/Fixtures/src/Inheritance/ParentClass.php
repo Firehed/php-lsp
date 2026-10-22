@@ -89,4 +89,15 @@ class ParentClass extends Grandparent
     {
         $child->privateMethod(); //hover:own_private_on_child
     }
+
+    /** Private method a subclass redeclares. */
+    private function shadowedPrivate(): int
+    {
+        return 0;
+    }
+
+    public function triggerHoverShadowedPrivateOnChild(ChildClass $child): void
+    {
+        $child->shadowedPrivate(); //hover:shadowed_private_on_child
+    }
 }

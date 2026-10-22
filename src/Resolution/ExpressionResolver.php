@@ -15,7 +15,6 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
-use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo;
@@ -461,13 +460,11 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
     private function resolveLateBoundReturn(MethodInfo $methodInfo, ClasslikeName $callingClass): MethodInfo
     {
-        // Look up by the receiver, not by the method's owner: a trait alias
-        // exposes a method name on the using class that the trait does not
-        // declare, so querying the trait directly with the alias name returns
-        // null and drops the type entirely.
-        $declaredReturn = $this->typeSource->forMethodReturn(
-            new MethodName($callingClass, $methodInfo->name->name),
-        );
+        // The found method's own name, not the receiver's: the receiver may
+        // declare a different method of that name, such as one shadowing a
+        // parent's private method. An alias's name is on the aliasing class,
+        // which is where the alias is declared.
+        $declaredReturn = $this->typeSource->forMethodReturn($methodInfo->name);
         // An aliased method's owner is the aliasing class; its source-trait
         // identity is on `aliasedFrom`, which is what the `self` binding rule
         // needs to see.

@@ -280,6 +280,21 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testACallResolvesWithTheReturnTypeOfTheMethodItCalls(): void
+    {
+        $this->resolveOverTheFixtures();
+
+        $symbol = $this->resolveSymbolAt('src/Inheritance/ParentClass.php', 'shadowed_private_on_child');
+
+        self::assertInstanceOf(MethodInfo::class, $symbol, 'the parent\'s own private method');
+        self::assertSame('Fixtures\Inheritance\ParentClass', $symbol->name->owner->qualifiedName->fullyQualifiedName());
+        self::assertSame(
+            'int',
+            $symbol->returnType?->format(),
+            'its own return type, not that of the subclass method of the same name',
+        );
+    }
+
     public function testAPropertyHooksParameterIsABindingInTheHook(): void
     {
         self::assertEquals(
