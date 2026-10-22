@@ -18,7 +18,7 @@ It is permissible to apply the decorator pattern to a composite; this should als
 
 ## Context
 
-Generally, this is the Strategy and Chain of Command design patterns applied to this codebase.
+Generally, this is the Strategy and Chain of Responsibility design patterns applied to this codebase.
 
 Multiple implementations generally exist to supplement each other, not compete.
 For example, a "file contents service" may have implementations for data on-disk and in an editor's open buffers.
