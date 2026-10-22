@@ -12,6 +12,8 @@ use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
+use Firehed\PhpLsp\Parser\Recovery\CompositeRecovery;
+use Firehed\PhpLsp\Parser\Recovery\EndOfFileRecovery;
 use Firehed\PhpLsp\Parser\Recovery\SkeletonRecovery;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\ParsingSyntaxSource;
@@ -60,6 +62,11 @@ final readonly class ProductionSyntaxSource
      */
     public static function unmemoized(): SyntaxSourceInterface
     {
-        return new ParsingSyntaxSource(new PhpParserCodeParser(), new SkeletonRecovery(), new TreeAnnotator());
+        $parser = new PhpParserCodeParser();
+        return new ParsingSyntaxSource(
+            $parser,
+            new CompositeRecovery(new EndOfFileRecovery($parser), new SkeletonRecovery()),
+            new TreeAnnotator(),
+        );
     }
 }

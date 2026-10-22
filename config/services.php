@@ -34,8 +34,10 @@ return [
     Parser\TreeAnnotator::class => fn () => new Parser\TreeAnnotator(),
     Parser\SyntaxSource\PhpParserCodeParser::class,
     Parser\SyntaxSource\CodeParserInterface::class => Parser\SyntaxSource\PhpParserCodeParser::class,
+    Parser\Recovery\EndOfFileRecovery::class,
     Parser\Recovery\SkeletonRecovery::class,
-    Parser\Recovery\RecoveryInterface::class => Parser\Recovery\SkeletonRecovery::class,
+    Parser\Recovery\CompositeRecovery::class,
+    Parser\Recovery\RecoveryInterface::class => Parser\Recovery\CompositeRecovery::class,
     Parser\SyntaxSource\ParsingSyntaxSource::class,
     // The memo decorates the parsing source and is the one instance both the
     // resolvers parse through and the message loop clears.
