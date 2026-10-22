@@ -64,13 +64,13 @@ final class TreeAnnotatorTest extends TestCase
         );
     }
 
-    public function testTolerantAnnotationContinuesPastANameResolutionError(): void
+    public function testAnnotationContinuesPastANameResolutionError(): void
     {
         $tree = (new ParserFactory())->createForNewestSupportedVersion()->parse(
             $this->loadFixture('TopLevel/duplicate_imports.php'),
         ) ?? [];
 
-        $annotated = (new TreeAnnotator(tolerant: true))->annotate($tree, []);
+        $annotated = (new TreeAnnotator())->annotate($tree, []);
 
         $namespace = $annotated[0];
         self::assertInstanceOf(Namespace_::class, $namespace);

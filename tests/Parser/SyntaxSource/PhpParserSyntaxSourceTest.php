@@ -22,8 +22,7 @@ final class PhpParserSyntaxSourceTest extends TestCase
     use LoadsFixturesTrait;
 
     /**
-     * Recoverable by the parser, but fatal to NameResolver, which runs with the
-     * default throwing error handler.
+     * Recoverable by the parser, but an error to NameResolver.
      */
     private const string DUPLICATE_USE_ALIAS = "<?php\nnamespace A;\nuse B\\Foo;\nuse C\\Foo;\n";
 
@@ -69,14 +68,14 @@ final class PhpParserSyntaxSourceTest extends TestCase
         );
     }
 
-    public function testParseYieldsEmptyOnNameResolverFailure(): void
+    public function testParseKeepsTheTreeOnNameResolverFailure(): void
     {
         $doc = new TextDocument('file:///test.php', 'php', 1, self::DUPLICATE_USE_ALIAS);
 
-        self::assertSame(
+        self::assertNotSame(
             [],
             $this->source->parse($doc)->tree,
-            'a name-resolution failure yields no statements rather than a partial or null AST',
+            'a duplicate import is a compile error in the code, not a reason to lose its tree',
         );
     }
 

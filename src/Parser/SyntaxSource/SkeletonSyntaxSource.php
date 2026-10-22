@@ -76,10 +76,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
 
     public function __construct()
     {
-        // A regex-recovered tree can carry duplicate `use` aliases or names the
-        // file does not resolve; the tolerant annotator swallows those failures
-        // so the tree still reaches downstream readers.
-        $this->annotator = new TreeAnnotator(tolerant: true);
+        $this->annotator = new TreeAnnotator();
     }
 
     public function parse(TextDocument $document): ParsedDocument

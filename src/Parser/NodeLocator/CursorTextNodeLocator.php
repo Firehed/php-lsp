@@ -55,7 +55,7 @@ final class CursorTextNodeLocator implements NodeLocatorInterface
     public function __construct()
     {
         $this->nodeAtPosition = new NodeAtPosition();
-        $this->annotator = new TreeAnnotator(tolerant: true);
+        $this->annotator = new TreeAnnotator();
     }
 
     public function nodeAt(ParsedDocument $parsed, int $offset): ?Node

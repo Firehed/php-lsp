@@ -34,25 +34,22 @@ final class TreeAnnotator
     private readonly NameResolver $names;
 
     /**
-     * @param bool $tolerant When true, a name-resolution failure (a duplicate
-     *        `use` alias, an unresolvable relative name) is swallowed rather
-     *        than thrown. The skeleton {@see SyntaxSource\SkeletonSyntaxSource}
-     *        builds trees from broken files where either can appear. The
-     *        php-parser source runs in the strict default so a truly unrepresentable AST
-     *        still yields no statements.
+     * A name-resolution failure (a duplicate `use` alias, an unresolvable
+     * relative name) is a compile error in the code, not a reason to lose its
+     * tree, so it is swallowed and resolution continues.
      *
-     *        Swallowed errors are discarded, not collected: an annotator lives
-     *        for the session, and an error keeps its node, and through parent
-     *        links a whole document tree, alive.
+     * Swallowed errors are discarded, not collected: an annotator lives for
+     * the session, and an error keeps its node, and through parent links a
+     * whole document tree, alive.
      */
-    public function __construct(bool $tolerant = false)
+    public function __construct()
     {
         $this->parents = new ParentConnectingVisitor();
-        $this->names = $tolerant ? new NameResolver(new class implements ErrorHandler {
+        $this->names = new NameResolver(new class implements ErrorHandler {
             public function handleError(Error $error): void
             {
             }
-        }) : new NameResolver();
+        });
     }
 
     /**
