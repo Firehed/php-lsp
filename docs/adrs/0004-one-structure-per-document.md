@@ -24,7 +24,7 @@ One locator reads the structure at a position and is the only code that dispatch
 What it reads stays inside the position services, which answer the questions features ask: the call holding a position, what is in scope there, the symbol a word names, and what may be written there.
 Handlers and completion sources ask those services and never walk the tree.
 
-The locator reads the document's text for three things only: the word written before the position, whether only whitespace and comments separate it from an empty slot, and the punctuation of a declaration's header.
+The locator reads the document's text only for what the structure does not record: the word written before the position, whether only whitespace and comments separate it from an empty slot, the punctuation of a declaration's header, and whether a call's closing parenthesis is written.
 Anything else it needs comes from the structure.
 
 ## Context

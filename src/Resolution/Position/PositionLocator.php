@@ -22,9 +22,11 @@ use PhpParser\NodeFinder;
 
 /**
  * The one place that reads a document's structure at a position. It reads the
- * document's text for three things only: the word written before the position,
- * whether only whitespace and comments separate the position from a slot
- * nothing is written in yet, and the punctuation of a function's header.
+ * document's text for punctuation and words the structure does not record:
+ * the word written before the position, whether only whitespace and comments
+ * separate the position from a slot nothing is written in yet, the
+ * punctuation of a declaration's header, and whether a call's closing
+ * parenthesis is written.
  */
 final class PositionLocator implements PositionLocatorInterface
 {
@@ -81,7 +83,7 @@ final class PositionLocator implements PositionLocatorInterface
                 $functionLikes[] = $n;
                 $crossedFunction = true;
             }
-            if (!$crossedFunction && $call === null && self::isCall($n) && self::inArguments($n, $at)) {
+            if (!$crossedFunction && $call === null && self::isCall($n) && self::inArguments($n, $code, $at)) {
                 $call = self::callSite($n, $at);
             }
         }
@@ -204,8 +206,9 @@ final class PositionLocator implements PositionLocatorInterface
             }
             $last = $token;
         }
-        assert($last !== null, 'a function\'s header starts with its keyword');
         return match (true) {
+            // At the header's start, or in its first keyword: before the function.
+            $last === null => null,
             $last->is(T_USE), $usesAt !== null && $last->is(['(', ',']) => Slot::Variable,
             $parametersClosed && $last->is([':', '?', '|', '&', '(', T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG])
                 => Slot::ReturnType,
@@ -348,7 +351,8 @@ final class PositionLocator implements PositionLocatorInterface
             $parent instanceof Expr\New_ => Slot::New,
             $parent instanceof Expr\Instanceof_ => Slot::Instanceof,
             $parent instanceof Stmt\Class_ && $parent->extends === $name => Slot::ClassExtends,
-            $parent instanceof Stmt\Class_, $parent instanceof Stmt\Enum_ => Slot::Implements,
+            $parent instanceof Stmt\Class_,
+            $parent instanceof Stmt\Enum_ && in_array($name, $parent->implements, true) => Slot::Implements,
             $parent instanceof Stmt\Interface_ => Slot::InterfaceExtends,
             $parent instanceof Stmt\Catch_ => Slot::Catch,
             $parent instanceof Attribute => Slot::Attribute,
@@ -437,15 +441,26 @@ final class PositionLocator implements PositionLocatorInterface
     }
 
     /**
-     * Whether a position is past what a call calls, where its argument list
-     * opens. A call with nothing written to call has no argument list yet.
+     * Whether a position is in a call's argument list: past what it calls,
+     * and before its closing parenthesis when that is written. A call with
+     * nothing written to call has no argument list yet. An anonymous class
+     * holds its body too, so only its arguments' own span is the list.
      */
     private static function inArguments(
         Expr\FuncCall|Expr\MethodCall|Expr\NullsafeMethodCall|Expr\StaticCall|Expr\New_|Attribute $call,
+        string $code,
         int $at,
     ): bool {
         $callee = $call instanceof Expr\New_ ? $call->class : $call->name;
-        return ParsedDocument::isWritten($callee) && $at > $callee->getEndFilePos() + 1;
+        if ($callee instanceof Stmt\Class_) {
+            return $call->args !== []
+                && $at >= $call->args[0]->getStartFilePos()
+                && $at <= $call->args[count($call->args) - 1]->getEndFilePos() + 1;
+        }
+        $closed = ($code[$call->getEndFilePos()] ?? '') === ')';
+        return ParsedDocument::isWritten($callee)
+            && $at > $callee->getEndFilePos() + 1
+            && (!$closed || $at <= $call->getEndFilePos());
     }
 
     private static function callSite(

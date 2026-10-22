@@ -138,6 +138,13 @@ final class PositionLocatorTest extends TestCase
         yield 'a constructor\'s arguments' => [
             'src/IncompleteCode/AliasedImports.php', 'colliding_new', Slot::Expression, 'Wid', true,
         ];
+        yield 'after a call\'s closing parenthesis' => [
+            'Position/AfterCall.php', 'after_closed_call', Slot::Expression, '', false,
+        ];
+        yield 'an argument\'s name for an anonymous class' => [
+            'Position/AfterCall.php', 'anonymous_argument', Slot::ArgumentName, 'name', true,
+        ];
+        yield 'an enum\'s backing type' => ['Position/EnumBacking.php', 'enum_backing', Slot::Expression, 'str', false];
         yield 'past a slot with code between' => [
             'Recovery/SlotElsewhere.php', 'after_kept', Slot::Expression, '', false,
         ];
@@ -155,6 +162,9 @@ final class PositionLocatorTest extends TestCase
         yield 'an argument name' => [$p, '(first: 1', Slot::ArgumentName, 'first', true];
         yield 'a declared name' => [$p, 'function method', Slot::DeclaredName, 'method', false];
         yield 'a called function' => [$p, 'printf(', Slot::CalledName, 'printf', false];
+        yield 'the start of a function\'s header' => [$p, 'public function method', Slot::Expression, '', false];
+        yield 'its first keyword being typed' => [$p, 'public function method', Slot::Expression, 'pub', false];
+        yield 'a caught type where the file ends' => ['Position/CatchAtEnd.php', 'catch (Fo', Slot::Catch, 'Fo', false];
     }
 
     /**
