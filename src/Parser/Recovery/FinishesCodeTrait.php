@@ -75,6 +75,7 @@ trait FinishesCodeTrait
             $inString => '"',
             $last === null, $last->is(self::ENDS_OPERAND) => '',
             $last->is(T_ENCAPSED_AND_WHITESPACE) && str_starts_with($last->text, "'") => "'",
+            $last->is(T_NS_SEPARATOR) => '_',
             default => ' _',
         };
         return [$standIn, $open, $standIn === '' ? $last?->text : $standIn];

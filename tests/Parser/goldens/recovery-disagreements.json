@@ -33,11 +33,6 @@
         "function": null,
         "slot": "PhpParser\\Node\\Stmt\\Class_"
     },
-    "src/Domain/User.php#user_constant (word not typed)": {
-        "class": "User",
-        "function": "triggerHoverUserConstant",
-        "slot": "PhpParser\\Node\\Stmt\\ClassMethod"
-    },
     "src/IncompleteCode/CompleteInControl.php#method_in_while (line cut short)": {
         "class": "CompleteInControl",
         "function": "testWhile",
