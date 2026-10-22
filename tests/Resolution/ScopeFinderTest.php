@@ -209,90 +209,6 @@ class ScopeFinderTest extends TestCase
         self::assertNull($className);
     }
 
-    public function testGetClassLikeNameReturnsNamespacedName(): void
-    {
-        $code = $this->loadFixture('src/Domain/User.php');
-        $ast = self::parseWithParents($code);
-        $namespace = $ast[1];
-        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $class = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
-        self::assertNotNull($class);
-
-        self::assertSame('Fixtures\Domain\User', ScopeFinder::getClassLikeName($class));
-    }
-
-    public function testGetClassLikeNameReturnsShortNameWhenNoNamespace(): void
-    {
-        $code = $this->loadFixture('TypeInference/GlobalFunction.php');
-        $ast = self::parseWithParents($code);
-        $class = self::findFirstClassLike($ast, Stmt\Class_::class);
-        self::assertNotNull($class);
-
-        self::assertSame('GlobalConfig', ScopeFinder::getClassLikeName($class));
-    }
-
-    public function testGetClassLikeNameReturnsNullForAnonymousClass(): void
-    {
-        $code = $this->loadFixture('src/Utility/AnonymousClassScope.php');
-        $ast = self::parseWithParents($code);
-
-        $visitor = new class () extends \PhpParser\NodeVisitorAbstract {
-            public ?Stmt\Class_ $found = null;
-
-            public function enterNode(Node $node): ?int
-            {
-                if ($node instanceof Stmt\Class_ && $node->name === null) {
-                    $this->found = $node;
-                    return NodeVisitor::STOP_TRAVERSAL;
-                }
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($visitor);
-        $traverser->traverse($ast);
-
-        self::assertNotNull($visitor->found);
-        self::assertNull(ScopeFinder::getClassLikeName($visitor->found));
-    }
-
-    public function testGetClassLikeNameWorksWithInterface(): void
-    {
-        $code = $this->loadFixture('src/Domain/Entity.php');
-        $ast = self::parseWithParents($code);
-        $namespace = $ast[1];
-        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $interface = self::findFirstClassLike($namespace->stmts, Stmt\Interface_::class);
-        self::assertNotNull($interface);
-
-        self::assertSame('Fixtures\Domain\Entity', ScopeFinder::getClassLikeName($interface));
-    }
-
-    public function testGetClassLikeNameWorksWithTrait(): void
-    {
-        $code = $this->loadFixture('src/Traits/HasTimestamps.php');
-        $ast = self::parseWithParents($code);
-        $namespace = $ast[1];
-        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $trait = self::findFirstClassLike($namespace->stmts, Stmt\Trait_::class);
-        self::assertNotNull($trait);
-
-        self::assertSame('Fixtures\Traits\HasTimestamps', ScopeFinder::getClassLikeName($trait));
-    }
-
-    public function testGetClassLikeNameWorksWithEnum(): void
-    {
-        $code = $this->loadFixture('src/Enum/Status.php');
-        $ast = self::parseWithParents($code);
-        $namespace = $ast[1];
-        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $enum = self::findFirstClassLike($namespace->stmts, Stmt\Enum_::class);
-        self::assertNotNull($enum);
-
-        self::assertSame('Fixtures\Enum\Status', ScopeFinder::getClassLikeName($enum));
-    }
-
     public function testResolveClasslikeNameInContextResolvesSelf(): void
     {
         $code = $this->loadFixture('src/TypeInference/NewKeywords.php');
@@ -409,22 +325,6 @@ class ScopeFinderTest extends TestCase
         $namespace = ScopeFinder::findEnclosingNamespace($varNode);
 
         self::assertNull($namespace);
-    }
-
-    /**
-     * @template T of Stmt\ClassLike
-     * @param array<Stmt> $stmts
-     * @param class-string<T> $type
-     * @return T|null
-     */
-    private static function findFirstClassLike(array $stmts, string $type): ?Stmt\ClassLike
-    {
-        foreach ($stmts as $stmt) {
-            if ($stmt instanceof $type) {
-                return $stmt;
-            }
-        }
-        return null;
     }
 
     /**

@@ -99,16 +99,6 @@ final class ScopeFinder
     }
 
     /**
-     * Get the fully qualified name of a class-like node.
-     *
-     * @return ?class-string
-     */
-    public static function getClassLikeName(Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $node): ?string
-    {
-        return LateBindingKeyword::Self->resolveIn($node);
-    }
-
-    /**
      * Find the fully qualified name of the enclosing class-like node.
      *
      * Returns the FQN if available, otherwise the short name, or null if not
