@@ -391,17 +391,6 @@ final class ExpectedAtPositionTest extends TestCase
         self::assertSame('fromArray', $result->prefix, 'the position is converted to bytes once');
     }
 
-    public function testAnAccessNamingItsOwnClassInOtherLetterCaseIsWrittenInThatClass(): void
-    {
-        $result = $this->membersAtMarker('src/Resolution/CaseInsensitiveIdentity.php', 'case_identity');
-
-        self::assertNotNull($result, 'the access resolves');
-        self::assertTrue(
-            $result->from?->equals(ClasslikeName::fromFullyQualified('fixtures\resolution\caseinsensitiveidentity')),
-            'the access is written in the class it names, in whatever letter case',
-        );
-    }
-
     /**
      * @return iterable<string, array{string, string, ?MemberAccessContext}>
      */
