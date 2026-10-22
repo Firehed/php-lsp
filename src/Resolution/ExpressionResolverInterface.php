@@ -41,5 +41,5 @@ interface ExpressionResolverInterface
     /**
      * A variable as a binding in a scope declares it.
      */
-    public function resolveBinding(VariableBinding $binding, Scope $scope, ParsedDocument $parsed): ResolvedVariable;
+    public function resolveBinding(VariableBinding $binding, ParsedDocument $parsed): ResolvedVariable;
 }

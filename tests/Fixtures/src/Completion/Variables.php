@@ -53,6 +53,11 @@ class Variables
         }
     }
 
+    public function withArrowFunction(string $captured): void
+    {
+        $fn = fn (int $own) => $c/*|arrow_capture*/;
+    }
+
     public function withReassignment(): void
     {
         $counter = 1;

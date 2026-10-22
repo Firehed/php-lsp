@@ -64,6 +64,14 @@ final class ScopeAtPositionTest extends TestCase
         self::assertSame(1, count(array_keys($names, 'counter', true)), 'a variable assigned twice is one variable');
     }
 
+    public function testAnArrowFunctionOffersWhatItCaptures(): void
+    {
+        $names = $this->variableNamesAt('src/Completion/Variables.php', 'arrow_capture');
+
+        self::assertContains('own', $names, 'its own parameter');
+        self::assertContains('captured', $names, 'a parameter of the method around it, which it captures');
+    }
+
     public function testThisIsInScopeInAMethod(): void
     {
         self::assertContains(

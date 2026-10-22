@@ -129,32 +129,14 @@ final class ExpressionResolver implements ExpressionResolverInterface
     }
 
     /**
-     * Resolve `$name` referenced at $offset in $scope. Walks the innermost
-     * scope's bindings; falls through only across arrow functions (implicit
-     * capture). Long closures are isolated: an uncaptured name returns null
-     * (#301).
+     * Resolve `$name` referenced at $offset in $scope: the nearest binding
+     * {@see VariableBindings::visible()} there. Long closures are isolated: an
+     * uncaptured name returns null (#301).
      */
     public function resolveVariable(string $name, Scope $scope, int $offset, ParsedDocument $parsed): ?ResolvedVariable
     {
-        while (true) {
-            $found = null;
-            foreach (VariableBindings::before($scope, $offset) as $binding) {
-                if ($binding->name === $name) {
-                    $found = $binding;
-                }
-            }
-            if ($found !== null) {
-                return $this->resolveBinding($found, $scope, $parsed);
-            }
-            if (!$scope->allowsImplicitCapture()) {
-                return null;
-            }
-            $sourceNode = $scope->getSourceNode();
-            $outer = $scope->outer();
-            assert($sourceNode !== null && $outer !== null, 'allowsImplicitCapture() implies an arrow function');
-            $scope = $outer;
-            $offset = $sourceNode->getStartFilePos();
-        }
+        $binding = VariableBindings::visible($scope, $offset)[$name] ?? null;
+        return $binding === null ? null : $this->resolveBinding($binding, $parsed);
     }
 
     /**
@@ -162,9 +144,9 @@ final class ExpressionResolver implements ExpressionResolverInterface
      * already have the binding in hand (variable enumeration), so an N-binding
      * scope costs N type resolutions instead of N² binding walks.
      */
-    public function resolveBinding(VariableBinding $binding, Scope $scope, ParsedDocument $parsed): ResolvedVariable
+    public function resolveBinding(VariableBinding $binding, ParsedDocument $parsed): ResolvedVariable
     {
-        $type = $this->typeOfBinding($binding, $scope, $parsed);
+        $type = $this->typeOfBinding($binding, $parsed);
         $location = self::locationFor($binding->node, $parsed->document);
         return new ResolvedVariable($binding->name, $type, $location);
     }
@@ -188,8 +170,9 @@ final class ExpressionResolver implements ExpressionResolverInterface
         );
     }
 
-    private function typeOfBinding(VariableBinding $binding, Scope $scope, ParsedDocument $parsed): ?TypeInterface
+    private function typeOfBinding(VariableBinding $binding, ParsedDocument $parsed): ?TypeInterface
     {
+        $scope = $binding->scope;
         $node = $binding->node;
         assert($node instanceof Variable && is_string($node->name), 'VariableBindings yields named Variables only');
         $parent = $node->getAttribute('parent');
