@@ -121,6 +121,14 @@ class ScopeTest extends TestCase
         self::assertSame([], $scope->getStatements(), 'Arrow function body is an expression, not statements');
     }
 
+    public function testAPropertyHookWithABlockBodyHasItsStatements(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
+        $hook = self::findFirst(Node\PropertyHook::class, $ast, fn ($n) => is_array($n->body));
+
+        self::assertSame($hook->body, Scope::at($hook, $ast)->getStatements(), 'the statements of `get { … }`');
+    }
+
     public function testAPropertyHookWithAnExpressionBodyHasNoStatements(): void
     {
         $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));

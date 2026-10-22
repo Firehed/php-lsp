@@ -1888,6 +1888,18 @@ final class MemberResolverTest extends TestCase
             'basePrivate',
             'App\\Base',
         ];
+        yield 'private a subclass redeclares, from the parent on a subclass' => [
+            'App\\Base',
+            'App\\Child',
+            'shadowed',
+            'App\\Base',
+        ];
+        yield 'private a subclass redeclares, from the subclass' => [
+            'App\\Child',
+            'App\\Child',
+            'shadowed',
+            'App\\Child',
+        ];
         yield 'private from a trait, from the class using it' => [
             'App\\Uses',
             'App\\Uses',
@@ -1975,11 +1987,13 @@ final class MemberResolverTest extends TestCase
                 'baseProtected' => Visibility::Protected,
                 'basePrivate' => Visibility::Private,
                 'overridden' => Visibility::Protected,
+                'shadowed' => Visibility::Private,
             ])),
             $this->createClassInfo($child, parent: $base, methods: $this->methodsWith($child, [
                 'childProtected' => Visibility::Protected,
                 'childPrivate' => Visibility::Private,
                 'overridden' => Visibility::Protected,
+                'shadowed' => Visibility::Private,
             ])),
             $this->createClassInfo(ClasslikeName::fromFullyQualified('App\\Sibling'), parent: $base),
             $this->createClassInfo(ClasslikeName::fromFullyQualified('App\\Unrelated')),
