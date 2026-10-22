@@ -4,12 +4,17 @@ Status: accepted
 
 ## Decision
 
-Initial best-effort recovery of syntax-invalid documents (common-case: mid-edit editor buffers) is done by best-effort file/AST modification.
-Fallback logic remains encapsulated within a document parsing composite (ADR 0003), and leverages its own composite for recovery techniques.
+Initial recovery of syntax-invalid documents (common-case: mid-edit editor buffers) is done by best-effort file/AST modification.
+Fallback logic stays self-contained so that downstream consumers need no awareness of whether or how recovery occured and can confidently build on a valid AST (ADR 0004).
+Other recovery approaches are allowed but out of scope for now; if implemented, they must still fit within these guidelines.
 
 ## Context
 
-In support of ADR 0004 and the overall utility of the project, documents in various mid-edit state should produce ASTs as close to valid as possible so symbols can be extracted and downstream tools can continue to rely on those symbols.
+Documents in various mid-edit state should produce ASTs as close to valid as possible so symbols can be extracted and downstream tools can continue to rely on those symbols.
+Various downstream consumers and handlers must not need to build their own fallback or recovery, as this leads to logic drift.
+To be clear: this is largely restating ADR 0001; mid-edit file recovery is central to any LSP server and has historically been a cause of drift within this project.
+
+Initially, the recovery approach is, in effect, surgical edits to the file that are likely to produce valid parses.
 
 Alternatives evaluated (October 2026):
 
