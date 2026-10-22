@@ -11,6 +11,11 @@ composer phpstan -- --error-format=raw --no-progress # run phpstan
 composer phpstan -- --error-format=raw --no-progress path/to/analyze # run phpstan on a specific path
 composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 ```
+
+## Development Workflow
+
+- Before a pull request leaves draft, a fresh agent runs the `pr-review` skill on it.
+
 ## Design
 
 The project is a language server for PHP.
@@ -23,10 +28,6 @@ This document's guidance should override matching existing structure.
 ADR documents are being added in `docs/adrs` to capture the intended architecture and context behind it.
 If a session leads to a design decision, that decision should be captured in a new ADR.
 ADRs should be considered read-only once landed to main, with the exception of changing the status (e.g. superceding or abandoning).
-
-## Development Workflow
-
-- Before a pull request leaves draft, a fresh agent runs the `pr-review` skill on it.
 
 ### Services and data types
 
