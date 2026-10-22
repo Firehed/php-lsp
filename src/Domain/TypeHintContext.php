@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Completion;
+namespace Firehed\PhpLsp\Domain;
 
 enum TypeHintContext
 {

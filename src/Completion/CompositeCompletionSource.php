@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Domain\ClassCandidateFilter;
+use Firehed\PhpLsp\Domain\KeywordGroup;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\TypeHintContext;
 use Firehed\PhpLsp\Resolution\Position\CallAtPositionInterface;
 
 /**

@@ -6,11 +6,11 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Closure;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Completion\ClassCandidateFilter;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
+use Firehed\PhpLsp\Domain\ClassCandidateFilter;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -26,6 +26,7 @@ use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -166,6 +167,37 @@ final class SymbolCandidatesTest extends TestCase
             ['WidgetFound', 'WidgetImported', 'WidgetDeclared'],
             self::labels($items),
             'search hits, imports, and current-namespace symbols all pass the position\'s filter',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{ClassCandidateFilter, list<string>}>
+     */
+    public static function filterPredicates(): iterable
+    {
+        yield 'any' => [ClassCandidateFilter::Any, []];
+        yield 'instantiable' => [ClassCandidateFilter::Instantiable, ['isInstantiable']];
+        yield 'type hint' => [ClassCandidateFilter::TypeHint, ['isValidTypeHint']];
+        yield 'interface' => [ClassCandidateFilter::Interface_, ['isInterface']];
+        yield 'extendable class' => [ClassCandidateFilter::ExtendableClass, ['isExtendableClass']];
+        yield 'throwable' => [ClassCandidateFilter::Throwable, ['isThrowable']];
+        yield 'attribute' => [ClassCandidateFilter::Attribute, ['isAttribute']];
+        yield 'trait' => [ClassCandidateFilter::Trait_, ['isTrait']];
+    }
+
+    /**
+     * @param list<string> $predicates
+     */
+    #[DataProvider('filterPredicates')]
+    public function testEachFilterAdmitsWhatItsPredicateAccepts(ClassCandidateFilter $filter, array $predicates): void
+    {
+        // Every predicate not named answers false, so a filter asking any other leaves the class-like out.
+        $candidates = self::candidates(new NameContext(''), search: ['Widget'], accepting: $predicates);
+
+        self::assertSame(
+            ['Widget'],
+            self::labels($candidates->find(self::requestAfter('$x = Wid'), [NameKind::ClassLike], $filter)),
+            'the filter asks its own predicate',
         );
     }
 
@@ -453,6 +485,7 @@ final class SymbolCandidatesTest extends TestCase
      * @param array<string, NamespaceContents> $children keyed by namespace path
      * @param list<string> $phantoms listed names with no class-like behind them
      * @param ?Closure(ClasslikeName): bool $isInstantiable
+     * @param list<string> $accepting predicates that accept every class-like
      */
     private static function candidates(
         NameContext $context,
@@ -463,6 +496,7 @@ final class SymbolCandidatesTest extends TestCase
         ?Closure $isInstantiable = null,
         ?FunctionInfo $function = null,
         SessionCapabilities $capabilities = new SessionCapabilities(),
+        array $accepting = [],
     ): SymbolCandidates {
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('search')->willReturnCallback(
@@ -487,6 +521,9 @@ final class SymbolCandidatesTest extends TestCase
         );
         if ($isInstantiable !== null) {
             $resolver->method('isInstantiable')->willReturnCallback($isInstantiable);
+        }
+        foreach ($accepting as $predicate) {
+            $resolver->method($predicate)->willReturn(true);
         }
 
         $scope = self::createStub(ScopeAtPositionInterface::class);

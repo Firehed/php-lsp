@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
+use Firehed\PhpLsp\Domain\ClassCandidateFilter;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -433,7 +434,7 @@ final class SymbolCandidates
             if (!$this->symbolCapabilities->isClassLike($className)) {
                 return null;
             }
-            if (!$classFilter->accepts($className, $this->symbolCapabilities)) {
+            if (!$this->accepts($classFilter, $className)) {
                 return null;
             }
         }
@@ -473,7 +474,7 @@ final class SymbolCandidates
     {
         /** @var class-string $fqn */
         $className = ClasslikeName::fromFullyQualified($fqn);
-        return $filter->accepts($className, $this->symbolCapabilities);
+        return $this->accepts($filter, $className);
     }
 
     /**
@@ -504,5 +505,22 @@ final class SymbolCandidates
             $prefix,
             $this->capabilities->getSessionCapabilities()->positionEncoding,
         );
+    }
+
+    /**
+     * Whether a class-like is one the position admits.
+     */
+    private function accepts(ClassCandidateFilter $filter, ClasslikeName $className): bool
+    {
+        return match ($filter) {
+            ClassCandidateFilter::Any => true,
+            ClassCandidateFilter::Instantiable => $this->symbolCapabilities->isInstantiable($className),
+            ClassCandidateFilter::TypeHint => $this->symbolCapabilities->isValidTypeHint($className),
+            ClassCandidateFilter::Interface_ => $this->symbolCapabilities->isInterface($className),
+            ClassCandidateFilter::ExtendableClass => $this->symbolCapabilities->isExtendableClass($className),
+            ClassCandidateFilter::Throwable => $this->symbolCapabilities->isThrowable($className),
+            ClassCandidateFilter::Attribute => $this->symbolCapabilities->isAttribute($className),
+            ClassCandidateFilter::Trait_ => $this->symbolCapabilities->isTrait($className),
+        };
     }
 }

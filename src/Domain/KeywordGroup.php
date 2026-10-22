@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Completion;
+namespace Firehed\PhpLsp\Domain;
 
 /**
  * A named set of PHP keywords valid in a particular completion position.

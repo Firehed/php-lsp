@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\PrefixMatcher;
+use Firehed\PhpLsp\Domain\TypeHintContext;
 
 /**
  * Produces built-in type completion items valid in a type-hint position.
