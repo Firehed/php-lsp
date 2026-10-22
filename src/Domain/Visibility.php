@@ -13,11 +13,6 @@ enum Visibility: int implements FormattableInterface
     case Protected = 1;
     case Public = 2;
 
-    public function isAccessibleFrom(self $minimumRequired): bool
-    {
-        return $this->value >= $minimumRequired->value;
-    }
-
     public function format(): string
     {
         return match ($this) {

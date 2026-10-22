@@ -12,33 +12,6 @@ use PHPUnit\Framework\TestCase;
 class VisibilityTest extends TestCase
 {
     /**
-     * @return array<string, array{Visibility, Visibility, bool}>
-     */
-    public static function accessibilityProvider(): array
-    {
-        return [
-            'public from public' => [Visibility::Public, Visibility::Public, true],
-            'public from protected' => [Visibility::Public, Visibility::Protected, true],
-            'public from private' => [Visibility::Public, Visibility::Private, true],
-            'protected from public' => [Visibility::Protected, Visibility::Public, false],
-            'protected from protected' => [Visibility::Protected, Visibility::Protected, true],
-            'protected from private' => [Visibility::Protected, Visibility::Private, true],
-            'private from public' => [Visibility::Private, Visibility::Public, false],
-            'private from protected' => [Visibility::Private, Visibility::Protected, false],
-            'private from private' => [Visibility::Private, Visibility::Private, true],
-        ];
-    }
-
-    #[DataProvider('accessibilityProvider')]
-    public function testIsAccessibleFrom(
-        Visibility $member,
-        Visibility $required,
-        bool $expected,
-    ): void {
-        self::assertSame($expected, $member->isAccessibleFrom($required));
-    }
-
-    /**
      * @return array<string, array{Visibility, string}>
      * @codeCoverageIgnore
      */
