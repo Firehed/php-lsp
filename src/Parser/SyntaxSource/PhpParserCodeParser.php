@@ -30,11 +30,7 @@ final class PhpParserCodeParser implements CodeParserInterface
     public function parse(string $code): ParseAttempt
     {
         $errors = new ErrorHandler\Collecting();
-        try {
-            $tree = $this->parser->parse($code, $errors) ?? [];
-        } catch (\PhpParser\Error $error) {
-            return new ParseAttempt([], [], [$error]);
-        }
+        $tree = $this->parser->parse($code, $errors) ?? [];
         $tokens = $this->parser->getTokens();
         $calls = (new NodeFinder())->find(
             $tree,
