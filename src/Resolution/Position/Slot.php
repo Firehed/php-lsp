@@ -30,6 +30,8 @@ enum Slot
     case DeclaredName;
     /** Where a class member may start, its modifiers included. */
     case ClassMember;
+    /** After a class member's modifiers, where more modifiers, a type, or what is declared may follow. */
+    case AfterModifiers;
     case ParameterType;
     case ReturnType;
     case PropertyType;

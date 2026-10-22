@@ -41,8 +41,8 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
             Slot::Expression => $parent instanceof Expr\ConstFetch
                 ? $this->expressions->resolve($parent, $located->parsed)
                 : $this->classLike($written),
-            Slot::StaticReceiver, Slot::ParameterType, Slot::ReturnType, Slot::PropertyType, Slot::Catch,
-            Slot::Instanceof, Slot::New, Slot::Implements, Slot::ClassExtends, Slot::InterfaceExtends,
+            Slot::StaticReceiver, Slot::ParameterType, Slot::ReturnType, Slot::PropertyType, Slot::AfterModifiers,
+            Slot::Catch, Slot::Instanceof, Slot::New, Slot::Implements, Slot::ClassExtends, Slot::InterfaceExtends,
             Slot::Attribute, Slot::TraitUse, Slot::Import => $this->classLike($written),
         };
     }

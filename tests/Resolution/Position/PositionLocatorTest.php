@@ -28,7 +28,7 @@ final class PositionLocatorTest extends TestCase
         $c = 'src/Completion/';
         yield 'a statement' => [$c . 'Keywords.php', 'statement', Slot::Expression, '', false];
         yield 'a class body' => [$c . 'Keywords.php', 'class_body', Slot::ClassMember, '', false];
-        yield 'after a modifier' => [$c . 'Keywords.php', 'after_visibility', Slot::ClassMember, '', false];
+        yield 'after a modifier' => [$c . 'Keywords.php', 'after_visibility', Slot::AfterModifiers, '', false];
         yield 'a comment' => [$c . 'ContextFiltering.php', 'in_comment', Slot::NotCode, '', false];
         yield 'a heredoc' => [$c . 'ContextFiltering.php', 'in_heredoc', Slot::InterpolatedString, '', false];
         yield 'a member not typed' => [$c . 'MethodAccess.php', 'this_empty', Slot::Member, '', false];
@@ -61,7 +61,7 @@ final class PositionLocatorTest extends TestCase
         ];
         yield 'a return type' => [$c . 'TypeHints.php', 'return_type', Slot::ReturnType, '', false];
         yield 'a union member' => [$c . 'TypeHints.php', 'union_second', Slot::ParameterType, '', false];
-        yield 'a property type' => [$c . 'TypeHints.php', 'property_prefix', Slot::PropertyType, 'Us', false];
+        yield 'a word after modifiers' => [$c . 'TypeHints.php', 'property_prefix', Slot::AfterModifiers, 'Us', false];
         yield 'a nullable property type' => [$c . 'TypeHints.php', 'nullable_property', Slot::PropertyType, '', false];
         yield 'an attribute' => [$c . 'AttributePrefixCompletion.php', 'attr_prefix', Slot::Attribute, 'Rou', false];
         yield 'a variable' => [$c . 'Variables.php', 'local_prefix', Slot::Variable, '$l', false];
@@ -87,6 +87,9 @@ final class PositionLocatorTest extends TestCase
         yield 'after two positional arguments' => [$p, 'after_two_positional', Slot::Expression, '', true];
         yield 'outside every node' => ['Position/TopLevel.php', 'top_level', Slot::Expression, '', false];
         yield 'after an attribute' => ['Recovery/AfterAttribute.php', 'after_attribute', Slot::ClassMember, '', false];
+        yield 'after modifiers of nothing yet' => [
+            'src/Position/Members.php', 'after_modifiers_alone', Slot::AfterModifiers, '', false,
+        ];
         yield 'past a slot with code between' => [
             'Recovery/SlotElsewhere.php', 'after_kept', Slot::Expression, '', false,
         ];

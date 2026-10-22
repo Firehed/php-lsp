@@ -226,7 +226,7 @@ final class PositionLocator implements PositionLocatorInterface
             ],
             $node instanceof Stmt\ClassLike => [Slot::ClassMember, null],
             ($node instanceof Stmt\Property || $node instanceof Stmt\ClassConst)
-                && $at <= self::firstWrittenPart($node) => [Slot::ClassMember, null],
+                && $at <= self::firstWrittenPart($node) => [self::memberStartSlot($node, $at), null],
             $node instanceof Identifier, $node instanceof Name, $node instanceof Expr\Error
                 => self::classifyName($node, $parent),
             default => [Slot::Expression, null],
@@ -304,12 +304,24 @@ final class PositionLocator implements PositionLocatorInterface
             $parent = $whole->getAttribute('parent');
         }
         return match (true) {
+            // A bare word right after a property's modifiers may yet be another modifier.
+            $parent instanceof Stmt\Property && $parent->type === $type && $parent->flags !== 0
+                => Slot::AfterModifiers,
             $parent instanceof Node\Param && $parent->type === $whole => Slot::ParameterType,
             $parent instanceof FunctionLike && $parent->getReturnType() === $whole => Slot::ReturnType,
             ($parent instanceof Stmt\Property || $parent instanceof Stmt\ClassConst) && $parent->type === $whole
                 => Slot::PropertyType,
             default => Slot::Expression,
         };
+    }
+
+    /**
+     * A position before what a property or constant declares: past its
+     * modifiers, when it has any, or where a member starts.
+     */
+    private static function memberStartSlot(Stmt\Property|Stmt\ClassConst $member, int $at): Slot
+    {
+        return $member->flags !== 0 && $at > $member->getStartFilePos() ? Slot::AfterModifiers : Slot::ClassMember;
     }
 
     /**
