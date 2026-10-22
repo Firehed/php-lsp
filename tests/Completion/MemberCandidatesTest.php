@@ -14,7 +14,6 @@ use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
-use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
@@ -34,31 +33,31 @@ final class MemberCandidatesTest extends TestCase
     {
         $type = new ClasslikeType(self::owner());
         yield 'instance, every member' => [
-            MemberAccessContext::forInstance($type, Visibility::Public, ''),
+            MemberAccessContext::forInstance($type, null, ''),
             ['getName', 'getCount', 'name'],
         ];
         yield 'instance, prefix' => [
-            MemberAccessContext::forInstance($type, Visibility::Public, 'get'),
+            MemberAccessContext::forInstance($type, null, 'get'),
             ['getName', 'getCount'],
         ];
         yield 'instance, prefix that matches nothing' => [
-            MemberAccessContext::forInstance($type, Visibility::Public, 'zzz'),
+            MemberAccessContext::forInstance($type, null, 'zzz'),
             [],
         ];
         yield 'parent, methods only' => [
-            MemberAccessContext::forParent($type, Visibility::Protected, ''),
+            MemberAccessContext::forParent($type, self::owner(), ''),
             ['getName', 'getCount'],
         ];
         yield 'static adds ::class' => [
-            MemberAccessContext::forStatic($type, Visibility::Public, ''),
+            MemberAccessContext::forStatic($type, null, ''),
             ['getName', 'getCount', 'name', 'class'],
         ];
         yield 'static prefix that matches only class' => [
-            MemberAccessContext::forStatic($type, Visibility::Public, 'cl'),
+            MemberAccessContext::forStatic($type, null, 'cl'),
             ['class'],
         ];
         yield 'static prefix that misses class' => [
-            MemberAccessContext::forStatic($type, Visibility::Public, 'get'),
+            MemberAccessContext::forStatic($type, null, 'get'),
             ['getName', 'getCount'],
         ];
     }
@@ -72,7 +71,7 @@ final class MemberCandidatesTest extends TestCase
         $symbols = $this->createMock(SymbolCapabilitiesInterface::class);
         $symbols->expects(self::once())
             ->method('getAccessibleMembers')
-            ->with($context->type, $context->minVisibility, $context->memberFilter)
+            ->with($context->type, $context->from, $context->memberFilter)
             ->willReturn([
                 self::member(new MethodName(self::owner(), 'getName'), MemberKind::Method),
                 self::member(new MethodName(self::owner(), 'getCount'), MemberKind::Method),
@@ -96,7 +95,7 @@ final class MemberCandidatesTest extends TestCase
         ]);
 
         $items = self::candidates($symbols, snippetSupport: true)
-            ->find(MemberAccessContext::forInstance(new ClasslikeType(self::owner()), Visibility::Public, ''));
+            ->find(MemberAccessContext::forInstance(new ClasslikeType(self::owner()), null, ''));
 
         self::assertSame(
             InsertTextFormat::Snippet->value,

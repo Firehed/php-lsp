@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
-use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Throwable;
@@ -24,7 +23,7 @@ final class SymbolCapabilities implements SymbolCapabilitiesInterface
 
     public function getAccessibleMembers(
         TypeInterface $type,
-        Visibility $minVisibility,
+        ?ClasslikeName $from,
         MemberFilter $filter = MemberFilter::Instance,
     ): array {
         $classNames = $type->getResolvableClasslikeNames();
@@ -35,7 +34,7 @@ final class SymbolCapabilities implements SymbolCapabilitiesInterface
         $includeStatic = $includesStatic[$filter->name];
 
         foreach ($classNames as $className) {
-            foreach ($this->getMembersForClass($className, $minVisibility, $filter, $includeStatic) as $member) {
+            foreach ($this->getMembersForClass($className, $from, $filter, $includeStatic) as $member) {
                 $members[] = $member;
             }
         }
@@ -54,7 +53,7 @@ final class SymbolCapabilities implements SymbolCapabilitiesInterface
      */
     private function getMembersForClass(
         ClasslikeName $className,
-        Visibility $minVisibility,
+        ?ClasslikeName $from,
         MemberFilter $filter,
         bool $includeStatic,
     ): array {
@@ -64,7 +63,7 @@ final class SymbolCapabilities implements SymbolCapabilitiesInterface
 
         $members = [];
         foreach ($kinds as $kind) {
-            foreach ($this->memberResolver->getMembersOfKind($className, $kind, $minVisibility, $filter) as $member) {
+            foreach ($this->memberResolver->getMembersOfKind($className, $kind, $from, $filter) as $member) {
                 $members[] = $member;
             }
         }

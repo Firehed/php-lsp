@@ -32,6 +32,12 @@ return [
         new Expectation\Details('$this', 'Fixtures\\Completion\\Variables'),
     ),
     'closure local' => $complete($variables, 'closure_local', new Expectation\Offers('$localVar')),
+    // An arrow function captures from the method around it, as hover reads it.
+    'arrow function capture' => $complete(
+        $variables,
+        'arrow_capture',
+        new Expectation\Details('$captured', 'string'),
+    ),
     'foreach value' => $complete($variables, 'foreach_prefix', new Expectation\Offers('$item')),
     'file scope leaves out variables of functions and methods' => new Session\Script(
         project: 'tests/Fixtures',

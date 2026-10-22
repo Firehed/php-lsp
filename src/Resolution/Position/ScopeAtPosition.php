@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
-use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\VariableBindings;
 
 final class ScopeAtPosition implements ScopeAtPositionInterface
@@ -23,35 +22,17 @@ final class ScopeAtPosition implements ScopeAtPositionInterface
     public function variablesAt(TextDocument $document, ByteOffset $offset): array
     {
         $located = $this->locator->locate($document, $offset);
-        $scope = self::scopeOf($located);
-
-        $nearest = [];
-        foreach (VariableBindings::before($scope, $offset->value) as $binding) {
-            $nearest[$binding->name] = $binding;
-        }
+        $nearest = VariableBindings::visible($located->scope, $offset->value);
 
         $variables = [];
-        $thisClass = $scope->getThisType();
+        $thisClass = $located->scope->getThisType();
         if ($thisClass !== null) {
             $variables[] = new ResolvedVariable('this', new ClasslikeType($thisClass));
             unset($nearest['this']);
         }
         foreach ($nearest as $binding) {
-            $variables[] = $this->expressions->resolveBinding($binding, $scope, $located->parsed);
+            $variables[] = $this->expressions->resolveBinding($binding, $located->parsed);
         }
         return $variables;
-    }
-
-    /**
-     * The scope of the innermost function-like holding the position, or the
-     * global scope of its namespace or file.
-     */
-    private static function scopeOf(Located $located): Scope
-    {
-        $function = $located->functionLikes === [] ? null : $located->functionLikes[count($located->functionLikes) - 1];
-        if ($function !== null) {
-            return Scope::forNode($function, $located->classLike);
-        }
-        return Scope::global($located->namespace->stmts ?? $located->parsed->tree, $located->classLike);
     }
 }

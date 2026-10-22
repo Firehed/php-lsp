@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
-use Firehed\PhpLsp\Domain\Visibility;
 
 /**
  * What a class-like can do, and the members a type offers.
@@ -16,15 +15,15 @@ use Firehed\PhpLsp\Domain\Visibility;
 interface SymbolCapabilitiesInterface
 {
     /**
-     * The members of a type that code with at least the given visibility can
-     * access: methods and properties, and for static access, constants and enum
-     * cases too.
+     * The members of a type that code written in $from (null: outside any
+     * class) can use: methods and properties, and for static access, constants
+     * and enum cases too.
      *
      * @return list<ResolvedMemberInterface>
      */
     public function getAccessibleMembers(
         TypeInterface $type,
-        Visibility $minVisibility,
+        ?ClasslikeName $from,
         MemberFilter $filter = MemberFilter::Instance,
     ): array;
 

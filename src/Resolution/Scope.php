@@ -9,10 +9,14 @@ use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
+use PhpParser\Node\Name;
+use PhpParser\Node\PropertyHook;
 use PhpParser\Node\Stmt;
 
 /**
- * The lexical scope a variable resolves against.
+ * The lexical scope at a point in a document: the one answer to what encloses
+ * it — namespace, class-like, and innermost function-like — and what follows
+ * from that.
  *
  * A scope provides everything variable resolution needs: the parameters and
  * statements that can introduce variables, the class context for self/parent,
@@ -23,80 +27,57 @@ use PhpParser\Node\Stmt;
 final class Scope
 {
     /**
-     * @param array<Node\Param> $params
-     * @param array<Stmt> $statements
-     * @param ?class-string $selfContext
-     * @param ?class-string $parentContext
-     * @param array<Node\ClosureUse> $uses
+     * @param array<Stmt> $tree
      */
     private function __construct(
-        private readonly array $params,
-        private readonly array $statements,
-        private readonly ?string $selfContext,
-        private readonly ?string $parentContext,
-        private readonly ?ClasslikeName $thisType,
-        private readonly array $uses,
-        private readonly Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike,
-        private readonly Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null $sourceNode,
+        private readonly ?Stmt\Namespace_ $namespace,
+        private readonly Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $classLike,
+        private readonly Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|PropertyHook|null $sourceNode,
+        private readonly array $tree,
     ) {
     }
 
     /**
-     * The scope a node is in: its innermost function-like's, or the global
-     * scope of its namespace's statements, or the file's when it has none.
+     * The scope a node is in, the node itself included: a function-like's
+     * header is in that function-like. With no node, the file's global scope.
      *
      * @param array<Stmt> $tree
      */
-    public static function enclosing(Node $node, array $tree): self
+    public static function at(?Node $node, array $tree): self
     {
-        $classLike = ScopeFinder::findEnclosingClassNode($node);
-        $function = ScopeFinder::findEnclosingScope($node);
-        if ($function !== null) {
-            return self::forNode($function, $classLike);
+        $namespace = null;
+        $classLike = null;
+        $function = null;
+        for ($n = $node; $n instanceof Node; $n = $n->getAttribute('parent')) {
+            if ($n instanceof Stmt\Namespace_) {
+                $namespace ??= $n;
+            }
+            if (
+                $n instanceof Stmt\Class_ || $n instanceof Stmt\Interface_
+                || $n instanceof Stmt\Trait_ || $n instanceof Stmt\Enum_
+            ) {
+                $classLike ??= $n;
+            }
+            if (
+                $n instanceof Stmt\Function_ || $n instanceof Stmt\ClassMethod
+                || $n instanceof Closure || $n instanceof ArrowFunction || $n instanceof PropertyHook
+            ) {
+                $function ??= $n;
+            }
         }
-        return self::global(ScopeFinder::findEnclosingNamespace($node)->stmts ?? $tree, $classLike);
-    }
-
-    public static function forNode(
-        Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction $node,
-        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike = null,
-    ): self {
-        $enclosingClassLike ??= ScopeFinder::findEnclosingClassNode($node);
-
-        $selfContext = LateBindingKeyword::Self->resolveIn($enclosingClassLike);
-        $parentContext = LateBindingKeyword::Parent->resolveIn($enclosingClassLike);
-
-        $thisType = ($node instanceof Stmt\ClassMethod && $selfContext !== null)
-            ? ClasslikeName::fromFullyQualified($selfContext)
-            : null;
-
-        // Arrow functions have an expression body, not a statement list; their
-        // captured variables come from the enclosing scope, not local assignments.
-        $statements = $node instanceof ArrowFunction ? [] : ($node->stmts ?? []);
-
-        $uses = $node instanceof Closure ? $node->uses : [];
-
-        /** @var ?class-string $selfContext */
-        return new self(
-            $node->params,
-            $statements,
-            $selfContext,
-            $parentContext,
-            $thisType,
-            $uses,
-            $enclosingClassLike,
-            $node,
-        );
+        return new self($namespace, $classLike, $function, $tree);
     }
 
     /**
-     * @param array<Stmt> $statements
+     * The scope holding this one's function-like, or null for a global scope.
      */
-    public static function global(
-        array $statements,
-        Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike = null,
-    ): self {
-        return new self([], $statements, null, null, null, [], $enclosingClassLike, null);
+    public function outer(): ?self
+    {
+        if ($this->sourceNode === null) {
+            return null;
+        }
+        $parent = $this->sourceNode->getAttribute('parent');
+        return self::at($parent instanceof Node ? $parent : null, $this->tree);
     }
 
     /**
@@ -104,7 +85,7 @@ final class Scope
      */
     public function getParams(): array
     {
-        return $this->params;
+        return $this->sourceNode->params ?? [];
     }
 
     /**
@@ -114,7 +95,17 @@ final class Scope
      */
     public function getStatements(): array
     {
-        return $this->statements;
+        return match (true) {
+            $this->sourceNode === null => $this->namespace->stmts ?? $this->tree,
+            // Arrow functions have an expression body, not a statement list; their
+            // captured variables come from the enclosing scope, not local assignments.
+            $this->sourceNode instanceof ArrowFunction => [],
+            // A hook's body is a statement list, or a single expression (`get => …`).
+            $this->sourceNode instanceof PropertyHook => is_array($this->sourceNode->body)
+                ? $this->sourceNode->body
+                : [],
+            default => $this->sourceNode->stmts ?? [],
+        };
     }
 
     /**
@@ -122,7 +113,16 @@ final class Scope
      */
     public function getSelfContext(): ?string
     {
-        return $this->selfContext;
+        return LateBindingKeyword::Self->resolveIn($this->classLike);
+    }
+
+    /**
+     * The class-like code here is written in, which `self` names.
+     */
+    public function getSelfName(): ?ClasslikeName
+    {
+        $self = $this->getSelfContext();
+        return $self === null ? null : ClasslikeName::fromFullyQualified($self);
     }
 
     /**
@@ -130,21 +130,48 @@ final class Scope
      */
     public function getParentContext(): ?string
     {
-        return $this->parentContext;
+        return LateBindingKeyword::Parent->resolveIn($this->classLike);
     }
 
     /**
-     * The type of `$this` in this scope, or null when `$this` is not bound
-     * (free functions, closures, and file-level code).
+     * The type of `$this` in this scope, or null where PHP does not bind it.
+     * An instance method or a property hook binds it (hooks exist only on
+     * instance properties); a closure or arrow function inherits it unless
+     * declared `static` (PHP manual, Anonymous functions; Property hooks).
      */
     public function getThisType(): ?ClasslikeName
     {
-        return $this->thisType;
+        $function = $this->sourceNode;
+        if ($function instanceof Closure || $function instanceof ArrowFunction) {
+            return $function->static ? null : $this->outer()?->getThisType();
+        }
+        $bindsThis = $function instanceof PropertyHook
+            || $function instanceof Stmt\ClassMethod && !$function->isStatic();
+        return $bindsThis ? $this->getSelfName() : null;
     }
 
-    public function getEnclosingClassLike(): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null
+    /**
+     * A class name as written here: `self`, `static`, and `parent` resolve
+     * against the enclosing class-like, null where it gives them none.
+     *
+     * @return ?class-string
+     */
+    public function resolveClasslikeName(Name $name): ?string
     {
-        return $this->enclosingClassLike;
+        $keyword = LateBindingKeyword::tryFromName($name->toString());
+        if ($keyword !== null) {
+            return $keyword->resolveIn($this->classLike);
+        }
+        /** @var class-string */
+        return $name->toString();
+    }
+
+    /**
+     * How a name written here resolves: the enclosing namespace and its imports.
+     */
+    public function nameContext(): NameContext
+    {
+        return NameContextFactory::in($this->namespace, $this->tree);
     }
 
     /**
@@ -156,7 +183,7 @@ final class Scope
      */
     public function getUses(): array
     {
-        return $this->uses;
+        return $this->sourceNode instanceof Closure ? $this->sourceNode->uses : [];
     }
 
     /**
@@ -171,9 +198,9 @@ final class Scope
 
     /**
      * The function-like node this scope was built from, or null for global
-     * scope. Used to walk to the enclosing scope for arrow-function fall-through.
+     * scope.
      */
-    public function getSourceNode(): Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null
+    public function getSourceNode(): Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|PropertyHook|null
     {
         return $this->sourceNode;
     }

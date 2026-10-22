@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
@@ -22,18 +23,23 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
+use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -82,21 +88,21 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
-    public function testTopLevelArrowFunctionHasNoScopeToCaptureFrom(): void
+    public function testTopLevelArrowFunctionCapturesFromTheFile(): void
     {
         self::assertEquals(
-            new ResolvedVariable('outer', null),
+            new ResolvedVariable('outer', self::dateTimeType(), self::bindingAt(self::TOP_LEVEL, 7, 0)),
             $this->resolveVariableAt(self::TOP_LEVEL, 'top_arrow_capture'),
-            'a file-scope assignment is not an enclosing function scope, so no binding is found',
+            'an arrow function at file level captures the file-level assignment',
         );
     }
 
-    public function testTopLevelClosureUseBindsWithoutAType(): void
+    public function testTopLevelClosureUseTakesTheTypeOfTheFileLevelVariable(): void
     {
         self::assertEquals(
-            new ResolvedVariable('closureOuter', null, self::bindingAt(self::TOP_LEVEL, 14, 28)),
+            new ResolvedVariable('closureOuter', self::dateTimeType(), self::bindingAt(self::TOP_LEVEL, 14, 28)),
             $this->resolveVariableAt(self::TOP_LEVEL, 'top_closure_use_capture'),
-            'the use clause is the binding, but no enclosing function gives it a type',
+            'the use clause is the binding, typed by the file-level variable it captures',
         );
     }
 
@@ -216,6 +222,96 @@ final class ExpressionResolutionTest extends TestCase
             new ResolvedTypeOnly(new ClasslikeType(self::className('Fixtures\Definition\VariableBindings'))),
             $this->resolveVariableAt(self::BINDINGS, 'this_usage'),
             '$this is typed by the class it appears in',
+        );
+    }
+
+    public function testThisIsUntypedWhereTheScopeDoesNotBindIt(): void
+    {
+        self::assertEquals(
+            new ResolvedVariable('this', null),
+            $this->resolveVariableAt('TopLevel/this_binding.php', 'static_method_this'),
+            'a static method has no $this, though a class encloses it',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string, ?string}>
+     */
+    public static function memberVisibility(): iterable
+    {
+        $parent = 'src/Inheritance/ParentClass.php';
+        $outsider = 'src/Inheritance/Outsider.php';
+        $sibling = 'src/Inheritance/SiblingClass.php';
+        yield 'private, from its own class' => [$parent, 'private_method_internal', 'privateMethod'];
+        yield 'private, from a subclass' => ['src/Inheritance/ChildClass.php', 'private_method', null];
+        yield 'protected, from a parent class' => [$parent, 'child_protected_from_parent', 'childProtectedMethod'];
+        yield 'private, from an unrelated class' => [$outsider, 'private_from_outside', null];
+        yield 'protected, from an unrelated class' => [$outsider, 'protected_from_outside', null];
+        yield 'public, from an unrelated class' => [$outsider, 'public_from_outside', 'parentMethod'];
+        yield 'protected constant, from an unrelated class' => [$outsider, 'protected_constant_from_outside', null];
+        yield 'protected the shared parent declares, from a sibling' => [
+            $sibling,
+            'parent_protected_from_sibling',
+            'protectedMethod',
+        ];
+        yield 'protected only the receiver declares, from a sibling' => [
+            $sibling,
+            'child_protected_from_sibling',
+            null,
+        ];
+        yield 'private, from its class on a subclass instance' => [$parent, 'own_private_on_child', 'privateMethod'];
+    }
+
+    /**
+     * A member a call cannot reach from where it is written is not what the
+     * call names (PHP manual, Visibility).
+     */
+    #[DataProvider('memberVisibility')]
+    public function testAMemberResolvesOnlyWhereItIsVisible(string $fixture, string $marker, ?string $expected): void
+    {
+        $this->resolveOverTheFixtures();
+
+        $symbol = $this->resolveSymbolAt($fixture, $marker);
+
+        self::assertSame(
+            $expected,
+            $symbol instanceof MemberInfoInterface ? $symbol->getName()->name : null,
+            "the member named at {$marker}",
+        );
+    }
+
+    public function testACallResolvesWithTheReturnTypeOfTheMethodItCalls(): void
+    {
+        $this->resolveOverTheFixtures();
+
+        $symbol = $this->resolveSymbolAt('src/Inheritance/ParentClass.php', 'shadowed_private_on_child');
+
+        self::assertInstanceOf(MethodInfo::class, $symbol, 'the parent\'s own private method');
+        self::assertSame('Fixtures\Inheritance\ParentClass', $symbol->name->owner->qualifiedName->fullyQualifiedName());
+        self::assertSame(
+            'int',
+            $symbol->returnType?->format(),
+            'its own return type, not that of the subclass method of the same name',
+        );
+    }
+
+    public function testAPropertyHooksParameterIsABindingInTheHook(): void
+    {
+        self::assertEquals(
+            new PrimitiveType('int'),
+            $this->resolveVariableAt('TopLevel/this_binding.php', 'hook_parameter')?->getType(),
+            'a set hook\'s parameter binds in the hook, typed as declared',
+        );
+    }
+
+    public function testAStaticMethodsParameterIsTypedByItsMethod(): void
+    {
+        $this->typeEveryParameterAs(new PrimitiveType('int'));
+
+        self::assertEquals(
+            new PrimitiveType('int'),
+            $this->resolveVariableAt('TopLevel/this_binding.php', 'static_method_param')?->getType(),
+            'the method\'s parameter types are looked up by its class, which a static method still has',
         );
     }
 
@@ -509,6 +605,22 @@ final class ExpressionResolutionTest extends TestCase
      * Resolves against a type source that gives every method parameter this
      * type, and knows nothing else.
      */
+    /**
+     * Resolves against the fixtures' own classes, read as the server reads
+     * them, so a member lookup sees the real type graph.
+     */
+    private function resolveOverTheFixtures(): void
+    {
+        $production = ProductionSyntaxSource::create();
+        $symbols = new ComposerMapBackend(
+            new ComposerAutoloadMapReader(dirname(__DIR__) . '/Fixtures'),
+            $production->reader,
+            $production->declarations,
+        );
+        $members = new MemberResolver($symbols);
+        $this->resolver = self::resolverOver($symbols, new NativeTypeSource($symbols, $members), $members);
+    }
+
     private function typeEveryParameterAs(TypeInterface $type): void
     {
         $types = self::createStub(TypeSourceInterface::class);

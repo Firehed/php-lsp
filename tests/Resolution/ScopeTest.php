@@ -21,12 +21,12 @@ class ScopeTest extends TestCase
     use AstTestHelperTrait;
     use LoadsFixturesTrait;
 
-    public function testForNodeFreeFunctionHasNoClassContext(): void
+    public function testAFreeFunctionHasNoClassContext(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/GlobalScope.php'));
-        $function = self::findFunction('utilityFunction', $ast);
+        $function = self::findFirst(Stmt\Function_::class, $ast, fn ($n) => $n->name->toString() === 'utilityFunction');
 
-        $scope = Scope::forNode($function);
+        $scope = Scope::at($function, $ast);
 
         self::assertSame([], $scope->getParams(), 'Free function fixture declares no parameters');
         self::assertNull($scope->getSelfContext(), 'Free function has no enclosing class');
@@ -35,61 +35,106 @@ class ScopeTest extends TestCase
         self::assertNotEmpty($scope->getStatements(), 'Function body statements should be exposed');
     }
 
-    public function testForNodeClassMethodBindsThisAndSelf(): void
+    public function testAMethodBindsThisAndSelf(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
-        $method = self::findMethod('methodWithThis', $ast);
 
-        $scope = Scope::forNode($method);
+        $scope = Scope::at(self::method('methodWithThis', $ast), $ast);
 
         self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getSelfContext());
         self::assertNull($scope->getParentContext(), 'ScopePatterns has no parent class');
         self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getThisType()?->qualifiedName->fullyQualifiedName());
     }
 
-    public function testForNodeChildMethodResolvesParentContext(): void
+    public function testAChildMethodHasAParentContext(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Inheritance/ParentClass.php'));
-        $method = self::findMethod('parentMethod', $ast);
 
-        $scope = Scope::forNode($method);
+        $scope = Scope::at(self::method('parentMethod', $ast), $ast);
 
         self::assertSame('Fixtures\Inheritance\ParentClass', $scope->getSelfContext());
         self::assertSame('Fixtures\Inheritance\Grandparent', $scope->getParentContext());
     }
 
-    public function testForNodeTraitMethodHasNoParentContext(): void
+    public function testATraitMethodHasNoParentContext(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Traits/HasTimestamps.php'));
-        $method = self::findMethod('getCreatedAt', $ast);
 
-        $scope = Scope::forNode($method);
+        $scope = Scope::at(self::method('getCreatedAt', $ast), $ast);
 
         self::assertSame('Fixtures\Traits\HasTimestamps', $scope->getSelfContext());
         self::assertNull($scope->getParentContext(), 'A trait has no extends clause');
         self::assertSame('Fixtures\Traits\HasTimestamps', $scope->getThisType()?->qualifiedName->fullyQualifiedName());
     }
 
-    public function testForNodeClosureExposesUseCaptures(): void
+    #[DataProvider('thisBindings')]
+    public function testThisIsBoundWherePhpBindsIt(string $variable, ?string $expected): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
+        $node = self::findVariableNode($variable, $ast);
+        self::assertNotNull($node);
+
+        self::assertSame(
+            $expected,
+            Scope::at($node, $ast)->getThisType()?->qualifiedName->fullyQualifiedName(),
+            "\$this where \${$variable} is",
+        );
+    }
+
+    /**
+     * @return array<string, array{string, ?string}>
+     */
+    public static function thisBindings(): array
+    {
+        $class = 'Fixtures\ThisBinding\ThisBinding';
+        return [
+            'an instance method' => ['inInstanceMethod', $class],
+            'a closure in an instance method' => ['inClosure', $class],
+            'an arrow function in an instance method' => ['inArrow', $class],
+            'a static closure' => ['inStaticClosure', null],
+            'a static arrow function' => ['inStaticArrow', null],
+            'a static method' => ['inStaticMethod', null],
+            'a closure in a static method' => ['inClosureInStaticMethod', null],
+            'a closure in a free function' => ['inClosureInFunction', null],
+            'a property hook' => ['inPropertyHook', $class],
+        ];
+    }
+
+    public function testAClosureExposesItsUseCaptures(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
-        $closure = self::findClosureWithUses($ast);
 
-        $scope = Scope::forNode($closure);
+        $scope = Scope::at(self::closureWithUses($ast), $ast);
 
         $captured = self::useNames($scope);
         self::assertContains('captured', $captured, 'use($captured) should be exposed as a capture');
         self::assertNotContains('notCaptured', $captured);
-        self::assertNull($scope->getThisType(), 'A closure is not a method, so $this is not added here');
         self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getSelfContext(), 'Closure inherits class context');
     }
 
-    public function testForNodeArrowFunctionHasNoStatements(): void
+    public function testAnArrowFunctionHasNoStatements(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
-        $scope = Scope::forNode(self::findArrowFunction($ast));
+
+        $scope = Scope::at(self::arrowFunction($ast), $ast);
 
         self::assertSame([], $scope->getStatements(), 'Arrow function body is an expression, not statements');
+    }
+
+    public function testAPropertyHookWithABlockBodyHasItsStatements(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
+        $hook = self::findFirst(Node\PropertyHook::class, $ast, fn ($n) => is_array($n->body));
+
+        self::assertSame($hook->body, Scope::at($hook, $ast)->getStatements(), 'the statements of `get { … }`');
+    }
+
+    public function testAPropertyHookWithAnExpressionBodyHasNoStatements(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
+        $hook = self::findFirst(Node\PropertyHook::class, $ast, fn ($n) => !is_array($n->body));
+
+        self::assertSame([], Scope::at($hook, $ast)->getStatements(), '`get => …` is an expression, not statements');
     }
 
     public function testOnlyAnArrowFunctionCapturesImplicitly(): void
@@ -97,132 +142,104 @@ class ScopeTest extends TestCase
         $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
 
         self::assertTrue(
-            Scope::forNode(self::findArrowFunction($ast))->allowsImplicitCapture(),
+            Scope::at(self::arrowFunction($ast), $ast)->allowsImplicitCapture(),
             'fn () => $x reads $x without a use clause',
         );
         self::assertFalse(
-            Scope::forNode(self::findClosureWithUses($ast))->allowsImplicitCapture(),
+            Scope::at(self::closureWithUses($ast), $ast)->allowsImplicitCapture(),
             'a closure sees only what its use clause names',
         );
         self::assertFalse(
-            Scope::forNode(self::findMethod('methodWithThis', $ast))->allowsImplicitCapture(),
+            Scope::at(self::method('methodWithThis', $ast), $ast)->allowsImplicitCapture(),
             'a method sees none of the enclosing variables',
         );
     }
 
-    public function testSourceNodeIsTheFunctionLikeTheScopeWasBuiltFrom(): void
-    {
-        $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
-        $method = self::findMethod('methodWithThis', $ast);
-
-        self::assertSame($method, Scope::forNode($method)->getSourceNode(), 'the scope points back at its method');
-    }
-
-    public function testForNodeCarriesEnclosingClassLike(): void
-    {
-        $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
-        $method = self::findMethod('methodWithThis', $ast);
-
-        $scope = Scope::forNode($method);
-
-        $classLike = $scope->getEnclosingClassLike();
-        self::assertInstanceOf(Stmt\Class_::class, $classLike, 'forNode should carry enclosing class');
-        self::assertSame('ScopePatterns', $classLike->name?->toString());
-    }
-
-    public function testForNodeFreeFunctionHasNullClassLike(): void
-    {
-        $ast = self::parseWithParents($this->loadFixture('src/Utility/GlobalScope.php'));
-        $function = self::findFunction('utilityFunction', $ast);
-
-        $scope = Scope::forNode($function);
-
-        self::assertNull($scope->getEnclosingClassLike(), 'Free function has no enclosing class-like');
-    }
-
     /**
-     * @param class-string $expectedNodeClass
+     * @param class-string<Node> $kind
      */
-    #[DataProvider('classLikeKindFixtures')]
-    public function testTheScopeCarriesEveryClassLikeKind(
-        string $fixture,
-        string $methodName,
-        string $expectedNodeClass,
-    ): void {
+    #[DataProvider('innermostFunctionLikes')]
+    public function testANodeIsInItsInnermostFunctionLike(string $fixture, string $variable, string $kind): void
+    {
         $ast = self::parseWithParents($this->loadFixture($fixture));
-        $method = self::findMethod($methodName, $ast);
+        $node = self::findVariableNode($variable, $ast);
+        self::assertNotNull($node);
 
-        $scope = Scope::enclosing($method->name, $ast);
-
-        self::assertInstanceOf(
-            $expectedNodeClass,
-            $scope->getEnclosingClassLike(),
-            "the scope carries its enclosing $expectedNodeClass",
-        );
+        self::assertInstanceOf($kind, Scope::at($node, $ast)->getSourceNode(), "\${$variable} is in a $kind");
     }
 
     /**
-     * @return array<string, array{string, string, class-string}>
+     * @return array<string, array{string, string, class-string<Node>}>
      */
-    public static function classLikeKindFixtures(): array
+    public static function innermostFunctionLikes(): array
     {
         return [
-            'class' => ['src/Utility/ScopePatterns.php', 'methodWithThis', Stmt\Class_::class],
-            'trait' => ['src/Traits/HasTimestamps.php', 'getCreatedAt', Stmt\Trait_::class],
-            'enum' => ['src/Enum/Status.php', 'label', Stmt\Enum_::class],
+            'method' => ['src/Utility/ScopePatterns.php', 'this', Stmt\ClassMethod::class],
+            'function' => ['src/Utility/GlobalScope.php', 'functionVar', Stmt\Function_::class],
+            'closure' => ['src/Utility/ScopePatterns.php', 'closureVar', Closure::class],
+            'arrow function' => ['src/Utility/ScopePatterns.php', 'arrowVar', ArrowFunction::class],
         ];
     }
 
-    public function testTheScopeCarriesAnEnclosingInterface(): void
-    {
-        $ast = self::parseWithParents($this->loadFixture('src/Domain/Entity.php'));
-        $method = (new NodeFinder())->findFirst(
-            $ast,
-            fn(Node $n) => $n instanceof Stmt\ClassMethod && $n->name->toString() === 'getId',
-        );
-        self::assertInstanceOf(Stmt\ClassMethod::class, $method);
-
-        $scope = Scope::enclosing($method->name, $ast);
-
-        self::assertInstanceOf(
-            Stmt\Interface_::class,
-            $scope->getEnclosingClassLike(),
-            'the scope carries its enclosing interface',
-        );
-    }
-
-    public function testAScopeOutsideAClassHasNoClassLike(): void
-    {
-        $ast = self::parseWithParents($this->loadFixture('src/Utility/GlobalScope.php'));
-        $globalVar = self::findVariableNode('globalVar', $ast);
-        self::assertNotNull($globalVar);
-
-        $scope = Scope::enclosing($globalVar, $ast);
-
-        self::assertNull($scope->getEnclosingClassLike(), 'Global scope outside class has no class-like');
-    }
-
-    public function testGlobalScopeHasNoBindings(): void
-    {
-        $scope = Scope::global([]);
-
-        self::assertSame([], $scope->getParams());
-        self::assertSame([], $scope->getStatements());
-        self::assertNull($scope->getSelfContext());
-        self::assertNull($scope->getParentContext());
-        self::assertNull($scope->getThisType());
-        self::assertSame([], $scope->getUses(), 'Global scope declares no closure captures');
-        self::assertNull($scope->getEnclosingClassLike(), 'Global scope has no class-like');
-    }
-
-    public function testANodeInAFunctionLikeIsInItsScope(): void
+    public function testAFunctionLikeIsInItsOwnScope(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
-        $closure = self::findClosureWithUses($ast);
+        $method = self::method('methodWithThis', $ast);
 
-        $scope = Scope::enclosing($closure->stmts[0], $ast);
+        self::assertSame($method, Scope::at($method, $ast)->getSourceNode(), 'a method\'s header is in the method');
+    }
 
-        self::assertSame($closure, $scope->getSourceNode(), 'the innermost function-like holding the node');
+    /**
+     * @param class-string<Stmt\ClassLike> $kind
+     */
+    #[DataProvider('classLikeKinds')]
+    public function testEveryClassLikeKindIsAClassContext(string $fixture, string $kind, string $expected): void
+    {
+        $ast = self::parseWithParents($this->loadFixture($fixture));
+        $classLike = self::findFirst($kind, $ast);
+
+        self::assertSame($expected, Scope::at($classLike, $ast)->getSelfContext(), "a $kind is a class context");
+    }
+
+    /**
+     * @return array<string, array{string, class-string<Stmt\ClassLike>, string}>
+     */
+    public static function classLikeKinds(): array
+    {
+        return [
+            'class' => ['src/Utility/ScopePatterns.php', Stmt\Class_::class, 'Fixtures\Utility\ScopePatterns'],
+            'interface' => ['src/Domain/Entity.php', Stmt\Interface_::class, 'Fixtures\Domain\Entity'],
+            'trait' => ['src/Traits/HasTimestamps.php', Stmt\Trait_::class, 'Fixtures\Traits\HasTimestamps'],
+            'enum' => ['src/Enum/Status.php', Stmt\Enum_::class, 'Fixtures\Enum\Status'],
+        ];
+    }
+
+    public function testAClassBodyOutsideAMethodIsGlobalWithItsClassContext(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
+
+        $scope = Scope::at(self::findFirst(Stmt\Class_::class, $ast), $ast);
+
+        self::assertNull($scope->getSourceNode(), 'no function-like holds the class body');
+        self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getSelfContext(), 'self names the class');
+    }
+
+    public function testAnAnonymousClassHasNoClassName(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/AnonymousClassScope.php'));
+        $this_ = self::findVariableNode('this', $ast);
+        self::assertNotNull($this_);
+
+        self::assertNull(Scope::at($this_, $ast)->getSelfContext(), 'an anonymous class has no name to resolve');
+    }
+
+    public function testAClassOutsideANamespaceIsNamedByItsShortName(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TypeInference/GlobalFunction.php'));
+        $this_ = self::findVariableNode('this', $ast);
+        self::assertNotNull($this_);
+
+        self::assertSame('GlobalConfig', Scope::at($this_, $ast)->getSelfContext());
     }
 
     public function testANodeAtNamespaceLevelIsInItsNamespacesStatements(): void
@@ -231,11 +248,11 @@ class ScopeTest extends TestCase
         $globalVar = self::findVariableNode('globalVar', $ast);
         self::assertNotNull($globalVar);
 
-        $scope = Scope::enclosing($globalVar, $ast);
+        $scope = Scope::at($globalVar, $ast);
 
         self::assertNull($scope->getSourceNode(), 'outside any function-like the scope is global');
-        $namespace = (new \PhpParser\NodeFinder())->findFirstInstanceOf($ast, Stmt\Namespace_::class);
-        self::assertNotNull($namespace);
+        self::assertNull($scope->getSelfContext(), 'no class holds it');
+        $namespace = self::findFirst(Stmt\Namespace_::class, $ast);
         self::assertSame($namespace->stmts, $scope->getStatements(), 'the namespace\'s statements, not the file\'s');
     }
 
@@ -245,7 +262,82 @@ class ScopeTest extends TestCase
         $activeUser = self::findVariableNode('activeUser', $ast);
         self::assertNotNull($activeUser);
 
-        self::assertSame($ast, Scope::enclosing($activeUser, $ast)->getStatements());
+        self::assertSame($ast, Scope::at($activeUser, $ast)->getStatements());
+    }
+
+    public function testNoNodeIsTheFilesGlobalScope(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/global_scope_hover.php'));
+
+        $scope = Scope::at(null, $ast);
+
+        self::assertSame($ast, $scope->getStatements(), 'the file\'s own statements');
+        self::assertSame([], $scope->getParams());
+        self::assertSame([], $scope->getUses(), 'Global scope declares no closure captures');
+        self::assertNull($scope->getThisType());
+        self::assertNull($scope->getSourceNode());
+    }
+
+    public function testTheOuterScopeOfAClosureIsWhatHoldsIt(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
+
+        $outer = Scope::at(self::closureWithUses($ast), $ast)->outer();
+
+        self::assertSame(self::method('methodWithClosureUse', $ast), $outer?->getSourceNode(), 'the method around it');
+    }
+
+    public function testAGlobalScopeHasNoOuterScope(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/GlobalScope.php'));
+
+        self::assertNull(Scope::at(null, $ast)->outer(), 'nothing holds the file');
+    }
+
+    public function testTheNameContextIsTheEnclosingNamespaces(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Domain/User.php'));
+        $this_ = self::findVariableNode('this', $ast);
+        self::assertNotNull($this_);
+
+        self::assertSame('Fixtures\Domain', Scope::at($this_, $ast)->nameContext()->namespace);
+    }
+
+    public function testTheNameContextOutsideANamespaceIsGlobal(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TypeInference/GlobalFunction.php'));
+        $this_ = self::findVariableNode('this', $ast);
+        self::assertNotNull($this_);
+
+        self::assertSame('', Scope::at($this_, $ast)->nameContext()->namespace);
+    }
+
+    #[DataProvider('classNames')]
+    public function testAClassNameResolvesInTheScope(string $fixture, string $name, ?string $expected): void
+    {
+        $ast = self::parseWithParents($this->loadFixture($fixture));
+        $node = self::findFirst(Node\Name::class, $ast, fn ($n) => $n->toString() === $name);
+
+        self::assertSame($expected, Scope::at($node, $ast)->resolveClasslikeName($node), "$name in $fixture");
+    }
+
+    /**
+     * @return array<string, array{string, string, ?string}>
+     */
+    public static function classNames(): array
+    {
+        return [
+            'self' => ['src/TypeInference/NewKeywords.php', 'self', 'Fixtures\TypeInference\NewKeywords'],
+            'static' => ['src/TypeInference/NewKeywords.php', 'static', 'Fixtures\TypeInference\NewKeywords'],
+            'parent' => ['src/TypeInference/NewKeywords.php', 'parent', 'Fixtures\Inheritance\ParentClass'],
+            'a named class' => [
+                'src/TypeInference/NewKeywords.php',
+                'Fixtures\Inheritance\ParentClass',
+                'Fixtures\Inheritance\ParentClass',
+            ],
+            'self outside a class' => ['src/TypeInference/StaticCallOutsideClass.php', 'self', null],
+            'parent with no extends' => ['src/TypeInference/ParentWithoutExtends.php', 'parent', null],
+        ];
     }
 
     /**
@@ -263,51 +355,43 @@ class ScopeTest extends TestCase
     }
 
     /**
+     * @template T of Node
+     * @param class-string<T> $kind
      * @param array<Stmt> $ast
+     * @param ?callable(T): bool $matches
+     * @return T
      */
-    private static function findFunction(string $name, array $ast): Stmt\Function_
+    private static function findFirst(string $kind, array $ast, ?callable $matches = null): Node
     {
         $node = (new NodeFinder())->findFirst(
             $ast,
-            fn(Node $n) => $n instanceof Stmt\Function_ && $n->name->toString() === $name,
+            fn (Node $n) => $n instanceof $kind && ($matches === null || $matches($n)),
         );
-        self::assertInstanceOf(Stmt\Function_::class, $node, "Function $name not found");
+        self::assertInstanceOf($kind, $node, "no $kind found");
         return $node;
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private static function findMethod(string $name, array $ast): Stmt\ClassMethod
+    private static function method(string $name, array $ast): Stmt\ClassMethod
     {
-        $node = (new NodeFinder())->findFirst(
-            $ast,
-            fn(Node $n) => $n instanceof Stmt\ClassMethod && $n->name->toString() === $name,
-        );
-        self::assertInstanceOf(Stmt\ClassMethod::class, $node, "Method $name not found");
-        return $node;
+        return self::findFirst(Stmt\ClassMethod::class, $ast, fn ($n) => $n->name->toString() === $name);
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private static function findClosureWithUses(array $ast): Closure
+    private static function closureWithUses(array $ast): Closure
     {
-        $node = (new NodeFinder())->findFirst(
-            $ast,
-            fn(Node $n) => $n instanceof Closure && $n->uses !== [],
-        );
-        self::assertInstanceOf(Closure::class, $node, 'Closure with use() not found');
-        return $node;
+        return self::findFirst(Closure::class, $ast, fn ($n) => $n->uses !== []);
     }
 
     /**
      * @param array<Stmt> $ast
      */
-    private static function findArrowFunction(array $ast): ArrowFunction
+    private static function arrowFunction(array $ast): ArrowFunction
     {
-        $node = (new NodeFinder())->findFirstInstanceOf($ast, ArrowFunction::class);
-        self::assertInstanceOf(ArrowFunction::class, $node, 'Arrow function not found');
-        return $node;
+        return self::findFirst(ArrowFunction::class, $ast);
     }
 }

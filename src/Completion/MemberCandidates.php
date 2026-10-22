@@ -30,7 +30,7 @@ final class MemberCandidates
     {
         $members = $this->symbols->getAccessibleMembers(
             $context->type,
-            $context->minVisibility,
+            $context->from,
             $context->memberFilter,
         );
 

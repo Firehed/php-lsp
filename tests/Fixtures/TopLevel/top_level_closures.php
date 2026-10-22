@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-// A top-level arrow function has no enclosing function scope, so an implicit
-// capture from the file-level bindings resolves to no variable — variable JTD
-// returns null rather than the file-level assignment.
-$outer = 1;
+// Code at file level is a scope: an arrow function there captures from the
+// file's own bindings, as one in a function captures from the function's
+// (PHP manual, Arrow Functions).
+$outer = new \DateTime();
 $arrow = fn () => $outer; //jtd:top_arrow_capture outer
 
-// A top-level long closure's `use ($closureOuter)` binds a name, but the
-// binding's type derives from a scope that no enclosing function-like defines,
-// so hover on the capture reports the name alone rather than the outer type.
-$closureOuter = 2;
+// A top-level long closure's `use ($closureOuter)` binds the name, and the
+// binding takes the type of the file-level variable it captures
+// (PHP manual, Anonymous functions).
+$closureOuter = new \DateTime();
 $closure = function () use ($closureOuter) {
     return $closureOuter; //jtd:top_closure_use_capture closureOuter
 };

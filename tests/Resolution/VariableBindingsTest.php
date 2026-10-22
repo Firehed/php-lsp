@@ -24,7 +24,7 @@ class VariableBindingsTest extends TestCase
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
         $method = self::findMethodByName('method', $ast);
-        $scope = Scope::forNode($method);
+        $scope = Scope::at($method, $ast);
         $endOfMethod = $method->getEndFilePos();
 
         $names = self::namesOf(VariableBindings::before($scope, $endOfMethod));
@@ -45,7 +45,7 @@ class VariableBindingsTest extends TestCase
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
         $method = self::findMethodByName('method', $ast);
-        $scope = Scope::forNode($method);
+        $scope = Scope::at($method, $ast);
 
         $target = self::findAssignmentTarget('assigned', $ast);
         $offset = $target->getStartFilePos();
@@ -59,7 +59,7 @@ class VariableBindingsTest extends TestCase
         $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
         $closure = self::findFirst($ast, fn (Node $n) => $n instanceof Node\Expr\Closure);
         self::assertInstanceOf(Node\Expr\Closure::class, $closure);
-        $scope = Scope::forNode($closure);
+        $scope = Scope::at($closure, $ast);
 
         $names = self::namesOf(VariableBindings::before($scope, $closure->getEndFilePos()));
 
@@ -72,7 +72,7 @@ class VariableBindingsTest extends TestCase
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/BranchingBindingSites.php'));
         $method = self::findMethodByName('method', $ast);
-        $scope = Scope::forNode($method);
+        $scope = Scope::at($method, $ast);
 
         $names = self::namesOf(VariableBindings::before($scope, $method->getEndFilePos()));
 
@@ -88,11 +88,50 @@ class VariableBindingsTest extends TestCase
         $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
         $arrow = self::findFirst($ast, fn (Node $n) => $n instanceof Node\Expr\ArrowFunction);
         self::assertInstanceOf(Node\Expr\ArrowFunction::class, $arrow);
-        $scope = Scope::forNode($arrow);
+        $scope = Scope::at($arrow, $ast);
 
         $names = self::namesOf(VariableBindings::before($scope, $arrow->getEndFilePos()));
 
         self::assertSame(['arrowParam'], $names, 'Arrow scope is its params; fall-through is a caller concern');
+    }
+
+    public function testAnArrowFunctionSeesWhatIsBoundBeforeIt(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
+        $arrow = self::findFirst($ast, fn (Node $n) => $n instanceof Node\Expr\ArrowFunction);
+        self::assertInstanceOf(Node\Expr\ArrowFunction::class, $arrow);
+
+        $visible = VariableBindings::visible(Scope::at($arrow, $ast), $arrow->getEndFilePos());
+
+        self::assertArrayHasKey('arrowParam', $visible, 'its own parameter');
+        self::assertArrayHasKey('param', $visible, 'a parameter of the method around it');
+        self::assertArrayHasKey('assigned', $visible, 'an assignment before it in the method around it');
+        self::assertArrayNotHasKey('afterEverything', $visible, 'nothing bound after the arrow function');
+        self::assertArrayNotHasKey('insideClosure', $visible, 'nothing inside a sibling closure');
+    }
+
+    public function testALongClosureSeesOnlyWhatItCaptures(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
+        $closure = self::findFirst($ast, fn (Node $n) => $n instanceof Node\Expr\Closure);
+        self::assertInstanceOf(Node\Expr\Closure::class, $closure);
+
+        $visible = VariableBindings::visible(Scope::at($closure, $ast), $closure->getEndFilePos());
+
+        self::assertSame(['closureParam', 'assigned', 'insideClosure'], array_keys($visible), 'no fall-through');
+    }
+
+    public function testAnInnerBindingShadowsAnOuterOne(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
+        $method = self::findMethodByName('shadowing', $ast);
+        $arrow = self::findFirst([$method], fn (Node $n) => $n instanceof Node\Expr\ArrowFunction);
+        self::assertInstanceOf(Node\Expr\ArrowFunction::class, $arrow);
+
+        $visible = VariableBindings::visible(Scope::at($arrow, $ast), $arrow->getEndFilePos());
+
+        self::assertSame($arrow->params[0]->var, $visible['value']->node ?? null, 'the arrow function\'s own $value');
+        self::assertSame($arrow, $visible['value']->scope->getSourceNode(), 'bound in the arrow function\'s scope');
     }
 
     /**

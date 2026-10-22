@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Resolution\Scope;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
@@ -61,30 +62,11 @@ final class PositionLocator implements PositionLocatorInterface
 
         $written = $node !== null && self::isWord($node) ? $node : null;
 
-        $namespace = null;
-        $classLike = null;
-        $functionLikes = [];
         $call = null;
-        $crossedFunction = false;
-        for ($n = $node; $n instanceof Node; $n = $n->getAttribute('parent')) {
-            if ($n instanceof Stmt\Namespace_) {
-                $namespace ??= $n;
-            }
-            if (
-                $n instanceof Stmt\Class_ || $n instanceof Stmt\Interface_
-                || $n instanceof Stmt\Trait_ || $n instanceof Stmt\Enum_
-            ) {
-                $classLike ??= $n;
-            }
-            if (
-                $n instanceof Stmt\Function_ || $n instanceof Stmt\ClassMethod
-                || $n instanceof Expr\Closure || $n instanceof Expr\ArrowFunction
-            ) {
-                $functionLikes[] = $n;
-                $crossedFunction = true;
-            }
-            if (!$crossedFunction && $call === null && self::isCall($n) && self::inArguments($n, $code, $at)) {
+        for ($n = $node; $n instanceof Node && !$n instanceof FunctionLike; $n = $n->getAttribute('parent')) {
+            if (self::isCall($n) && self::inArguments($n, $code, $at)) {
                 $call = self::callSite($n, $at);
+                break;
             }
         }
 
@@ -95,9 +77,7 @@ final class PositionLocator implements PositionLocatorInterface
             $prefix,
             $written,
             $receiver,
-            $namespace,
-            $classLike,
-            array_reverse($functionLikes),
+            Scope::at($node, $parsed->tree),
             $call,
         );
     }

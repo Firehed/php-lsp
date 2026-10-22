@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\TypeInterface;
-use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 
@@ -18,7 +17,7 @@ use Firehed\PhpLsp\Repository\MemberResolverInterface;
  * Answers {@see TypeSourceInterface} for a symbol PHP itself (native code or reflection)
  * declares. Class-members walk the inheritance graph through
  * {@see MemberResolverInterface}, so a method inherited from a supertype resolves at the
- * subclass just as PHP would find it.
+ * subclass just as PHP would find it. A member is looked up as code in its owner sees it.
  *
  * The answer's origin (open-document AST, workspace file, vendored file,
  * reflection) is a {@see SymbolSourceInterface} concern and does not surface here.
@@ -33,7 +32,7 @@ final readonly class NativeTypeSource implements TypeSourceInterface
 
     public function forClassConstant(ClasslikeConstantName $constant): ?TypeInterface
     {
-        return $this->members->findConstant($constant->owner, $constant->name, Visibility::Private)?->type;
+        return $this->members->findConstant($constant->owner, $constant->name, $constant->owner)?->type;
     }
 
     public function forGlobalConstant(ConstantName $constant): ?TypeInterface
@@ -62,7 +61,7 @@ final readonly class NativeTypeSource implements TypeSourceInterface
 
     public function forMethodParameter(MethodName $method, string $parameter): ?TypeInterface
     {
-        $info = $this->members->findMethod($method->owner, $method->name, Visibility::Private);
+        $info = $this->members->findMethod($method->owner, $method->name, $method->owner);
         if ($info === null) {
             return null;
         }
@@ -76,11 +75,11 @@ final readonly class NativeTypeSource implements TypeSourceInterface
 
     public function forMethodReturn(MethodName $method): ?TypeInterface
     {
-        return $this->members->findMethod($method->owner, $method->name, Visibility::Private)?->returnType;
+        return $this->members->findMethod($method->owner, $method->name, $method->owner)?->returnType;
     }
 
     public function forProperty(PropertyName $property): ?TypeInterface
     {
-        return $this->members->findProperty($property->owner, $property->name, Visibility::Private)?->type;
+        return $this->members->findProperty($property->owner, $property->name, $property->owner)?->type;
     }
 }

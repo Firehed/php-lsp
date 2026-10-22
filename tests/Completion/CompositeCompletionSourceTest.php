@@ -22,7 +22,6 @@ use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\TypeHintContext;
-use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\Expected;
@@ -51,7 +50,7 @@ final class CompositeCompletionSourceTest extends TestCase
 
         $items = self::source(new Expected(
             'n',
-            members: MemberAccessContext::forInstance(new ClasslikeType(self::owner()), Visibility::Public, ''),
+            members: MemberAccessContext::forInstance(new ClasslikeType(self::owner()), null, ''),
             argumentNames: new CallContext($callable, 0, []),
             variables: true,
             keywords: KeywordGroup::Expression,

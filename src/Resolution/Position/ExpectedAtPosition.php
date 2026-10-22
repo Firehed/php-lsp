@@ -13,13 +13,10 @@ use Firehed\PhpLsp\Domain\KeywordGroup;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\TypeHintContext;
-use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\Expected;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
-use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\NameQuery;
 use PhpParser\Node\Name;
 
@@ -29,7 +26,6 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
         private readonly PositionLocatorInterface $locator,
         private readonly CallAtPositionInterface $calls,
         private readonly ExpressionResolverInterface $expressions,
-        private readonly MemberResolverInterface $memberResolver,
     ) {
     }
 
@@ -105,73 +101,30 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
     {
         // A static property's name is written with its `$`; a member's name is not.
         $prefix = ltrim($located->prefix, '$');
-        $vantageName = LateBindingKeyword::Self->resolveIn($located->classLike);
-        $vantage = $vantageName === null ? null : ClasslikeName::fromFullyQualified($vantageName);
+        $from = $located->scope->getSelfName();
         $receiver = $located->receiver;
 
         if ($located->slot === Slot::Member) {
             assert($receiver !== null && !$receiver instanceof Name, 'an instance member is accessed on an expression');
             $type = $this->expressions->resolve($receiver, $located->parsed)?->getType();
-            $visibility = $this->visibilityForReceiver($vantage, ExpressionResolver::receiverClasslikeNames($type));
-            if ($type === null || $visibility === null) {
+            if ($type === null || ExpressionResolver::receiverClasslikeNames($type) === []) {
                 return null;
             }
-            return MemberAccessContext::forInstance($type, $visibility, $prefix);
+            return MemberAccessContext::forInstance($type, $from, $prefix);
         }
 
         if (!$receiver instanceof Name) {
             return null;
         }
         $keyword = LateBindingKeyword::tryFromName($receiver->toString());
-        $targetName = $keyword === null ? $receiver->toString() : $keyword->resolveIn($located->classLike);
+        $targetName = $located->scope->resolveClasslikeName($receiver);
         if ($targetName === null) {
             return null;
         }
-        $target = ClasslikeName::fromFullyQualified($targetName);
-        $visibility = $this->visibilityBetween($vantage, $target);
+        $target = new ClasslikeType(ClasslikeName::fromFullyQualified($targetName));
         return $keyword === LateBindingKeyword::Parent
-            ? MemberAccessContext::forParent(new ClasslikeType($target), $visibility, $prefix)
-            : MemberAccessContext::forStatic(new ClasslikeType($target), $visibility, $prefix);
-    }
-
-    /**
-     * Null when the receiver resolves to no classes; otherwise the most
-     * restrictive visibility across them: a member must be visible on every
-     * class the receiver may be to be safe to offer.
-     *
-     * @param list<ClasslikeName> $classes
-     */
-    private function visibilityForReceiver(?ClasslikeName $vantage, array $classes): ?Visibility
-    {
-        if ($classes === []) {
-            return null;
-        }
-        $visibility = Visibility::Private;
-        foreach ($classes as $target) {
-            $per = $this->visibilityBetween($vantage, $target);
-            if ($per->value > $visibility->value) {
-                $visibility = $per;
-            }
-        }
-        return $visibility;
-    }
-
-    /**
-     * How visible a class's members are from code in another: private from the
-     * same class, protected from a subclass at any depth, otherwise public.
-     */
-    private function visibilityBetween(?ClasslikeName $vantage, ClasslikeName $target): Visibility
-    {
-        if ($vantage === null) {
-            return Visibility::Public;
-        }
-        if ($vantage->equals($target)) {
-            return Visibility::Private;
-        }
-        if ($this->memberResolver->isSubclassOf($vantage, $target)) {
-            return Visibility::Protected;
-        }
-        return Visibility::Public;
+            ? MemberAccessContext::forParent($target, $from, $prefix)
+            : MemberAccessContext::forStatic($target, $from, $prefix);
     }
 
     private static function type(Located $located, TypeHintContext $context): Expected
@@ -200,7 +153,7 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
         return new NameQuery(
             $kinds,
             $filter,
-            NameContextFactory::in($located->namespace, $located->parsed->tree),
+            $located->scope->nameContext(),
             $absolute,
         );
     }

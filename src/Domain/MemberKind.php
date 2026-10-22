@@ -29,6 +29,18 @@ enum MemberKind
     }
 
     /**
+     * Whether PHP checks access to this kind the way it does for an object's
+     * members: protected against the class that first declared the name, and
+     * with a class reaching its own private member on an instance of a
+     * subclass. Constants and enum cases are checked against the nearest
+     * declaration alone (`zend_verify_const_access` in php-src).
+     */
+    public function checksAccessByFirstDeclaration(): bool
+    {
+        return $this === self::Method || $this === self::Property;
+    }
+
+    /**
      * Where a class-like holds the members of this kind, keyed by declared name.
      *
      * @return array<string, MemberInfoInterface>

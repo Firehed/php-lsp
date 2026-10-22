@@ -33,4 +33,9 @@ class BindingSites
         }
         $afterEverything = 1;
     }
+
+    public function shadowing(int $value): void
+    {
+        $arrow = fn(string $value) => $value;
+    }
 }

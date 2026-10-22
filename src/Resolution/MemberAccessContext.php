@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
-use Firehed\PhpLsp\Domain\Visibility;
 
+/**
+ * A member access being written: what it is on, and the class-like the access
+ * is written in ($from; null outside any class), which decides the members it
+ * may use.
+ */
 final readonly class MemberAccessContext
 {
     private function __construct(
         public TypeInterface $type,
-        public Visibility $minVisibility,
+        public ?ClasslikeName $from,
         public MemberAccessKind $kind,
         public string $prefix,
         public MemberFilter $memberFilter,
@@ -24,12 +29,12 @@ final readonly class MemberAccessContext
 
     public static function forInstance(
         TypeInterface $type,
-        Visibility $minVisibility,
+        ?ClasslikeName $from,
         string $prefix,
     ): self {
         return new self(
             $type,
-            $minVisibility,
+            $from,
             MemberAccessKind::Instance,
             $prefix,
             MemberFilter::Instance,
@@ -40,12 +45,12 @@ final readonly class MemberAccessContext
 
     public static function forStatic(
         TypeInterface $type,
-        Visibility $minVisibility,
+        ?ClasslikeName $from,
         string $prefix,
     ): self {
         return new self(
             $type,
-            $minVisibility,
+            $from,
             MemberAccessKind::Static,
             $prefix,
             MemberFilter::Static,
@@ -56,12 +61,12 @@ final readonly class MemberAccessContext
 
     public static function forParent(
         TypeInterface $type,
-        Visibility $minVisibility,
+        ?ClasslikeName $from,
         string $prefix,
     ): self {
         return new self(
             $type,
-            $minVisibility,
+            $from,
             MemberAccessKind::Parent,
             $prefix,
             MemberFilter::All,

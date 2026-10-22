@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Resolution;
 
-use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Resolution\ParameterTyping;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
@@ -40,7 +39,6 @@ final class ParameterTypingTest extends TestCase
             $param,
             'x',
             $method,
-            ClasslikeName::fromFullyQualified('C'),
             'C',
             null,
         );
@@ -67,7 +65,6 @@ final class ParameterTypingTest extends TestCase
             $fn,
             null,
             null,
-            null,
         );
 
         self::assertSame($expected, $type, 'Function_ scope routes through TypeSourceInterface::forFunctionParameter');
@@ -86,7 +83,6 @@ final class ParameterTypingTest extends TestCase
             $param,
             'x',
             $closure,
-            null,
             null,
             null,
         );
@@ -114,7 +110,6 @@ final class ParameterTypingTest extends TestCase
             $arrow,
             null,
             null,
-            null,
         );
 
         self::assertInstanceOf(
@@ -138,7 +133,6 @@ final class ParameterTypingTest extends TestCase
             $param,
             'x',
             $method,
-            null,
             null,
             null,
         );

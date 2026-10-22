@@ -12,20 +12,23 @@ use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo;
-use Firehed\PhpLsp\Domain\Visibility;
 
 /**
  * The single seam every question about the type graph goes through — member
  * lookup and subclass checks alike. Callers ask for a member of a class; the
  * implementation walks used traits, then the parent chain, then interfaces,
  * so no member kind can see a different hierarchy than another.
+ *
+ * A member lookup takes `$from`: the class-like the code asking is written
+ * in, or null for code outside any class. Only a member PHP lets that code
+ * use is found.
  */
 interface MemberResolverInterface
 {
     public function findConstant(
         ClasslikeName $class,
         string $name,
-        Visibility $minVisibility,
+        ?ClasslikeName $from,
     ): ?ClasslikeConstantInfo;
 
     public function findEnumCase(ClasslikeName $class, string $name): ?EnumCaseInfo;
@@ -33,13 +36,13 @@ interface MemberResolverInterface
     public function findMethod(
         ClasslikeName $class,
         string $name,
-        Visibility $minVisibility,
+        ?ClasslikeName $from,
     ): ?MethodInfo;
 
     public function findProperty(
         ClasslikeName $class,
         string $name,
-        Visibility $minVisibility,
+        ?ClasslikeName $from,
     ): ?PropertyInfo;
 
     /**
@@ -48,7 +51,7 @@ interface MemberResolverInterface
     public function getMembersOfKind(
         ClasslikeName $class,
         MemberKind $kind,
-        Visibility $minVisibility,
+        ?ClasslikeName $from,
         MemberFilter $filter = MemberFilter::All,
     ): array;
 
