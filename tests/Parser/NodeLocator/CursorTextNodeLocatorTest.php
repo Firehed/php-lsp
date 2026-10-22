@@ -7,10 +7,9 @@ namespace Firehed\PhpLsp\Tests\Parser\NodeLocator;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\DescribesSyntaxTreesTrait;
+use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
 use PhpParser\Node\Attribute;
@@ -478,7 +477,7 @@ class CursorTextNodeLocatorTest extends TestCase
     {
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
 
-        return (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document);
+        return (ParserOnlySyntaxSource::create())->parse($document);
     }
 
     private function nodeAtMarker(ParsedDocument $parsed, string $marker): ?Node

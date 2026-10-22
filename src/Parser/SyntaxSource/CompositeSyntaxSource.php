@@ -20,7 +20,7 @@ final class CompositeSyntaxSource implements SyntaxSourceInterface
     private readonly array $sources;
 
     public function __construct(
-        PhpParserSyntaxSource $primary,
+        ParsingSyntaxSource $primary,
         SkeletonSyntaxSource $skeleton,
     ) {
         $this->sources = [$primary, $skeleton];

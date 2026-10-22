@@ -10,10 +10,9 @@ use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Resolution\CallContextDetector;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use LogicException;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\New_;
@@ -211,7 +210,7 @@ final class CallContextDetectorTest extends TestCase
     private function detectAt(string $fixture, string $marker, ?NodeLocatorInterface $locator = null): ?array
     {
         $content = $this->loadFixture($fixture);
-        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse(
+        $parsed = (ParserOnlySyntaxSource::create())->parse(
             new TextDocument('file:///' . $fixture, 'php', 1, $content),
         );
 

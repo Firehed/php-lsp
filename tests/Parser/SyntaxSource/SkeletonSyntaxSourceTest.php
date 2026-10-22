@@ -7,10 +7,9 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
@@ -357,7 +356,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     public function testParentNamesCarryTheirWrittenPositions(string $fixture): void
     {
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
-        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+        $parsed = (ParserOnlySyntaxSource::create())->parse($document)->tree;
 
         self::assertSame(
             self::describeParentNames($parsed),
@@ -411,7 +410,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     public function testClassLikesSpanWhereTheyAreWritten(string $fixture): void
     {
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
-        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+        $parsed = (ParserOnlySyntaxSource::create())->parse($document)->tree;
 
         self::assertSame(
             self::describeClassLikeSpans($parsed),
@@ -459,7 +458,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     public function testDeclarationsCarryTheirWrittenPositions(string $fixture): void
     {
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
-        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+        $parsed = (ParserOnlySyntaxSource::create())->parse($document)->tree;
 
         self::assertSame(
             self::describeDeclarationPositions($parsed),
@@ -540,7 +539,7 @@ final class SkeletonSyntaxSourceTest extends TestCase
     public function testNullableParameterTypesCarryTheirWrittenPositions(string $fixture): void
     {
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
-        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+        $parsed = (ParserOnlySyntaxSource::create())->parse($document)->tree;
 
         self::assertSame(
             self::describeNullableParameterTypes($parsed),

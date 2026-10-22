@@ -7,11 +7,10 @@ namespace Firehed\PhpLsp\Tests\Parser\NodeLocator;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use PhpParser\Node\Identifier;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -26,7 +25,7 @@ final class TreeNodeLocatorTest extends TestCase
 
     public function testFindsTheInnermostNodeAtTheOffset(): void
     {
-        $parsed = $this->parse(new PhpParserSyntaxSource(new TreeAnnotator()));
+        $parsed = $this->parse(ParserOnlySyntaxSource::create());
         $position = $this->locateHoverMarker($parsed->document->getContent(), 'inherited_method');
 
         $node = (new TreeNodeLocator())->nodeAt(
@@ -81,7 +80,7 @@ final class TreeNodeLocatorTest extends TestCase
     public static function treeSources(): array
     {
         return [
-            'php-parser' => [new PhpParserSyntaxSource(new TreeAnnotator())],
+            'php-parser' => [ParserOnlySyntaxSource::create()],
             'skeleton' => [new SkeletonSyntaxSource()],
         ];
     }

@@ -9,9 +9,8 @@ use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use PhpParser\Node\Expr\StaticPropertyFetch;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -25,7 +24,7 @@ final class CompositeNodeLocatorTest extends TestCase
 
     public function testTheTreeAnswersFirst(): void
     {
-        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($this->document());
+        $parsed = (ParserOnlySyntaxSource::create())->parse($this->document());
         $position = $this->locateHoverMarker($parsed->document->getContent(), 'inherited_method');
         $offset = $parsed->document->offsetAt($position['line'], $position['character']);
 

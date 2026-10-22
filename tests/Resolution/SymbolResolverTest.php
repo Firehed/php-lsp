@@ -14,9 +14,7 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\NameContext;
@@ -25,6 +23,7 @@ use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -172,7 +171,7 @@ final class SymbolResolverTest extends TestCase
 
         $resolved = self::resolver(
             $symbols,
-            syntax: new PhpParserSyntaxSource(new TreeAnnotator()),
+            syntax: ParserOnlySyntaxSource::create(),
             locator: new TreeNodeLocator(),
         )
             ->resolveAtPosition(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
@@ -314,7 +313,7 @@ final class SymbolResolverTest extends TestCase
     {
         return self::resolver(
             $symbols,
-            syntax: new PhpParserSyntaxSource(new TreeAnnotator()),
+            syntax: ParserOnlySyntaxSource::create(),
             locator: new TreeNodeLocator(),
         );
     }

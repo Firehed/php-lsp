@@ -32,7 +32,9 @@ return [
     Document\SourceFileReader::class,
 
     Parser\TreeAnnotator::class => fn () => new Parser\TreeAnnotator(),
-    Parser\SyntaxSource\PhpParserSyntaxSource::class,
+    Parser\SyntaxSource\PhpParserCodeParser::class,
+    Parser\SyntaxSource\CodeParserInterface::class => Parser\SyntaxSource\PhpParserCodeParser::class,
+    Parser\SyntaxSource\ParsingSyntaxSource::class,
     Parser\SyntaxSource\SkeletonSyntaxSource::class,
     Parser\SyntaxSource\CompositeSyntaxSource::class,
     // The memo decorates the composite and is the one instance both the

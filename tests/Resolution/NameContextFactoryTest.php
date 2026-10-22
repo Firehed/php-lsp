@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -71,7 +70,7 @@ final class NameContextFactoryTest extends TestCase
     {
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///t.php', 'php', 0, $content);
-        $ast = (new PhpParserSyntaxSource(new TreeAnnotator()))->parse($document)->tree;
+        $ast = (ParserOnlySyntaxSource::create())->parse($document)->tree;
 
         self::assertEquals(
             $expected,

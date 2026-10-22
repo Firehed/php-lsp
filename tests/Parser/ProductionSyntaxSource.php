@@ -14,9 +14,7 @@ use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 
 /**
  * The test-facing wiring for the production SyntaxSourceInterface and
@@ -40,7 +38,7 @@ final readonly class ProductionSyntaxSource
     {
         $this->counter = new CountingSyntaxSource(
             new CompositeSyntaxSource(
-                new PhpParserSyntaxSource(new TreeAnnotator()),
+                ParserOnlySyntaxSource::create(),
                 new SkeletonSyntaxSource(),
             ),
         );

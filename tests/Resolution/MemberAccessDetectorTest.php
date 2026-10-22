@@ -19,9 +19,7 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
@@ -30,6 +28,7 @@ use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -376,7 +375,7 @@ class MemberAccessDetectorTest extends TestCase
         $content = $this->loadFixture($fixture);
         ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
-        $parser = new PhpParserSyntaxSource(new TreeAnnotator());
+        $parser = ParserOnlySyntaxSource::create();
         $detector = self::detectorKnowingFixtureMembers(new TreeNodeLocator());
 
         self::assertEquals(

@@ -87,7 +87,7 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
         if ($tree === []) {
             return new ParsedDocument($document, []);
         }
-        return new ParsedDocument($document, $this->annotator->annotate($tree, []));
+        return new ParsedDocument($document, $this->annotator->annotate($tree));
     }
 
     /**

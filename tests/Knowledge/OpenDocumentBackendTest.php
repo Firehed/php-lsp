@@ -11,9 +11,8 @@ use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\OpenDocumentBackend;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -520,7 +519,7 @@ final class OpenDocumentBackendTest extends TestCase
         // Precondition that separates the composite's two arms: php-parser alone
         // yields nothing on this fixture, so a class registered after the write can
         // only have come from the skeleton.
-        $phpParserOnly = new PhpParserSyntaxSource(new TreeAnnotator());
+        $phpParserOnly = ParserOnlySyntaxSource::create();
         self::assertSame(
             [],
             $phpParserOnly->parse($document)->tree,

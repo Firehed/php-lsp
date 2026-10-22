@@ -11,12 +11,11 @@ use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\AssertsTreeContractTrait;
+use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -41,7 +40,7 @@ final class NodeLocatorContractTest extends TestCase
     {
         $tree = new TreeNodeLocator();
         $cursorText = new CursorTextNodeLocator();
-        $parser = new PhpParserSyntaxSource(new TreeAnnotator());
+        $parser = ParserOnlySyntaxSource::create();
         $skeleton = new SkeletonSyntaxSource();
 
         yield 'tree, parsed: method in a class' => [
@@ -110,7 +109,7 @@ final class NodeLocatorContractTest extends TestCase
     {
         $fixture = 'src/Inheritance/ChildClass.php';
         $content = $this->loadFixture($fixture);
-        $parsed = (new PhpParserSyntaxSource(new TreeAnnotator()))
+        $parsed = (ParserOnlySyntaxSource::create())
             ->parse(new TextDocument('file:///' . $fixture, 'php', 1, $content));
         $offset = $this->markerOffset($content, 'direct_parent_static');
         self::assertNotSame([], $parsed->tree, "php-parser must yield a tree for {$fixture}");
