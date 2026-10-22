@@ -49,7 +49,6 @@ final class ThisTypingParityTest extends TestCase
         $this->resolver = new SymbolResolver(
             $production->source,
             $production->locator,
-            $symbols,
             $members,
             $expressions,
         );

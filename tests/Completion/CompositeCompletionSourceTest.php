@@ -35,6 +35,7 @@ use Firehed\PhpLsp\Resolution\Position\CallAtPositionInterface;
 use Firehed\PhpLsp\Resolution\Position\ScopeAtPositionInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
+use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -55,7 +56,7 @@ final class CompositeCompletionSourceTest extends TestCase
             self::labelsAfter(
                 'foo($va',
                 $symbols,
-                self::createStub(CodeResolverInterface::class),
+                self::createStub(SymbolCapabilitiesInterface::class),
                 self::aCall(),
                 self::aVariable(),
             ),
@@ -68,7 +69,7 @@ final class CompositeCompletionSourceTest extends TestCase
         $labels = self::labelsAfter(
             'foo(n',
             self::everySymbolKind(),
-            self::createStub(CodeResolverInterface::class),
+            self::createStub(SymbolCapabilitiesInterface::class),
             self::aCall(),
             self::aVariable(),
         );
@@ -101,11 +102,12 @@ final class CompositeCompletionSourceTest extends TestCase
     public function testMemberAccessInACommentOffersNothing(): void
     {
         $owner = ClasslikeName::fromFullyQualified('Widget');
-        $codeResolver = self::createStub(CodeResolverInterface::class);
-        $codeResolver->method('getMemberAccessContext')->willReturn(
+        $memberAccess = self::createStub(CodeResolverInterface::class);
+        $memberAccess->method('getMemberAccessContext')->willReturn(
             MemberAccessContext::forInstance(new ClasslikeType($owner), Visibility::Public, ''),
         );
-        $codeResolver->method('getAccessibleMembers')->willReturn([new MethodInfo(
+        $symbolCapabilities = self::createStub(SymbolCapabilitiesInterface::class);
+        $symbolCapabilities->method('getAccessibleMembers')->willReturn([new MethodInfo(
             name: new MethodName($owner, 'save'),
             visibility: Visibility::Public,
             isStatic: false,
@@ -120,7 +122,7 @@ final class CompositeCompletionSourceTest extends TestCase
 
         self::assertSame(
             [],
-            self::labelsAfter('// $x->', self::everySymbolKind(), $codeResolver),
+            self::labelsAfter('// $x->', self::everySymbolKind(), $symbolCapabilities, memberAccess: $memberAccess),
             'a comment is checked before member access, so its members are not offered',
         );
     }
@@ -132,7 +134,7 @@ final class CompositeCompletionSourceTest extends TestCase
             self::labelsAfter(
                 'foo("Z',
                 self::everySymbolKind(),
-                self::createStub(CodeResolverInterface::class),
+                self::createStub(SymbolCapabilitiesInterface::class),
                 self::aCall(),
                 self::aVariable(),
             ),
@@ -142,8 +144,8 @@ final class CompositeCompletionSourceTest extends TestCase
 
     public function testMemberAccessAnswersAloneEvenWithNoMembers(): void
     {
-        $codeResolver = self::createStub(CodeResolverInterface::class);
-        $codeResolver->method('getMemberAccessContext')->willReturn(MemberAccessContext::forInstance(
+        $memberAccess = self::createStub(CodeResolverInterface::class);
+        $memberAccess->method('getMemberAccessContext')->willReturn(MemberAccessContext::forInstance(
             new ClasslikeType(ClasslikeName::fromFullyQualified('Widget')),
             Visibility::Public,
             '',
@@ -153,7 +155,13 @@ final class CompositeCompletionSourceTest extends TestCase
 
         self::assertSame(
             [],
-            self::labelsAfter('foo($x->', $symbols, $codeResolver, self::aCall()),
+            self::labelsAfter(
+                'foo($x->',
+                $symbols,
+                self::createStub(SymbolCapabilitiesInterface::class),
+                self::aCall(),
+                memberAccess: $memberAccess,
+            ),
             'member access owns the position: no argument names or variables from the enclosing call',
         );
     }
@@ -175,8 +183,8 @@ final class CompositeCompletionSourceTest extends TestCase
         string $code,
         array $expected,
     ): void {
-        $codeResolver = self::createStub(CodeResolverInterface::class);
-        $codeResolver->method('isClassLike')->willReturn(true);
+        $symbolCapabilities = self::createStub(SymbolCapabilitiesInterface::class);
+        $symbolCapabilities->method('isClassLike')->willReturn(true);
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturnCallback(
             static fn (NamespaceName $namespace): NamespaceContents => $namespace->path === 'Lib'
@@ -189,7 +197,7 @@ final class CompositeCompletionSourceTest extends TestCase
             self::labelsAfter(
                 $code,
                 $symbols,
-                $codeResolver,
+                $symbolCapabilities,
                 variables: [new ResolvedVariable('greeting', new PrimitiveType('string'))],
             ),
             'a closure use offers only variables; an import offers only navigated class-likes',
@@ -279,18 +287,18 @@ final class CompositeCompletionSourceTest extends TestCase
     {
         $only = static fn (string $accepted): Closure
             => static fn (ClasslikeName $name): bool => $name->equals(ClasslikeName::fromFullyQualified($accepted));
-        $codeResolver = self::createStub(CodeResolverInterface::class);
-        $codeResolver->method('isValidTypeHint')->willReturnCallback(
+        $symbolCapabilities = self::createStub(SymbolCapabilitiesInterface::class);
+        $symbolCapabilities->method('isValidTypeHint')->willReturnCallback(
             static fn (ClasslikeName $name): bool => !$name->equals(ClasslikeName::fromFullyQualified('Mixin')),
         );
-        $codeResolver->method('isInstantiable')->willReturnCallback($only('Widget'));
-        $codeResolver->method('isInterface')->willReturnCallback($only('Contract'));
-        $codeResolver->method('isExtendableClass')->willReturnCallback($only('Base'));
-        $codeResolver->method('isThrowable')->willReturnCallback($only('Failure'));
-        $codeResolver->method('isAttribute')->willReturnCallback($only('Marker'));
-        $codeResolver->method('isTrait')->willReturnCallback($only('Mixin'));
+        $symbolCapabilities->method('isInstantiable')->willReturnCallback($only('Widget'));
+        $symbolCapabilities->method('isInterface')->willReturnCallback($only('Contract'));
+        $symbolCapabilities->method('isExtendableClass')->willReturnCallback($only('Base'));
+        $symbolCapabilities->method('isThrowable')->willReturnCallback($only('Failure'));
+        $symbolCapabilities->method('isAttribute')->willReturnCallback($only('Marker'));
+        $symbolCapabilities->method('isTrait')->willReturnCallback($only('Mixin'));
 
-        return self::labelsAfter($code, self::everySymbolKind(), $codeResolver);
+        return self::labelsAfter($code, self::everySymbolKind(), $symbolCapabilities);
     }
 
     /**
@@ -342,9 +350,10 @@ final class CompositeCompletionSourceTest extends TestCase
     private static function labelsAfter(
         string $code,
         SymbolSourceInterface $symbols,
-        CodeResolverInterface $codeResolver,
+        SymbolCapabilitiesInterface $symbolCapabilities,
         ?CallContext $call = null,
         array $variables = [],
+        ?CodeResolverInterface $memberAccess = null,
     ): array {
         $capabilities = self::capabilitiesProvider();
         $itemFactory = new CompletionItemFactory(new ResolvedSymbolPresenter());
@@ -355,10 +364,15 @@ final class CompositeCompletionSourceTest extends TestCase
         $scope->method('nameContextAt')->willReturn(new NameContext(''));
         $source = new CompositeCompletionSource(
             $calls,
-            new SymbolCandidates($symbols, $codeResolver, $scope, $capabilities, $itemFactory),
+            new SymbolCandidates($symbols, $symbolCapabilities, $scope, $capabilities, $itemFactory),
             new KeywordCandidates($itemFactory),
             new VariableCandidates($scope, $itemFactory),
-            new MemberCandidates($codeResolver, $capabilities, $itemFactory),
+            new MemberCandidates(
+                $memberAccess ?? self::createStub(CodeResolverInterface::class),
+                $symbolCapabilities,
+                $capabilities,
+                $itemFactory,
+            ),
             new NamedArgumentCandidates($calls, $itemFactory),
             new BuiltinTypeCandidates($itemFactory),
         );

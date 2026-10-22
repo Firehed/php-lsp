@@ -13,11 +13,11 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\Position\ScopeAtPositionInterface;
 use Firehed\PhpLsp\Resolution\Reference;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;
+use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
 
 /**
  * The one source of symbol completions. For an unqualified prefix it does flat
@@ -45,7 +45,7 @@ final class SymbolCandidates
 
     public function __construct(
         private readonly SymbolSourceInterface $symbolSource,
-        private readonly CodeResolverInterface $codeResolver,
+        private readonly SymbolCapabilitiesInterface $symbolCapabilities,
         private readonly ScopeAtPositionInterface $scope,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
         private readonly CompletionItemFactory $itemFactory,
@@ -430,10 +430,10 @@ final class SymbolCandidates
         if ($symbol->kind->isClassLike()) {
             /** @var class-string $fqn */
             $className = ClasslikeName::fromFullyQualified($fqn);
-            if (!$this->codeResolver->isClassLike($className)) {
+            if (!$this->symbolCapabilities->isClassLike($className)) {
                 return null;
             }
-            if (!$classFilter->accepts($className, $this->codeResolver)) {
+            if (!$classFilter->accepts($className, $this->symbolCapabilities)) {
                 return null;
             }
         }
@@ -473,7 +473,7 @@ final class SymbolCandidates
     {
         /** @var class-string $fqn */
         $className = ClasslikeName::fromFullyQualified($fqn);
-        return $filter->accepts($className, $this->codeResolver);
+        return $filter->accepts($className, $this->symbolCapabilities);
     }
 
     /**

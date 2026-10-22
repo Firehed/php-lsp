@@ -20,6 +20,7 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
+use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -72,18 +73,19 @@ final class MemberCandidatesTest extends TestCase
     public function testOffersTheResolvedMembersTheContextAccepts(MemberAccessContext $context, array $expected): void
     {
         $request = self::request();
-        $codeResolver = $this->createMock(CodeResolverInterface::class);
+        $codeResolver = self::createStub(CodeResolverInterface::class);
         $codeResolver->method('getMemberAccessContext')->willReturn($context);
-        $codeResolver->expects(self::once())
+        $symbols = $this->createMock(SymbolCapabilitiesInterface::class);
+        $symbols->expects(self::once())
             ->method('getAccessibleMembers')
-            ->with($request->document, $context->type, $context->minVisibility, $context->memberFilter)
+            ->with($context->type, $context->minVisibility, $context->memberFilter)
             ->willReturn([
                 self::member(new MethodName(self::owner(), 'getName'), MemberKind::Method),
                 self::member(new MethodName(self::owner(), 'getCount'), MemberKind::Method),
                 self::member(new PropertyName(self::owner(), 'name'), MemberKind::Property),
             ]);
 
-        $items = self::candidates($codeResolver)->find($request);
+        $items = self::candidates($codeResolver, $symbols)->find($request);
 
         self::assertNotNull($items, 'a member access answers, even when nothing matches');
         self::assertSame(
@@ -110,11 +112,12 @@ final class MemberCandidatesTest extends TestCase
         $codeResolver->method('getMemberAccessContext')->willReturn(
             MemberAccessContext::forInstance(new ClasslikeType(self::owner()), Visibility::Public, ''),
         );
-        $codeResolver->method('getAccessibleMembers')->willReturn([
+        $symbols = self::createStub(SymbolCapabilitiesInterface::class);
+        $symbols->method('getAccessibleMembers')->willReturn([
             self::member(new MethodName(self::owner(), 'getName'), MemberKind::Method),
         ]);
 
-        $items = self::candidates($codeResolver, snippetSupport: true)->find(self::request());
+        $items = self::candidates($codeResolver, $symbols, snippetSupport: true)->find(self::request());
 
         self::assertNotNull($items, 'a member access offers members');
         self::assertSame(
@@ -126,10 +129,12 @@ final class MemberCandidatesTest extends TestCase
 
     private static function candidates(
         CodeResolverInterface $codeResolver,
+        ?SymbolCapabilitiesInterface $symbols = null,
         bool $snippetSupport = false,
     ): MemberCandidates {
         return new MemberCandidates(
             $codeResolver,
+            $symbols ?? self::createStub(SymbolCapabilitiesInterface::class),
             self::capabilitiesProvider(new SessionCapabilities(snippetSupport: $snippetSupport)),
             new CompletionItemFactory(new ResolvedSymbolPresenter()),
         );

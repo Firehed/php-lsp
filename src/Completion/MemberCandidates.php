@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
+use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
 
 /**
  * Produces member completion items after `->`, `?->`, or `::`.
@@ -24,6 +24,7 @@ final class MemberCandidates implements CompletionSourceInterface
 {
     public function __construct(
         private readonly CodeResolverInterface $codeResolver,
+        private readonly SymbolCapabilitiesInterface $symbols,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
         private readonly CompletionItemFactory $itemFactory,
     ) {
@@ -40,16 +41,15 @@ final class MemberCandidates implements CompletionSourceInterface
             return null;
         }
 
-        return $this->itemsFor($context, $request->document);
+        return $this->itemsFor($context);
     }
 
     /**
      * @return list<CompletionItem>
      */
-    private function itemsFor(MemberAccessContext $context, TextDocument $document): array
+    private function itemsFor(MemberAccessContext $context): array
     {
-        $members = $this->codeResolver->getAccessibleMembers(
-            $document,
+        $members = $this->symbols->getAccessibleMembers(
             $context->type,
             $context->minVisibility,
             $context->memberFilter,

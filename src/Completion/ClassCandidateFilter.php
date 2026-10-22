@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
 
 /**
  * The intent behind a class-name completion, which determines the resolution
@@ -46,19 +46,19 @@ enum ClassCandidateFilter
 
     /**
      * Whether a class-like is valid in this position, resolved through the
-     * {@see CodeResolverInterface} predicates (which read the caching class repository).
+     * {@see SymbolCapabilitiesInterface} predicates (which read the caching class repository).
      */
-    public function accepts(ClasslikeName $className, CodeResolverInterface $codeResolver): bool
+    public function accepts(ClasslikeName $className, SymbolCapabilitiesInterface $symbols): bool
     {
         return match ($this) {
             self::Any => true,
-            self::Instantiable => $codeResolver->isInstantiable($className),
-            self::TypeHint => $codeResolver->isValidTypeHint($className),
-            self::Interface_ => $codeResolver->isInterface($className),
-            self::ExtendableClass => $codeResolver->isExtendableClass($className),
-            self::Throwable => $codeResolver->isThrowable($className),
-            self::Attribute => $codeResolver->isAttribute($className),
-            self::Trait_ => $codeResolver->isTrait($className),
+            self::Instantiable => $symbols->isInstantiable($className),
+            self::TypeHint => $symbols->isValidTypeHint($className),
+            self::Interface_ => $symbols->isInterface($className),
+            self::ExtendableClass => $symbols->isExtendableClass($className),
+            self::Throwable => $symbols->isThrowable($className),
+            self::Attribute => $symbols->isAttribute($className),
+            self::Trait_ => $symbols->isTrait($className),
         };
     }
 }
