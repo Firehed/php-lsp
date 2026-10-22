@@ -123,4 +123,9 @@ class ChildClass extends ParentClass
     {
         static::staticMethod(/*|static_sig*/);
     }
+
+    /** Protected child method. */
+    protected function childProtectedMethod(): void
+    {
+    }
 }

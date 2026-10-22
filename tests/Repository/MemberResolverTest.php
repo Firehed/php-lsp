@@ -1836,6 +1836,58 @@ final class MemberResolverTest extends TestCase
         string $target,
         bool $expected,
     ): void {
+        self::assertSame(
+            $expected,
+            $this->resolverOverGraph($graph)->isSubclassOf(
+                ClasslikeName::fromFullyQualified($subject),
+                ClasslikeName::fromFullyQualified($target),
+            ),
+            "isSubclassOf walking from {$subject} to {$target}",
+        );
+    }
+
+    /**
+     * @return iterable<string, array{?string, string, Visibility}>
+     */
+    public static function visibilityFromCases(): iterable
+    {
+        yield 'outside any class' => [null, 'App\\ParentClass', Visibility::Public];
+        yield 'the same class' => ['App\\ParentClass', 'App\\ParentClass', Visibility::Private];
+        yield 'the same class spelled in another case' => ['APP\\PARENTCLASS', 'App\\ParentClass', Visibility::Private];
+        yield 'a subclass of the class' => ['App\\Child', 'App\\ParentClass', Visibility::Protected];
+        yield 'a parent of the class' => ['App\\ParentClass', 'App\\Child', Visibility::Protected];
+        yield 'an unrelated class' => ['App\\Unrelated', 'App\\ParentClass', Visibility::Public];
+    }
+
+    /**
+     * Private members are reachable from their own class; protected ones from
+     * classes related by inheritance in either direction (PHP manual,
+     * Visibility).
+     */
+    #[DataProvider('visibilityFromCases')]
+    public function testVisibilityFromWhereCodeIsWritten(?string $vantage, string $class, Visibility $expected): void
+    {
+        $resolver = $this->resolverOverGraph([
+            ['App\\Child', ClassKind::Class_, 'App\\ParentClass', []],
+            ['App\\ParentClass', ClassKind::Class_, null, []],
+            ['App\\Unrelated', ClassKind::Class_, null, []],
+        ]);
+
+        self::assertSame(
+            $expected,
+            $resolver->visibilityFrom(
+                $vantage === null ? null : ClasslikeName::fromFullyQualified($vantage),
+                ClasslikeName::fromFullyQualified($class),
+            ),
+            "the members of {$class} visible from " . ($vantage ?? 'outside any class'),
+        );
+    }
+
+    /**
+     * @param list<array{0: string, 1: ClassKind, 2: ?string, 3: list<string>}> $graph
+     */
+    private function resolverOverGraph(array $graph): MemberResolver
+    {
         $infos = [];
         foreach ($graph as [$fqn, $kind, $parent, $interfaces]) {
             $info = $this->createClassInfo(
@@ -1856,16 +1908,7 @@ final class MemberResolverTest extends TestCase
                 ?? null,
         );
 
-        $resolver = new MemberResolver($repo);
-
-        self::assertSame(
-            $expected,
-            $resolver->isSubclassOf(
-                ClasslikeName::fromFullyQualified($subject),
-                ClasslikeName::fromFullyQualified($target),
-            ),
-            "isSubclassOf walking from {$subject} to {$target}",
-        );
+        return new MemberResolver($repo);
     }
 
     /**

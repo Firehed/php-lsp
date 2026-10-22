@@ -104,8 +104,7 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
     {
         // A static property's name is written with its `$`; a member's name is not.
         $prefix = ltrim($located->prefix, '$');
-        $vantageName = $located->scope->getSelfContext();
-        $vantage = $vantageName === null ? null : ClasslikeName::fromFullyQualified($vantageName);
+        $vantage = $located->scope->getSelfName();
         $receiver = $located->receiver;
 
         if ($located->slot === Slot::Member) {
@@ -127,7 +126,7 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
             return null;
         }
         $target = ClasslikeName::fromFullyQualified($targetName);
-        $visibility = $this->visibilityBetween($vantage, $target);
+        $visibility = $this->memberResolver->visibilityFrom($vantage, $target);
         return $keyword === LateBindingKeyword::Parent
             ? MemberAccessContext::forParent(new ClasslikeType($target), $visibility, $prefix)
             : MemberAccessContext::forStatic(new ClasslikeType($target), $visibility, $prefix);
@@ -147,30 +146,12 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
         }
         $visibility = Visibility::Private;
         foreach ($classes as $target) {
-            $per = $this->visibilityBetween($vantage, $target);
+            $per = $this->memberResolver->visibilityFrom($vantage, $target);
             if ($per->value > $visibility->value) {
                 $visibility = $per;
             }
         }
         return $visibility;
-    }
-
-    /**
-     * How visible a class's members are from code in another: private from the
-     * same class, protected from a subclass at any depth, otherwise public.
-     */
-    private function visibilityBetween(?ClasslikeName $vantage, ClasslikeName $target): Visibility
-    {
-        if ($vantage === null) {
-            return Visibility::Public;
-        }
-        if ($vantage->equals($target)) {
-            return Visibility::Private;
-        }
-        if ($this->memberResolver->isSubclassOf($vantage, $target)) {
-            return Visibility::Protected;
-        }
-        return Visibility::Public;
     }
 
     private static function type(Located $located, TypeHintContext $context): Expected

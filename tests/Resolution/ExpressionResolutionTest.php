@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
+use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
@@ -22,18 +23,23 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
+use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
+use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -228,6 +234,40 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<string, array{string, string, ?string}>
+     */
+    public static function memberVisibility(): iterable
+    {
+        $parent = 'src/Inheritance/ParentClass.php';
+        $outsider = 'src/Inheritance/Outsider.php';
+        yield 'private, from its own class' => [$parent, 'private_method_internal', 'privateMethod'];
+        yield 'private, from a subclass' => ['src/Inheritance/ChildClass.php', 'private_method', null];
+        yield 'protected, from a parent class' => [$parent, 'child_protected_from_parent', 'childProtectedMethod'];
+        yield 'private, from an unrelated class' => [$outsider, 'private_from_outside', null];
+        yield 'protected, from an unrelated class' => [$outsider, 'protected_from_outside', null];
+        yield 'public, from an unrelated class' => [$outsider, 'public_from_outside', 'parentMethod'];
+        yield 'protected constant, from an unrelated class' => [$outsider, 'protected_constant_from_outside', null];
+    }
+
+    /**
+     * A member a call cannot reach from where it is written is not what the
+     * call names (PHP manual, Visibility).
+     */
+    #[DataProvider('memberVisibility')]
+    public function testAMemberResolvesOnlyWhereItIsVisible(string $fixture, string $marker, ?string $expected): void
+    {
+        $this->resolveOverTheFixtures();
+
+        $symbol = $this->resolveSymbolAt($fixture, $marker);
+
+        self::assertSame(
+            $expected,
+            $symbol instanceof MemberInfoInterface ? $symbol->getName()->name : null,
+            "the member named at {$marker}",
+        );
+    }
+
     public function testAStaticMethodsParameterIsTypedByItsMethod(): void
     {
         $this->typeEveryParameterAs(new PrimitiveType('int'));
@@ -297,6 +337,7 @@ final class ExpressionResolutionTest extends TestCase
         $child = self::className('Fixtures\Inheritance\ChildClass');
         $property = self::propertyInfo($child, 'staticProperty', self::userType());
         $members = self::createStub(MemberResolverInterface::class);
+        $members->method('visibilityFrom')->willReturn(Visibility::Private);
         $members->method('findProperty')->willReturnCallback(
             static fn (ClasslikeName $class, string $name): ?PropertyInfo
                 => $class->equals($child) && $name === 'staticProperty' ? $property : null,
@@ -341,6 +382,7 @@ final class ExpressionResolutionTest extends TestCase
     {
         $parameter = self::parameterInfo('name', new PrimitiveType('string'));
         $members = self::createStub(MemberResolverInterface::class);
+        $members->method('visibilityFrom')->willReturn(Visibility::Public);
         $members->method('findMethod')->willReturnCallback(
             static fn (ClasslikeName $class, string $name): ?MethodInfo => self::isUser($class)
                 && $name === '__construct'
@@ -410,6 +452,7 @@ final class ExpressionResolutionTest extends TestCase
     public function testMemberTheReceiversClassLacksIsUnresolved(): void
     {
         $members = $this->createMock(MemberResolverInterface::class);
+        $members->method('visibilityFrom')->willReturn(Visibility::Private);
         $members->expects(self::once())
             ->method('findProperty')
             ->with(self::className(self::USER_CLASS), 'unknownProperty')
@@ -506,6 +549,7 @@ final class ExpressionResolutionTest extends TestCase
     private function knowUserMembers(): void
     {
         $members = self::createStub(MemberResolverInterface::class);
+        $members->method('visibilityFrom')->willReturn(Visibility::Private);
         $members->method('findMethod')->willReturnCallback(
             static fn (ClasslikeName $class, string $name): ?MethodInfo => self::isUser($class)
                 && in_array($name, ['setName', 'create'], true)
@@ -529,6 +573,22 @@ final class ExpressionResolutionTest extends TestCase
      * Resolves against a type source that gives every method parameter this
      * type, and knows nothing else.
      */
+    /**
+     * Resolves against the fixtures' own classes, read as the server reads
+     * them, so a member lookup sees the real type graph.
+     */
+    private function resolveOverTheFixtures(): void
+    {
+        $production = ProductionSyntaxSource::create();
+        $symbols = new ComposerMapBackend(
+            new ComposerAutoloadMapReader(dirname(__DIR__) . '/Fixtures'),
+            $production->reader,
+            $production->declarations,
+        );
+        $members = new MemberResolver($symbols);
+        $this->resolver = self::resolverOver($symbols, new NativeTypeSource($symbols, $members), $members);
+    }
+
     private function typeEveryParameterAs(TypeInterface $type): void
     {
         $types = self::createStub(TypeSourceInterface::class);

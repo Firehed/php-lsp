@@ -59,6 +59,13 @@ interface MemberResolverInterface
      */
     public function isSubclassOf(ClasslikeName $class, ClasslikeName $potentialParent): bool;
 
+    /**
+     * The least visibility a member of $class may have and still be
+     * accessible from code written in $vantage, or from outside any class
+     * when $vantage is null.
+     */
+    public function visibilityFrom(?ClasslikeName $vantage, ClasslikeName $class): Visibility;
+
     public function isInterface(ClasslikeName $class): bool;
 
     public function isTrait(ClasslikeName $class): bool;

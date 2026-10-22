@@ -34,11 +34,12 @@ return [
         'sig_new_self_inside',
         new Expectation\SignatureShows('string $label'),
     ),
-    // A private constructor is still shown, so its parameters can be read.
-    'private constructor' => $signatureHelp(
+    // PHP refuses a private constructor called from another class, so nothing
+    // is offered there; `new self(...)` inside the class is shown above.
+    'private constructor from another class' => $signatureHelp(
         'src/LateBinding/PrivateCtorCaller.php',
         'sig_new_private_ctor',
-        new Expectation\SignatureShows('string $label'),
+        new Expectation\NoAnswer(),
     ),
     // `parent::` is the parent class, not the enclosing one (#101). ChildClass has
     // no constructor, so `$name` can only come from ParentClass.

@@ -132,6 +132,20 @@ final class MemberResolver implements MemberResolverInterface
         return false;
     }
 
+    public function visibilityFrom(?ClasslikeName $vantage, ClasslikeName $class): Visibility
+    {
+        if ($vantage === null) {
+            return Visibility::Public;
+        }
+        if ($vantage->equals($class)) {
+            return Visibility::Private;
+        }
+        if ($this->isSubclassOf($vantage, $class) || $this->isSubclassOf($class, $vantage)) {
+            return Visibility::Protected;
+        }
+        return Visibility::Public;
+    }
+
     public function isInterface(ClasslikeName $class): bool
     {
         return $this->source->lookupClassLike($class)?->isInterface() ?? false;

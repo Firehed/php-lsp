@@ -718,12 +718,18 @@ final class ExpectedAtPositionTest extends TestCase
         ];
 
         $memberResolver = self::createStub(MemberResolverInterface::class);
-        $memberResolver->method('isSubclassOf')->willReturnCallback(
-            static fn (ClasslikeName $class, ClasslikeName $parent): bool => in_array(
-                $parent->qualifiedName->fullyQualifiedName(),
-                $ancestors[$class->qualifiedName->fullyQualifiedName()] ?? [],
-                true,
-            ),
+        $isSubclassOf = static fn (ClasslikeName $class, ClasslikeName $parent): bool => in_array(
+            $parent->qualifiedName->fullyQualifiedName(),
+            $ancestors[$class->qualifiedName->fullyQualifiedName()] ?? [],
+            true,
+        );
+        $memberResolver->method('visibilityFrom')->willReturnCallback(
+            static fn (?ClasslikeName $vantage, ClasslikeName $class): Visibility => match (true) {
+                $vantage === null => Visibility::Public,
+                $vantage->equals($class) => Visibility::Private,
+                $isSubclassOf($vantage, $class) || $isSubclassOf($class, $vantage) => Visibility::Protected,
+                default => Visibility::Public,
+            },
         );
         $memberResolver->method('findMethod')->willReturnCallback(
             static function (ClasslikeName $class, string $name) use ($methods): ?MethodInfo {

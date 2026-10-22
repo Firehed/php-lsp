@@ -300,7 +300,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
      * Resolve the constructor callable a `new X(...)` or `#[X(...)]` invokes.
      * Distinct from `resolve()` on the same node: `resolve(New_)` answers the
      * *type* the expression produces, while this answers the callable that
-     * runs. Uses private visibility so promoted/private constructors are found.
+     * runs.
      */
     private function resolveConstructor(New_|Attribute $call, ParsedDocument $parsed): ?MethodInfo
     {
@@ -371,10 +371,11 @@ final class ExpressionResolver implements ExpressionResolverInterface
      * `$find`. The receiver-to-ClasslikeName dance — an instance expression that
      * resolves through `resolve()`, versus a class-name `Name` that resolves
      * through the {@see Scope} — is here, so a new member-access node kind adds
-     * one call site rather than another copy of this dance.
+     * one call site rather than another copy of this dance. Only a member
+     * visible from where the access is written is found.
      *
      * @template T of MemberInfoInterface
-     * @param callable(ClasslikeName, string): ?T $find
+     * @param callable(ClasslikeName, string, Visibility): ?T $find
      * @return ?T
      */
     private function resolveMember(
@@ -384,16 +385,18 @@ final class ExpressionResolver implements ExpressionResolverInterface
         callable $find,
         ParsedDocument $parsed,
     ): ?MemberInfoInterface {
+        $scope = Scope::at($context, $parsed->tree);
         if ($receiver instanceof Name) {
-            $classNameStr = Scope::at($context, $parsed->tree)->resolveClasslikeName($receiver);
+            $classNameStr = $scope->resolveClasslikeName($receiver);
             if ($classNameStr === null) {
                 return null;
             }
-            return $find(ClasslikeName::fromFullyQualified($classNameStr), $memberName);
+            $className = ClasslikeName::fromFullyQualified($classNameStr);
+            return $find($className, $memberName, $this->visibilityFrom($scope, $className));
         }
         $receiverType = $this->resolve($receiver, $parsed)?->getType();
         foreach (self::receiverClasslikeNames($receiverType) as $className) {
-            $member = $find($className, $memberName);
+            $member = $find($className, $memberName, $this->visibilityFrom($scope, $className));
             if ($member !== null) {
                 return $member;
             }
@@ -409,18 +412,23 @@ final class ExpressionResolver implements ExpressionResolverInterface
         return $type?->getResolvableClasslikeNames() ?? [];
     }
 
-    private function findMethod(ClasslikeName $className, string $name): ?MethodInfo
+    private function visibilityFrom(Scope $scope, ClasslikeName $className): Visibility
     {
-        $info = $this->memberResolver->findMethod($className, $name, Visibility::Private);
+        return $this->memberResolver->visibilityFrom($scope->getSelfName(), $className);
+    }
+
+    private function findMethod(ClasslikeName $className, string $name, Visibility $visibility): ?MethodInfo
+    {
+        $info = $this->memberResolver->findMethod($className, $name, $visibility);
         if ($info === null) {
             return null;
         }
         return $this->resolveLateBoundReturn($info, $className);
     }
 
-    private function findProperty(ClasslikeName $className, string $name): ?PropertyInfo
+    private function findProperty(ClasslikeName $className, string $name, Visibility $visibility): ?PropertyInfo
     {
-        return $this->memberResolver->findProperty($className, $name, Visibility::Private);
+        return $this->memberResolver->findProperty($className, $name, $visibility);
     }
 
     private function resolveClassConstFetch(ClassConstFetch $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
@@ -428,7 +436,8 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
             return null;
         }
-        $classNameStr = Scope::at($expr, $parsed->tree)->resolveClasslikeName($expr->class);
+        $scope = Scope::at($expr, $parsed->tree);
+        $classNameStr = $scope->resolveClasslikeName($expr->class);
         if ($classNameStr === null) {
             return null;
         }
@@ -437,12 +446,11 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if ($enumCase !== null) {
             return $enumCase;
         }
-        $constant = $this->memberResolver->findConstant(
+        return $this->memberResolver->findConstant(
             $className,
             $expr->name->toString(),
-            Visibility::Private,
+            $this->visibilityFrom($scope, $className),
         );
-        return $constant;
     }
 
     private function resolveConstFetch(Expr\ConstFetch $expr, ParsedDocument $parsed): ?ConstantInfo

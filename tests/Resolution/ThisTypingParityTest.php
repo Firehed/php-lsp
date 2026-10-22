@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
-use Firehed\PhpLsp\Repository\MemberResolverInterface;
+use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\Position\CallAtPosition;
 use Firehed\PhpLsp\Resolution\Position\ExpectedAtPosition;
@@ -28,8 +28,8 @@ use PHPUnit\Framework\TestCase;
  * The two features must agree on the receiver type for the same source input.
  *
  * Enclosing-class resolution runs off the AST alone — no backend lookup, no
- * member walk, no type source — so the parser is the only live collaborator
- * and the three knowledge interfaces are stubbed.
+ * member walk, no type source — so the symbol and type sources are stubbed,
+ * and the member resolver needs no class to say `$this` sees private members.
  */
 #[CoversClass(ExpectedAtPosition::class)]
 #[CoversClass(SymbolAtPosition::class)]
@@ -45,7 +45,7 @@ final class ThisTypingParityTest extends TestCase
     {
         $production = ProductionSyntaxSource::create();
         $symbols = self::createStub(SymbolSourceInterface::class);
-        $members = self::createStub(MemberResolverInterface::class);
+        $members = new MemberResolver($symbols);
         $types = self::createStub(TypeSourceInterface::class);
         $expressions = new ExpressionResolver($members, $symbols, $types);
         $locator = new PositionLocator($production->source);

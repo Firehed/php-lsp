@@ -75,6 +75,11 @@ class ParentClass extends Grandparent
         $this->protectedMethod(); //hover:protected_method_internal
     }
 
+    public function triggerHoverChildProtectedMethod(ChildClass $child): void
+    {
+        $child->childProtectedMethod(); //hover:child_protected_from_parent
+    }
+
     public function triggerHoverClassConstant(): string
     {
         return self::PARENT_CONST; //hover:class_constant

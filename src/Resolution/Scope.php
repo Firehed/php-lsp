@@ -112,6 +112,15 @@ final class Scope
     }
 
     /**
+     * The class-like code here is written in, which `self` names.
+     */
+    public function getSelfName(): ?ClasslikeName
+    {
+        $self = $this->getSelfContext();
+        return $self === null ? null : ClasslikeName::fromFullyQualified($self);
+    }
+
+    /**
      * @return ?class-string
      */
     public function getParentContext(): ?string
@@ -130,10 +139,7 @@ final class Scope
         if ($function instanceof Closure || $function instanceof ArrowFunction) {
             return $function->static ? null : $this->outer()?->getThisType();
         }
-        $self = $this->getSelfContext();
-        return $function instanceof Stmt\ClassMethod && !$function->isStatic() && $self !== null
-            ? ClasslikeName::fromFullyQualified($self)
-            : null;
+        return $function instanceof Stmt\ClassMethod && !$function->isStatic() ? $this->getSelfName() : null;
     }
 
     /**
