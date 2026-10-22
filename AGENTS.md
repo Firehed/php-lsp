@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This document supplements instructions in CONTRIBUTING.md, not replace them.
+This document supplements instructions in CONTRIBUTING.md rather than replacing them.
 
 ## Quick Start
 
@@ -27,7 +27,7 @@ This document's guidance should override matching existing structure.
 
 ADR documents are being added in `docs/adrs` to capture the intended architecture and context behind it.
 If a session leads to a design decision, that decision should be captured in a new ADR.
-ADRs should be considered read-only once landed to main, with the exception of changing the status (e.g. superceding or abandoning).
+ADRs should be considered read-only once landed to main, with the exception of changing the status (e.g. superseding or abandoning).
 
 ### Services and data types
 
@@ -57,11 +57,6 @@ An LSP handler extracts parameters, calls a resolver interface, and formats the 
 A handler never parses a document, walks a tree, resolves a type, or looks up a member.
 If a handler is about to do one of those, the logic belongs in a resolver implementation.
 
-### The litmus test
-
-Adding tree-sitter as a parser touches two source files: the new tool class, and the composite that wires the parsing tools together.
-A completion handler cannot tell whether a tree came from tree-sitter, php-parser, or a fallback handler.
-A change that needs more files than that has found a second route to a fact.
 
 ### Type graph
 
