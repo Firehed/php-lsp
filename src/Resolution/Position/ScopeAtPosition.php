@@ -8,8 +8,6 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
-use Firehed\PhpLsp\Resolution\NameContext;
-use Firehed\PhpLsp\Resolution\NameContextFactory;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\VariableBindings;
@@ -42,12 +40,6 @@ final class ScopeAtPosition implements ScopeAtPositionInterface
             $variables[] = $this->expressions->resolveBinding($binding, $scope, $located->parsed);
         }
         return $variables;
-    }
-
-    public function nameContextAt(TextDocument $document, ByteOffset $offset): NameContext
-    {
-        $located = $this->locator->locate($document, $offset);
-        return NameContextFactory::in($located->namespace, $located->parsed->tree);
     }
 
     /**

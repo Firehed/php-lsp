@@ -6,48 +6,27 @@ namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
 
 /**
- * Produces member completion items after `->`, `?->`, or `::`.
- *
- * Detection and resolution both flow through {@see CodeResolverInterface}, so this source
- * owns the whole member-access case: it returns null when the position is not a
- * member access (letting the composite try other sources) and a list of items —
- * possibly empty — when it is.
+ * Produces completion items for the members a member access reaches.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class MemberCandidates implements CompletionSourceInterface
+final class MemberCandidates
 {
     public function __construct(
-        private readonly CodeResolverInterface $codeResolver,
         private readonly SymbolCapabilitiesInterface $symbols,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
         private readonly CompletionItemFactory $itemFactory,
     ) {
     }
 
-    public function find(CompletionRequest $request): ?array
-    {
-        $context = $this->codeResolver->getMemberAccessContext(
-            $request->document,
-            $request->line,
-            $request->character,
-        );
-        if ($context === null) {
-            return null;
-        }
-
-        return $this->itemsFor($context);
-    }
-
     /**
      * @return list<CompletionItem>
      */
-    private function itemsFor(MemberAccessContext $context): array
+    public function find(MemberAccessContext $context): array
     {
         $members = $this->symbols->getAccessibleMembers(
             $context->type,

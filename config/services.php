@@ -48,11 +48,6 @@ return [
     Parser\SyntaxSource\SyntaxSourceInterface::class => Parser\SyntaxSource\MemoizingSyntaxSource::class,
     Parser\SyntaxSource\MessageScopedInterface::class => Parser\SyntaxSource\MemoizingSyntaxSource::class,
 
-    Parser\NodeLocator\TreeNodeLocator::class,
-    Parser\NodeLocator\CursorTextNodeLocator::class,
-    Parser\NodeLocator\CompositeNodeLocator::class,
-    Parser\NodeLocator\NodeLocatorInterface::class => Parser\NodeLocator\CompositeNodeLocator::class,
-
     Repository\MemberResolver::class,
     Repository\MemberResolverInterface::class => Repository\MemberResolver::class,
 
@@ -64,14 +59,14 @@ return [
     Resolution\Position\PositionLocatorInterface::class => Resolution\Position\PositionLocator::class,
     Resolution\Position\CallAtPosition::class,
     Resolution\Position\CallAtPositionInterface::class => Resolution\Position\CallAtPosition::class,
+    Resolution\Position\ExpectedAtPosition::class,
+    Resolution\Position\ExpectedAtPositionInterface::class => Resolution\Position\ExpectedAtPosition::class,
     Resolution\Position\ScopeAtPosition::class,
     Resolution\Position\ScopeAtPositionInterface::class => Resolution\Position\ScopeAtPosition::class,
     Resolution\Position\SymbolAtPosition::class,
     Resolution\Position\SymbolAtPositionInterface::class => Resolution\Position\SymbolAtPosition::class,
     Resolution\SymbolCapabilities::class,
     Resolution\SymbolCapabilitiesInterface::class => Resolution\SymbolCapabilities::class,
-    Resolution\SymbolResolver::class,
-    Resolution\CodeResolverInterface::class => Resolution\SymbolResolver::class,
     Resolution\TypeSource\NativeTypeSource::class,
     Resolution\TypeSource\TypeSourceInterface::class => Resolution\TypeSource\NativeTypeSource::class,
 ];

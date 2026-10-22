@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\NameContext;
-use Firehed\PhpLsp\Resolution\Position\ScopeAtPositionInterface;
+use Firehed\PhpLsp\Resolution\NameQuery;
 use Firehed\PhpLsp\Resolution\Reference;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;
 use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
@@ -31,10 +31,8 @@ use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
  * position no longer picks up a function or constant through navigation
  * (#317, #383).
  *
- * The kinds and the class filter are per-call parameters: the composite passes
- * the intent for the position, and one instance serves every position. The
- * class does not implement {@see CompletionSourceInterface} because its
- * behaviour is chosen by the caller, not by inspection of the request.
+ * A name that resolves from the global namespace whatever the context, as an
+ * import's does, is always navigated.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
@@ -47,27 +45,24 @@ final class SymbolCandidates
     public function __construct(
         private readonly SymbolSourceInterface $symbolSource,
         private readonly SymbolCapabilitiesInterface $symbolCapabilities,
-        private readonly ScopeAtPositionInterface $scope,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
         private readonly CompletionItemFactory $itemFactory,
     ) {
     }
 
     /**
-     * @param list<NameKind> $kinds
      * @return list<CompletionItem>
      */
-    public function find(CompletionRequest $request, array $kinds, ClassCandidateFilter $filter): array
+    public function find(CompletionRequest $request, NameQuery $query, string $prefix): array
     {
-        $prefix = $request->classification()->prefix;
-        $line = $request->line;
-        $character = $request->character;
-        $context = $this->scope->nameContextAt($request->document, $request->offset);
-        $range = $this->replaceRange($line, $character, $prefix);
+        $kinds = $query->kinds;
+        $filter = $query->filter;
+        $context = $query->context;
+        $range = $this->replaceRange($request->line, $request->character, $prefix);
         $snippets = $this->capabilities->getSessionCapabilities()->snippetSupport;
 
-        if (str_starts_with($prefix, '\\')) {
-            return $this->navigateAbsolute(substr($prefix, 1), $kinds, $filter, $range, $snippets);
+        if ($query->absolute || str_starts_with($prefix, '\\')) {
+            return $this->navigateAbsolute(ltrim($prefix, '\\'), $kinds, $filter, $range, $snippets);
         }
         if (str_contains($prefix, '\\')) {
             return $this->navigateQualified($prefix, $context, $kinds, $filter, $range, $snippets);
@@ -89,31 +84,6 @@ final class SymbolCandidates
         );
 
         return $items;
-    }
-
-    /**
-     * Navigate a `use` import: always absolute (a `use` name resolves from the
-     * global namespace regardless of the file's own namespace or imports), and
-     * always class-like. The classifier deliberately does not match `use function`
-     * or `use const` — those are separate scopes (#239, #317).
-     *
-     * @return list<CompletionItem>
-     */
-    public function forUseStatement(
-        string $prefix,
-        int $line,
-        int $character,
-    ): array {
-        $range = $this->replaceRange($line, $character, $prefix);
-        $snippets = $this->capabilities->getSessionCapabilities()->snippetSupport;
-
-        return $this->navigateAbsolute(
-            ltrim($prefix, '\\'),
-            [NameKind::ClassLike],
-            ClassCandidateFilter::Any,
-            $range,
-            $snippets,
-        );
     }
 
     /**

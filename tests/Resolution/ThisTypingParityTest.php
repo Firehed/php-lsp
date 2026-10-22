@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\Position\CallAtPosition;
+use Firehed\PhpLsp\Resolution\Position\ExpectedAtPosition;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
-use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -29,13 +31,13 @@ use PHPUnit\Framework\TestCase;
  * member walk, no type source — so the parser is the only live collaborator
  * and the three knowledge interfaces are stubbed.
  */
-#[CoversClass(SymbolResolver::class)]
+#[CoversClass(ExpectedAtPosition::class)]
 #[CoversClass(SymbolAtPosition::class)]
 final class ThisTypingParityTest extends TestCase
 {
     use LoadsFixturesTrait;
 
-    private SymbolResolver $resolver;
+    private ExpectedAtPosition $expected;
 
     private SymbolAtPosition $symbols;
 
@@ -46,13 +48,14 @@ final class ThisTypingParityTest extends TestCase
         $members = self::createStub(MemberResolverInterface::class);
         $types = self::createStub(TypeSourceInterface::class);
         $expressions = new ExpressionResolver($members, $symbols, $types);
-        $this->resolver = new SymbolResolver(
-            $production->source,
-            $production->locator,
-            $members,
+        $locator = new PositionLocator($production->source);
+        $this->expected = new ExpectedAtPosition(
+            $locator,
+            new CallAtPosition($locator, $expressions),
             $expressions,
+            $members,
         );
-        $this->symbols = new SymbolAtPosition(new PositionLocator($production->source), $expressions, $symbols);
+        $this->symbols = new SymbolAtPosition($locator, $expressions, $symbols);
     }
 
     /**
@@ -94,12 +97,9 @@ final class ThisTypingParityTest extends TestCase
         $hover = $this->symbols->symbolAt($document, $document->offsetAt($hoverLine, $hoverColumn));
         self::assertNotNull($hover, 'hover on $this should resolve to a symbol');
 
-        $completionCursor = $this->locateCursor($content, $completionMarker);
-        $access = $this->resolver->getMemberAccessContext(
-            $document,
-            $completionCursor['line'],
-            $completionCursor['character'],
-        );
+        $access = $this->expected
+            ->expectedAt($document, new ByteOffset($this->markerOffset($content, $completionMarker)))
+            ->members;
         self::assertNotNull($access, 'completion on $this-> should detect a member-access context');
 
         self::assertSame(

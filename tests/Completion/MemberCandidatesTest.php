@@ -6,10 +6,8 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
-use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Completion\MemberCandidates;
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\MemberKind;
@@ -17,7 +15,6 @@ use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
@@ -72,9 +69,6 @@ final class MemberCandidatesTest extends TestCase
     #[DataProvider('contextCases')]
     public function testOffersTheResolvedMembersTheContextAccepts(MemberAccessContext $context, array $expected): void
     {
-        $request = self::request();
-        $codeResolver = self::createStub(CodeResolverInterface::class);
-        $codeResolver->method('getMemberAccessContext')->willReturn($context);
         $symbols = $this->createMock(SymbolCapabilitiesInterface::class);
         $symbols->expects(self::once())
             ->method('getAccessibleMembers')
@@ -85,9 +79,8 @@ final class MemberCandidatesTest extends TestCase
                 self::member(new PropertyName(self::owner(), 'name'), MemberKind::Property),
             ]);
 
-        $items = self::candidates($codeResolver, $symbols)->find($request);
+        $items = self::candidates($symbols)->find($context);
 
-        self::assertNotNull($items, 'a member access answers, even when nothing matches');
         self::assertSame(
             $expected,
             array_column($items, 'label'),
@@ -95,31 +88,16 @@ final class MemberCandidatesTest extends TestCase
         );
     }
 
-    public function testReturnsNullOutsideMemberAccess(): void
-    {
-        $codeResolver = self::createStub(CodeResolverInterface::class);
-        $codeResolver->method('getMemberAccessContext')->willReturn(null);
-
-        self::assertNull(
-            self::candidates($codeResolver)->find(self::request()),
-            'a position that is not a member access leaves completion to the other sources',
-        );
-    }
-
     public function testMethodsInsertASnippetWhenTheClientSupportsIt(): void
     {
-        $codeResolver = self::createStub(CodeResolverInterface::class);
-        $codeResolver->method('getMemberAccessContext')->willReturn(
-            MemberAccessContext::forInstance(new ClasslikeType(self::owner()), Visibility::Public, ''),
-        );
         $symbols = self::createStub(SymbolCapabilitiesInterface::class);
         $symbols->method('getAccessibleMembers')->willReturn([
             self::member(new MethodName(self::owner(), 'getName'), MemberKind::Method),
         ]);
 
-        $items = self::candidates($codeResolver, $symbols, snippetSupport: true)->find(self::request());
+        $items = self::candidates($symbols, snippetSupport: true)
+            ->find(MemberAccessContext::forInstance(new ClasslikeType(self::owner()), Visibility::Public, ''));
 
-        self::assertNotNull($items, 'a member access offers members');
         self::assertSame(
             InsertTextFormat::Snippet->value,
             $items[0]['insertTextFormat'] ?? null,
@@ -128,13 +106,11 @@ final class MemberCandidatesTest extends TestCase
     }
 
     private static function candidates(
-        CodeResolverInterface $codeResolver,
-        ?SymbolCapabilitiesInterface $symbols = null,
+        SymbolCapabilitiesInterface $symbols,
         bool $snippetSupport = false,
     ): MemberCandidates {
         return new MemberCandidates(
-            $codeResolver,
-            $symbols ?? self::createStub(SymbolCapabilitiesInterface::class),
+            $symbols,
             self::capabilitiesProvider(new SessionCapabilities(snippetSupport: $snippetSupport)),
             new CompletionItemFactory(new ResolvedSymbolPresenter()),
         );
@@ -152,10 +128,5 @@ final class MemberCandidatesTest extends TestCase
     private static function owner(): ClasslikeName
     {
         return ClasslikeName::fromFullyQualified('Fixtures\\Domain\\User');
-    }
-
-    private static function request(): CompletionRequest
-    {
-        return new CompletionRequest(new TextDocument('file:///t.php', 'php', 0, ''), 0, 0);
     }
 }

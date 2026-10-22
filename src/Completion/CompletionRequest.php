@@ -8,16 +8,11 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
 
 /**
- * The position a completion source is asked about, plus the text-derived views
- * a source may need. Text-before-cursor and the classifier output are
- * memoized: a source that never reads them pays nothing; several sources that
- * read them share one computation.
+ * The position a completion source is asked about.
  */
 final class CompletionRequest
 {
     public readonly ByteOffset $offset;
-    private ?string $textBeforeCursor = null;
-    private ?CompletionClassification $classification = null;
 
     public function __construct(
         public readonly TextDocument $document,
@@ -25,15 +20,5 @@ final class CompletionRequest
         public readonly int $character,
     ) {
         $this->offset = $document->offsetAt($line, $character);
-    }
-
-    public function textBeforeCursor(): string
-    {
-        return $this->textBeforeCursor ??= $this->document->textBeforeCursor($this->line, $this->character);
-    }
-
-    public function classification(): CompletionClassification
-    {
-        return $this->classification ??= CompletionClassifier::classify($this->textBeforeCursor());
     }
 }

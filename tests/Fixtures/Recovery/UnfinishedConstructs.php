@@ -18,4 +18,10 @@ class UnfinishedConstructs
     {
         match (Foo::/*|in_match*/
     }
+
+    public function commented(): void
+    {
+        // kept with what follows
+        for ($i = 0; $this?->/*|after_comment*/
+    }
 }

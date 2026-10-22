@@ -22,12 +22,19 @@ use PhpParser\NodeFinder;
 
 /**
  * The one place that reads a document's structure at a position. It reads the
- * document's text for two things only: the word written at the position, and
+ * document's text for three things only: the word written before the position,
  * whether only whitespace and comments separate the position from a slot
- * nothing is written in yet.
+ * nothing is written in yet, and the punctuation of a function's header.
  */
 final class PositionLocator implements PositionLocatorInterface
 {
+    private const array NAMES = [T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, T_NAME_RELATIVE];
+
+    private const array MODIFIERS = [
+        T_PUBLIC, T_PROTECTED, T_PRIVATE, T_STATIC, T_READONLY, T_VAR, T_FINAL, T_ABSTRACT,
+        T_PUBLIC_SET, T_PROTECTED_SET, T_PRIVATE_SET,
+    ];
+
     public function __construct(
         private readonly SyntaxSourceInterface $syntax,
     ) {
@@ -41,17 +48,16 @@ final class PositionLocator implements PositionLocatorInterface
 
         $found = self::nodeAt($parsed->tree, $at);
         $node = self::isWord($found) ? $found : (self::emptySlotNear($found, $parsed->tree, $code, $at) ?? $found);
+        preg_match('/\$?[\w\\\\\x80-\xff]*$/', self::text($code, max(0, $at - 256), $at), $word);
+        $prefix = $word[0] ?? '';
         [$slot, $receiver] = match (true) {
             self::inComment($found, $parsed->tree, $at) => [Slot::NotCode, null],
-            $node instanceof FunctionLike => [self::headerSlot($node, $code, $at) ?? Slot::Expression, null],
+            $node instanceof FunctionLike => [self::headerSlot($node, $code, $at, $prefix) ?? Slot::Expression, null],
+            $node instanceof Stmt\ClassLike => [self::memberHeaderSlot($node, $code, $at, $prefix), null],
             default => self::classify($node, $at),
         };
 
         $written = $node !== null && self::isWord($node) ? $node : null;
-        $word = $written === null ? '' : self::text($code, $written->getStartFilePos(), $written->getEndFilePos() + 1);
-        $prefix = $written === null
-            ? ''
-            : self::text($code, $written->getStartFilePos(), min($at, $written->getEndFilePos() + 1));
 
         $namespace = null;
         $classLike = null;
@@ -84,7 +90,6 @@ final class PositionLocator implements PositionLocatorInterface
             $parsed,
             $offset,
             $slot,
-            $word,
             $prefix,
             $written,
             $receiver,
@@ -175,28 +180,80 @@ final class PositionLocator implements PositionLocatorInterface
     }
 
     /**
-     * A parameter's type, where a position in a function's parameter list
-     * follows its `(` or a `,` with nothing written after it. Every other slot
-     * in a header that has nothing written in it leaves the code unreadable,
-     * so recovery marks it with a node instead.
+     * The slot of a position in a function's header that the structure holds
+     * nothing for, read from the header's punctuation: a parameter's type, the
+     * return type, or a variable a closure captures. Null in the body, or
+     * where none of those fits.
      */
-    private static function headerSlot(FunctionLike $function, string $code, int $at): ?Slot
+    private static function headerSlot(FunctionLike $function, string $code, int $at, string $prefix): ?Slot
     {
-        $header = self::text($code, $function->getStartFilePos(), $at);
         $depth = 0;
+        $parametersClosed = false;
+        $usesAt = null;
         $last = null;
-        foreach (array_slice(\PhpToken::tokenize('<?php ' . $header), 1) as $token) {
-            if ($token->isIgnorable()) {
-                continue;
+        foreach (self::punctuation($code, $function->getStartFilePos(), $at, $prefix) as $token) {
+            if ($token->is('(')) {
+                $depth++;
+                $usesAt ??= $last?->is(T_USE) === true ? $depth : null;
+            } elseif ($token->is(')')) {
+                $usesAt = $usesAt === $depth ? null : $usesAt;
+                $depth--;
+                $parametersClosed = $parametersClosed || $depth === 0;
+            } elseif ($token->is('{') && $depth === 0) {
+                return null;
             }
-            $depth += match ($token->text) {
-                '(' => 1,
-                ')' => -1,
-                default => 0,
-            };
             $last = $token;
         }
-        return $depth === 1 && $last !== null && $last->is(['(', ',']) ? Slot::ParameterType : null;
+        assert($last !== null, 'a function\'s header starts with its keyword');
+        return match (true) {
+            $last->is(T_USE), $usesAt !== null && $last->is(['(', ',']) => Slot::Variable,
+            $parametersClosed && $last->is([':', '?', '|', '&', '(', T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG])
+                => Slot::ReturnType,
+            !$parametersClosed && $depth >= 1
+                && $last->is(['(', ',', '?', '|', '&', T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG])
+                => Slot::ParameterType,
+            default => null,
+        };
+    }
+
+    /**
+     * The slot of a position in a class body that the structure holds
+     * nothing for: a property's type, where the member's modifiers are written
+     * and the type it has so far waits for another part.
+     */
+    private static function memberHeaderSlot(Stmt\ClassLike $class, string $code, int $at, string $prefix): Slot
+    {
+        $modified = false;
+        $last = null;
+        foreach (self::punctuation($code, $class->getStartFilePos(), $at, $prefix) as $token) {
+            if ($token->is([';', '{', '}'])) {
+                $modified = false;
+            } elseif ($token->is(self::MODIFIERS)) {
+                $modified = true;
+            }
+            $last = $token;
+        }
+        return $modified && $last->is(['?', '|', '&', '(', T_AMPERSAND_NOT_FOLLOWED_BY_VAR_OR_VARARG])
+            ? Slot::PropertyType
+            : Slot::ClassMember;
+    }
+
+    /**
+     * The code tokens from a position to another, less the word being typed
+     * there: that word is in the slot the tokens before it open.
+     *
+     * @return list<\PhpToken>
+     */
+    private static function punctuation(string $code, int $from, int $at, string $prefix): array
+    {
+        $tokens = array_values(array_filter(
+            array_slice(\PhpToken::tokenize('<?php ' . self::text($code, $from, $at)), 1),
+            static fn (\PhpToken $token): bool => !$token->isIgnorable(),
+        ));
+        if ($prefix !== '' && $tokens !== [] && end($tokens)->is(self::NAMES)) {
+            array_pop($tokens);
+        }
+        return $tokens;
     }
 
     /**
@@ -207,7 +264,7 @@ final class PositionLocator implements PositionLocatorInterface
         $parent = $node?->getAttribute('parent');
         return match (true) {
             $node === null => [Slot::Expression, null],
-            $node instanceof Scalar\String_ => [
+            $node instanceof Scalar\String_ && $at <= $node->getEndFilePos() => [
                 in_array(
                     $node->getAttribute('kind'),
                     [Scalar\String_::KIND_SINGLE_QUOTED, Scalar\String_::KIND_NOWDOC],
@@ -224,7 +281,14 @@ final class PositionLocator implements PositionLocatorInterface
                 $parent instanceof Node\Param && $parent->var === $node ? Slot::DeclaredName : Slot::Variable,
                 null,
             ],
-            $node instanceof Stmt\ClassLike => [Slot::ClassMember, null],
+            ($node instanceof Expr\MethodCall || $node instanceof Expr\NullsafeMethodCall
+                || $node instanceof Expr\PropertyFetch || $node instanceof Expr\NullsafePropertyFetch)
+                && $at > $node->var->getEndFilePos() && $at <= $node->name->getStartFilePos()
+                => [Slot::Member, $node->var],
+            ($node instanceof Expr\StaticCall || $node instanceof Expr\ClassConstFetch
+                || $node instanceof Expr\StaticPropertyFetch)
+                && $at > $node->class->getEndFilePos() && $at <= $node->name->getStartFilePos()
+                => [Slot::StaticMember, $node->class],
             ($node instanceof Stmt\Property || $node instanceof Stmt\ClassConst)
                 && $at <= self::firstWrittenPart($node) => [self::memberStartSlot($node, $at), null],
             $node instanceof Identifier, $node instanceof Name, $node instanceof Expr\Error
@@ -256,6 +320,13 @@ final class PositionLocator implements PositionLocatorInterface
         }
         if ($parent instanceof Arg && $parent->name === $name) {
             return [Slot::ArgumentName, null];
+        }
+        if ($parent instanceof Expr\Variable) {
+            return [Slot::Variable, null];
+        }
+        // A name written where a parameter's variable belongs is its type, being typed.
+        if ($parent instanceof Node\Param && $parent->var === $name) {
+            return [Slot::ParameterType, null];
         }
         if (
             ($parent instanceof Stmt\ClassMethod || $parent instanceof Node\PropertyItem)

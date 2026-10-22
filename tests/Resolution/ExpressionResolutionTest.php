@@ -8,15 +8,20 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
+use Firehed\PhpLsp\Domain\ConstantInfo;
+use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
+use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
+use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
@@ -50,6 +55,8 @@ final class ExpressionResolutionTest extends TestCase
     private const string FOREACH = 'src/Hover/ForeachElement.php';
 
     private const string TOP_LEVEL = 'TopLevel/top_level_closures.php';
+
+    private const string SYMBOLS = 'src/Position/Symbols.php';
 
     private const string USER = 'src/Domain/User.php';
 
@@ -232,6 +239,118 @@ final class ExpressionResolutionTest extends TestCase
                 fn (string $content): array => $this->locateCursor($content, 'second_parameter'),
             ),
             'a declared parameter carries its type, default, and place in the list',
+        );
+    }
+
+    public function testACapturedVariableTakesItsTypeFromWhereItWasBound(): void
+    {
+        self::assertEquals(
+            new ClasslikeType(self::className('Fixtures\Definition\VariableBindings')),
+            $this->resolveVariableAt(self::BINDINGS, 'use_clause_usage')?->getType(),
+            'a closure\'s use clause carries the type the variable had outside it',
+        );
+    }
+
+    public function testAConstantResolvesThroughTheNamesInEffect(): void
+    {
+        $constant = self::constantInfo(QualifiedName::fromFullyQualified('PHP_EOL'));
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupConstant')->willReturnCallback(
+            static fn (ConstantName $name): ?ConstantInfo
+                => $name->qualifiedName->fullyQualifiedName() === 'PHP_EOL' ? $constant : null,
+        );
+        $this->resolver = self::resolverOver(
+            $symbols,
+            self::createStub(TypeSourceInterface::class),
+            self::createStub(MemberResolverInterface::class),
+        );
+
+        self::assertSame(
+            $constant,
+            $this->resolveAt(self::SYMBOLS, fn (string $content): array => $this->locateCursor($content, 'constant')),
+            'an unqualified constant falls back to the global one',
+        );
+    }
+
+    public function testAStaticPropertyResolvesOnTheNamedClass(): void
+    {
+        $child = self::className('Fixtures\Inheritance\ChildClass');
+        $property = self::propertyInfo($child, 'staticProperty', self::userType());
+        $members = self::createStub(MemberResolverInterface::class);
+        $members->method('findProperty')->willReturnCallback(
+            static fn (ClasslikeName $class, string $name): ?PropertyInfo
+                => $class->equals($child) && $name === 'staticProperty' ? $property : null,
+        );
+        $this->resolver = self::resolverOver(
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+            $members,
+        );
+
+        self::assertSame(
+            $property,
+            $this->resolveSymbolAt('src/Inheritance/ChildClass.php', 'self_property'),
+            'self names the enclosing class',
+        );
+    }
+
+    public function testAnArgumentsNameIsAParameterOfTheFunctionCalled(): void
+    {
+        $parameter = self::parameterInfo('stri', new PrimitiveType('string'));
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupFunction')->willReturn(
+            self::functionInfo(QualifiedName::fromFullyQualified('str_repeat'), parameters: [$parameter]),
+        );
+        $this->resolver = self::resolverOver(
+            $symbols,
+            self::createStub(TypeSourceInterface::class),
+            self::createStub(MemberResolverInterface::class),
+        );
+
+        self::assertSame(
+            $parameter,
+            $this->resolveAt(
+                'Position/ArgumentNameWord.php',
+                fn (string $content): array => $this->locateCursor($content, 'argument_name'),
+            ),
+            'a function call\'s callable is the function',
+        );
+    }
+
+    public function testAnArgumentsNameIsAParameterOfTheConstructorRun(): void
+    {
+        $parameter = self::parameterInfo('name', new PrimitiveType('string'));
+        $members = self::createStub(MemberResolverInterface::class);
+        $members->method('findMethod')->willReturnCallback(
+            static fn (ClasslikeName $class, string $name): ?MethodInfo => self::isUser($class)
+                && $name === '__construct'
+                ? new MethodInfo(
+                    name: new MethodName($class, '__construct'),
+                    visibility: Visibility::Public,
+                    isStatic: false,
+                    isAbstract: false,
+                    isFinal: false,
+                    parameters: [$parameter],
+                    returnType: null,
+                    docblock: null,
+                    file: null,
+                    line: null,
+                )
+                : null,
+        );
+        $this->resolver = self::resolverOver(
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+            $members,
+        );
+
+        self::assertSame(
+            $parameter,
+            $this->resolveAt(
+                self::SYMBOLS,
+                fn (string $content): array => $this->locateCursor($content, 'constructor_argument'),
+            ),
+            'a new expression\'s callable is the constructor it runs',
         );
     }
 

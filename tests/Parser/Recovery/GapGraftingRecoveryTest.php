@@ -159,6 +159,22 @@ final class GapGraftingRecoveryTest extends TestCase
         );
     }
 
+    public function testACommentReadWithItsCodeStaysWhereItIsWritten(): void
+    {
+        $code = $this->loadFixture('Recovery/UnfinishedConstructs.php');
+        $statement = self::methodBody($this->recover('Recovery/UnfinishedConstructs.php'), 'commented')[0] ?? null;
+
+        self::assertInstanceOf(Stmt\For_::class, $statement, 'the code after the comment is read');
+        $comment = $statement->getComments()[0] ?? null;
+        self::assertNotNull($comment, 'with the comment before it');
+        $start = (int) strpos($code, '// kept with what follows');
+        self::assertSame(
+            [$start, $start + strlen('// kept with what follows') - 1],
+            [$comment->getStartFilePos(), $comment->getEndFilePos()],
+            'where the document has it',
+        );
+    }
+
     public function testCodeThatReadsAsNothingAddsNothing(): void
     {
         $tree = $this->recover('Recovery/StrayKeyword.php');

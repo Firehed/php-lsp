@@ -10,14 +10,12 @@ use Firehed\PhpLsp\Resolution\Position\ScopeAtPositionInterface;
 /**
  * Produces variable completion items for the variables in scope at a position.
  *
- * The prefix is read from `$<word>` at the cursor. When there is no `$`, the
- * prefix is empty and every in-scope variable is offered — the composite uses
- * this shape for positions where variables mix with other item kinds, e.g.
- * inside a call argument list.
+ * Every variable is offered until a `$` is written, as where variables mix
+ * with other items inside a call's argument list.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class VariableCandidates implements CompletionSourceInterface
+final class VariableCandidates
 {
     public function __construct(
         private readonly ScopeAtPositionInterface $scope,
@@ -25,9 +23,12 @@ final class VariableCandidates implements CompletionSourceInterface
     ) {
     }
 
-    public function find(CompletionRequest $request): array
+    /**
+     * @return list<CompletionItem>
+     */
+    public function find(CompletionRequest $request, string $prefix): array
     {
-        $prefix = CompletionClassifier::variablePrefix($request->textBeforeCursor());
+        $prefix = str_starts_with($prefix, '$') ? substr($prefix, 1) : '';
         $variables = $this->scope->variablesAt($request->document, $request->offset);
         $items = [];
         foreach ($variables as $variable) {

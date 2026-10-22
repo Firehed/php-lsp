@@ -70,6 +70,14 @@ class TextDocumentTest extends TestCase
         self::assertSame(10, $doc->offsetAt(line: 1, character: 4)->value);
     }
 
+    public function testALineThatIsNotInTheDocumentIsAtItsStart(): void
+    {
+        $doc = new TextDocument('file:///test.php', 'php', 1, "<?php\necho 'test';");
+
+        self::assertSame(0, $doc->offsetAt(line: 5, character: 2)->value, 'past the last line');
+        self::assertSame(0, $doc->offsetAt(line: -1, character: 2)->value, 'before the first line');
+    }
+
     public function testPositionAtOffset(): void
     {
         $content = "<?php\necho 'test';";
@@ -108,34 +116,6 @@ class TextDocumentTest extends TestCase
             ['line' => 1, 'character' => $character],
             $doc->positionAt($byteOffset),
             'a byte offset must resolve back to the UTF-16 column the client sent',
-        );
-    }
-
-    public function testTextBeforeCursorReadsAsciiToTheColumn(): void
-    {
-        $doc = new TextDocument('file:///test.php', 'php', 1, "<?php\n\$user->getName();");
-
-        self::assertSame(
-            '$user->',
-            $doc->textBeforeCursor(line: 1, character: 7),
-            'the interior reads text up to the cursor, sliced at the byte column',
-        );
-    }
-
-    /**
-     * A multibyte character before the cursor makes the wire column smaller than
-     * the byte column: `é` is one UTF-16 unit but two bytes, so column 7 in
-     * `$café->` lands at byte 8. Slicing the raw wire column as a byte length
-     * would drop the `>`.
-     */
-    public function testTextBeforeCursorConvertsMultibyteColumnToBytes(): void
-    {
-        $doc = new TextDocument('file:///test.php', 'php', 1, "<?php\n\$café->x");
-
-        self::assertSame(
-            '$café->',
-            $doc->textBeforeCursor(line: 1, character: 7),
-            'a wire column past a multibyte char must slice at the byte column, not the raw column',
         );
     }
 

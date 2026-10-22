@@ -12,8 +12,10 @@ class Symbols
     {
         $user/*|variable*/->getName/*|member*/();
         User::create/*|static_member*/('name');
+        User/*|static_receiver*/::create('name');
         strlen/*|called*/('x');
         $this->method(user/*|argument_name*/: $user, count: 1);
+        new User(name/*|constructor_argument*/: 'x');
         echo PHP_EOL/*|constant*/;
         // a comment/*|comment*/
     }

@@ -46,19 +46,6 @@ final class TextDocument
     }
 
     /**
-     * The text on `$line` up to `$character`, sliced at the byte column the wire
-     * column maps to under the negotiated encoding. Interior components that scan
-     * the text before the cursor use this rather than slicing the raw wire column
-     * as a byte length, which drops or keeps bytes past a multibyte character.
-     */
-    public function textBeforeCursor(int $line, int $character): string
-    {
-        $lineText = $this->getLine($line);
-
-        return substr($lineText, 0, $this->encoding->characterToByteOffset($lineText, $character));
-    }
-
-    /**
      * Where a position a message names is in the text: the one conversion
      * from the client's positions to the server's.
      */

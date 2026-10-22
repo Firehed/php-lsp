@@ -83,12 +83,60 @@ final class PositionLocatorTest extends TestCase
         $p = 'src/Position/Positions.php';
         yield 'a further parameter' => [$p, 'second_parameter', Slot::ParameterType, '', false];
         yield 'an empty body' => [$p, 'empty_body', Slot::Expression, '', false];
-        yield 'interpolated text' => [$p, 'in_interpolated', Slot::InterpolatedString, '', false];
+        yield 'interpolated text' => [$p, 'in_interpolated', Slot::InterpolatedString, 'ite', false];
         yield 'after two positional arguments' => [$p, 'after_two_positional', Slot::Expression, '', true];
         yield 'outside every node' => ['Position/TopLevel.php', 'top_level', Slot::Expression, '', false];
         yield 'after an attribute' => ['Recovery/AfterAttribute.php', 'after_attribute', Slot::ClassMember, '', false];
         yield 'after modifiers of nothing yet' => [
             'src/Position/Members.php', 'after_modifiers_alone', Slot::AfterModifiers, '', false,
+        ];
+        yield 'a word in a class body' => [
+            'Position/ClassBodyWord.php', 'class_body_word', Slot::ClassMember, 'p', false,
+        ];
+        yield 'a DNF parameter type' => [
+            'Position/DnfParameter.php', 'dnf_parameter', Slot::ParameterType, 'Ent', false,
+        ];
+        yield 'a DNF return type' => ['Position/DnfReturn.php', 'dnf_return', Slot::ReturnType, 'Ent', false];
+        yield 'an intersection property type' => [
+            'Position/IntersectionProperty.php', 'intersection_property', Slot::PropertyType, '', false,
+        ];
+        yield 'a lone $' => ['Position/LoneDollar.php', 'lone_dollar', Slot::Variable, '$', false];
+        yield 'an empty return type' => [
+            'Namespacing/ImportCompletion.php', 'type_hint_return', Slot::ReturnType, '', false,
+        ];
+        yield 'an import ending in \\' => [
+            'Namespacing/UseCompletion.php', 'use_workspace_class', Slot::Import, 'Fixtures\Domain\\', false,
+        ];
+        yield 'a closure\'s use clause' => [
+            'Namespacing/ClosureUseCompletion.php', 'closure_capture', Slot::Variable, '', false,
+        ];
+        yield 'a qualified name ending in \\' => [
+            'Namespacing/ImportedPrefix.php', 'imported_slash', Slot::New, 'Env\\', false,
+        ];
+        yield 'an absolute name ending in \\' => [
+            'Namespacing/CatalogProbe.php', 'ondisk_autoload_files_namespace', Slot::New, '\Fixtures\\', false,
+        ];
+        yield 'an absolute parameter type' => [
+            'Namespacing/AbsoluteNavigation.php', 'param_nav', Slot::ParameterType, '\Ps', false,
+        ];
+        yield 'right after a string value' => [
+            $c . 'EditingNamedArg.php', 'after_string_value', Slot::Expression, '', true,
+        ];
+        yield 'right after a numeric value' => [
+            $c . 'EditingNamedArg.php', 'after_named_value', Slot::Expression, '123', true,
+        ];
+        yield 'a member with the next statement parsed onto it' => [
+            $c . 'NextLineParsedOnto.php', 'this_before_statement', Slot::Member, '', false,
+        ];
+        yield 'a static member with the next statement parsed onto it' => [
+            'TopLevel/static_before_statement.php', 'static_before_statement', Slot::StaticMember, '', false,
+        ];
+        yield 'a nullsafe member in a for' => [
+            'src/IncompleteCode/InControlStructures.php', 'nullsafe_access_for', Slot::Member, '', false,
+        ];
+        yield 'a member before its written name' => ['src/ParseHealth/Clean.php', 'in_call', Slot::Member, '', true];
+        yield 'a constructor\'s arguments' => [
+            'src/IncompleteCode/AliasedImports.php', 'colliding_new', Slot::Expression, 'Wid', true,
         ];
         yield 'past a slot with code between' => [
             'Recovery/SlotElsewhere.php', 'after_kept', Slot::Expression, '', false,
@@ -176,7 +224,6 @@ final class PositionLocatorTest extends TestCase
 
         self::assertSame($slot, $located->slot, 'the slot');
         self::assertSame($prefix, $located->prefix, 'what is typed of the word');
-        self::assertSame($prefix, $located->word, 'the whole word, since it ends here');
         self::assertSame($inCall, $located->call !== null, 'whether it is in a call\'s arguments');
     }
 

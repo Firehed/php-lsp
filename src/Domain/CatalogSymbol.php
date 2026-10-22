@@ -14,7 +14,7 @@ namespace Firehed\PhpLsp\Domain;
  *
  * That is not a loss, because it is not discovery's decision to make. Whether a
  * candidate is valid in a given position (an interface after `implements`, a
- * non-final class after `extends`) is already answered by the `CodeResolverInterface`
+ * non-final class after `extends`) is already answered by the `SymbolCapabilitiesInterface`
  * predicates, which resolve through the `SymbolSourceInterface` backends. Discovery says
  * what exists and where; resolution says what it is.
  */

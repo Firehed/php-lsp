@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
-use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\ScopeAtPosition;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
@@ -71,20 +70,6 @@ final class ScopeAtPositionTest extends TestCase
             'this',
             $this->variableNamesAt('src/Completion/Variables.php', 'this_prefix'),
             'an instance method binds $this',
-        );
-    }
-
-    public function testTheNameContextCarriesTheImportsInEffect(): void
-    {
-        $code = $this->loadFixture('SignatureHelp.php');
-
-        self::assertEquals(
-            new NameContext('', ['User' => 'Fixtures\Domain\User', 'Priority' => 'Fixtures\Enum\Priority']),
-            self::scope()->nameContextAt(
-                new TextDocument('file:///SignatureHelp.php', 'php', 1, $code),
-                new ByteOffset($this->markerOffset($code, 'first_param')),
-            ),
-            'a file without a namespace carries its class imports',
         );
     }
 

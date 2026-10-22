@@ -15,10 +15,6 @@ use Firehed\PhpLsp\Domain\PrefixMatcher;
  * implement {@see CompletionSourceInterface} because its behaviour is chosen
  * by the caller, not by inspection of the request.
  *
- * The Expression group reads the prefix via
- * {@see CompletionClassifier::callExpressionPrefix()} because its position is
- * inside a call; every other group uses the classification prefix.
- *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
 final class KeywordCandidates
@@ -58,15 +54,10 @@ final class KeywordCandidates
     }
 
     /**
-     * @return list<CompletionItem>|null
+     * @return list<CompletionItem>
      */
-    public function find(CompletionRequest $request, KeywordGroup $group): ?array
+    public function find(KeywordGroup $group, string $prefix): array
     {
-        $prefix = $this->prefixFrom($request, $group);
-        if ($prefix === null) {
-            return null;
-        }
-
         $items = [];
         foreach ($this->keywordsFor($group) as $keyword) {
             if (PrefixMatcher::matches($keyword, $prefix)) {
@@ -75,14 +66,6 @@ final class KeywordCandidates
         }
 
         return $items;
-    }
-
-    private function prefixFrom(CompletionRequest $request, KeywordGroup $group): ?string
-    {
-        return match ($group) {
-            KeywordGroup::Expression => CompletionClassifier::callExpressionPrefix($request->textBeforeCursor()),
-            default => $request->classification()->prefix,
-        };
     }
 
     /**

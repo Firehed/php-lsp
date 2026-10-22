@@ -17,7 +17,7 @@ use PhpParser\Node\Stmt;
 
 /**
  * Resolves the declared type of a parameter given its enclosing function-like
- * scope. One dispatch table for both {@see SymbolResolver::resolveParameter}
+ * scope. One dispatch table for both {@see ExpressionResolver::resolveParameter}
  * (hover on the declaration) and {@see ExpressionResolver::typeOfBinding} (a
  * variable that traces back to a parameter), so the same variable never gets
  * two different answers.

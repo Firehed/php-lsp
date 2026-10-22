@@ -307,8 +307,8 @@ final class ExpressionResolver implements ExpressionResolverInterface
     }
 
     /**
-     * The one entry point every callable-shaped node resolves through, so
-     * `SymbolResolver::resolveCallable` does not branch on node kind. `New_`
+     * The one entry point every callable-shaped node resolves through, so a
+     * caller does not branch on node kind. `New_`
      * and `Attribute` are constructor invocations and route to
      * `resolveConstructor`; the other four are ordinary expressions whose
      * resolved symbol is already a callable.

@@ -8,10 +8,6 @@ use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
 use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\ParsedDeclarationSource;
-use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
-use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
-use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
-use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\Recovery\CompositeRecovery;
 use Firehed\PhpLsp\Parser\Recovery\EndOfFileRecovery;
 use Firehed\PhpLsp\Parser\Recovery\GapGraftingRecovery;
@@ -23,8 +19,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
 
 /**
- * The test-facing wiring for the production SyntaxSourceInterface and
- * NodeLocatorInterface stacks. Mirrors what `config/services.php` assembles,
+ * The test-facing wiring for the production SyntaxSourceInterface stack. Mirrors what `config/services.php` assembles,
  * so a test that needs production wiring does not name any implementation
  * directly.
  *
@@ -35,7 +30,6 @@ use Firehed\PhpLsp\Parser\TreeAnnotator;
 final readonly class ProductionSyntaxSource
 {
     public MemoizingSyntaxSource $source;
-    public NodeLocatorInterface $locator;
     public CountingSyntaxSource $counter;
     public SourceFileReader $reader;
     public ParsedDeclarationSource $declarations;
@@ -44,7 +38,6 @@ final readonly class ProductionSyntaxSource
     {
         $this->counter = new CountingSyntaxSource(self::unmemoized());
         $this->source = new MemoizingSyntaxSource($this->counter);
-        $this->locator = new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator());
         $this->reader = new SourceFileReader();
         $this->declarations = new ParsedDeclarationSource(
             $this->source,

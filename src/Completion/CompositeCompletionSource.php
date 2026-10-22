@@ -4,182 +4,55 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
-use Firehed\PhpLsp\Domain\ClassCandidateFilter;
 use Firehed\PhpLsp\Domain\KeywordGroup;
-use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Domain\TypeHintContext;
-use Firehed\PhpLsp\Resolution\Position\CallAtPositionInterface;
+use Firehed\PhpLsp\Resolution\Position\ExpectedAtPositionInterface;
 
 /**
- * The one completion source the handler consumes. It owns the whole dispatch:
- * which sources apply at which positions, which sources short-circuit, and
- * how their items are merged, deduplicated, and sortText-normalized.
+ * The one completion source the handler consumes. It hands each kind of thing
+ * a position admits to the source that offers it, then merges what they offer.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
 final class CompositeCompletionSource implements CompletionSourceInterface
 {
     public function __construct(
-        private readonly CallAtPositionInterface $calls,
-        private readonly SymbolCandidates $symbols,
+        private readonly ExpectedAtPositionInterface $expected,
+        private readonly MemberCandidates $members,
+        private readonly NamedArgumentCandidates $argumentNames,
+        private readonly VariableCandidates $variables,
         private readonly KeywordCandidates $keywords,
-        private readonly VariableCandidates $variableCandidates,
-        private readonly MemberCandidates $memberCandidates,
-        private readonly NamedArgumentCandidates $namedArgumentCandidates,
         private readonly BuiltinTypeCandidates $builtinTypes,
+        private readonly SymbolCandidates $names,
     ) {
     }
 
     public function find(CompletionRequest $request): array
     {
-        $context = ContextDetector::getContext($request->document->getContent(), $request->offset->value);
-        if ($context === CompletionContext::None) {
-            return [];
-        }
+        $expected = $this->expected->expectedAt($request->document, $request->offset);
+        $prefix = $expected->prefix;
 
-        // In interpolated strings, only variables are valid — take the variable
-        // source alone rather than filter every source's output after the fact.
-        if ($context === CompletionContext::VariablesOnly) {
-            return $this->variableCandidates->find($request);
-        }
-
-        // Member/static access (after -> or ::) short-circuits — the source owns
-        // the whole case and other sources must not add items.
-        $memberItems = $this->memberCandidates->find($request);
-        if ($memberItems !== null) {
-            return $memberItems;
-        }
-
-        // Inside a call context, offer named arguments + variables + expressions.
-        if ($this->calls->callAt($request->document, $request->offset) !== null) {
-            return $this->deduplicate($this->callContextItems($request));
-        }
-
-        return $this->classifiedItems($request);
+        return $this->deduplicate(array_merge(
+            $expected->members === null ? [] : $this->members->find($expected->members),
+            $expected->argumentNames === null ? [] : $this->argumentNames->find($expected->argumentNames, $prefix),
+            $expected->variables ? $this->variables->find($request, $prefix) : [],
+            $expected->keywords === null ? [] : $this->keywordItems($expected->keywords, $prefix),
+            $expected->builtinTypes === null ? [] : $this->builtinTypes->find($expected->builtinTypes, $prefix),
+            $expected->names === null ? [] : $this->names->find($request, $expected->names, $prefix),
+        ));
     }
 
     /**
      * @return list<CompletionItem>
      */
-    private function callContextItems(CompletionRequest $request): array
+    private function keywordItems(KeywordGroup $group, string $prefix): array
     {
-        $items = array_merge(
-            $this->namedArgumentCandidates->find($request) ?? [],
-            $this->variableCandidates->find($request),
-        );
-
-        $expressionPrefix = CompletionClassifier::callExpressionPrefix($request->textBeforeCursor());
-        if ($expressionPrefix === null) {
+        $items = $this->keywords->find($group, $prefix);
+        if ($group !== KeywordGroup::Expression) {
             return $items;
         }
-
-        // Expression keywords compete with symbols here; prepend `"` to their
-        // sortText so a project symbol beats a keyword on the same prefix.
-        $items = array_merge($items, array_map(
-            static fn(array $item): array => ['sortText' => '"' . $item['label']] + $item,
-            $this->keywords->find($request, KeywordGroup::Expression) ?? [],
-        ));
-
-        return array_merge($items, $this->symbols->find($request, NameKind::cases(), ClassCandidateFilter::Any));
-    }
-
-    /**
-     * @return list<CompletionItem>
-     */
-    private function classifiedItems(CompletionRequest $request): array
-    {
-        $classification = $request->classification();
-
-        return match ($classification->kind) {
-            CompletionKind::Variable => $this->variableCandidates->find($request),
-            CompletionKind::New_ => $this->deduplicate(
-                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Instantiable),
-            ),
-            CompletionKind::AfterVisibility => $this->afterVisibilityItems($request),
-            CompletionKind::ReturnType => $this->typeHintItems(TypeHintContext::ReturnType, $request),
-            CompletionKind::PropertyType => $this->typeHintItems(TypeHintContext::Property, $request),
-            CompletionKind::ParameterType => $this->typeHintItems(TypeHintContext::Parameter, $request),
-            CompletionKind::InterfaceList => $this->deduplicate(
-                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Interface_),
-            ),
-            CompletionKind::ExtendableClass => $this->deduplicate(
-                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::ExtendableClass),
-            ),
-            CompletionKind::Throwable => $this->deduplicate(
-                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Throwable),
-            ),
-            CompletionKind::Attribute => $this->deduplicate(
-                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Attribute),
-            ),
-            CompletionKind::Instanceof_ => $this->deduplicate(
-                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::TypeHint),
-            ),
-            CompletionKind::Use_ => $this->useStatementItems($request),
-            CompletionKind::ClassBody => $this->keywords->find($request, KeywordGroup::ClassBody) ?? [],
-            CompletionKind::Expression => $this->expressionItems($request),
-            CompletionKind::None => [],
-        };
-    }
-
-    /**
-     * @return list<CompletionItem>
-     */
-    private function afterVisibilityItems(CompletionRequest $request): array
-    {
-        return $this->deduplicate(array_merge(
-            $this->keywords->find($request, KeywordGroup::AfterVisibility) ?? [],
-            $this->typeHintItems(TypeHintContext::Property, $request),
-        ));
-    }
-
-    /**
-     * @return list<CompletionItem>
-     */
-    private function typeHintItems(TypeHintContext $context, CompletionRequest $request): array
-    {
-        return $this->deduplicate(array_merge(
-            $this->builtinTypes->find($request, $context),
-            $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::TypeHint),
-        ));
-    }
-
-    /**
-     * Suggest completions for a `use` keyword. The classifier sees only the
-     * current line, so a multi-line class body `use` and a top-level `use`
-     * import are indistinguishable there; the structural checks here read the
-     * whole document to disambiguate.
-     *
-     * @return list<CompletionItem>
-     */
-    private function useStatementItems(CompletionRequest $request): array
-    {
-        $offset = $request->offset->value;
-        $content = $request->document->getContent();
-        if (ContextDetector::isInsideClassBody($content, $offset)) {
-            return $this->deduplicate(
-                $this->symbols->find($request, [NameKind::ClassLike], ClassCandidateFilter::Trait_),
-            );
-        }
-        if (ContextDetector::isClosureUse($content, $offset)) {
-            return $this->variableCandidates->find($request);
-        }
-
-        return $this->symbols->forUseStatement(
-            $request->classification()->prefix,
-            $request->line,
-            $request->character,
-        );
-    }
-
-    /**
-     * @return list<CompletionItem>
-     */
-    private function expressionItems(CompletionRequest $request): array
-    {
-        return $this->deduplicate(array_merge(
-            $this->keywords->find($request, KeywordGroup::All) ?? [],
-            $this->symbols->find($request, NameKind::cases(), ClassCandidateFilter::Any),
-        ));
+        // Expression keywords compete with symbols in an argument; prepend `"`
+        // to their sortText so a project symbol beats a keyword on the same prefix.
+        return array_map(static fn (array $item): array => ['sortText' => '"' . $item['label']] + $item, $items);
     }
 
     /**

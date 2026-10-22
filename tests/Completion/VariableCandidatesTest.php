@@ -28,14 +28,14 @@ final class VariableCandidatesTest extends TestCase
     {
         yield 'prefix after $' => ['$n', ['$name' => 'string']];
         yield 'bare $' => ['$', self::ALL_IN_SCOPE];
-        yield 'no $ offers everything in scope' => ['foo(', self::ALL_IN_SCOPE];
+        yield 'a word with no $ offers everything in scope' => ['na', self::ALL_IN_SCOPE];
     }
 
     /**
      * @param array<string, string> $expected Label to detail.
      */
     #[DataProvider('prefixCases')]
-    public function testOffersInScopeVariablesMatchingThePrefixWithTheirTypes(string $line, array $expected): void
+    public function testOffersInScopeVariablesMatchingThePrefixWithTheirTypes(string $prefix, array $expected): void
     {
         $scope = self::createStub(ScopeAtPositionInterface::class);
         $scope->method('variablesAt')->willReturn([
@@ -43,10 +43,10 @@ final class VariableCandidatesTest extends TestCase
             new ResolvedVariable('age', new PrimitiveType('int')),
             new ResolvedVariable('untyped', null),
         ]);
-        $document = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
+        $document = new TextDocument('file:///t.php', 'php', 0, '');
 
         $candidates = new VariableCandidates($scope, new CompletionItemFactory(new ResolvedSymbolPresenter()));
-        $items = $candidates->find(new CompletionRequest($document, 1, strlen($line)));
+        $items = $candidates->find(new CompletionRequest($document, 0, 0), $prefix);
 
         self::assertSame(
             $expected,

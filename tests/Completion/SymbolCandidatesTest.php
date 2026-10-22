@@ -21,7 +21,7 @@ use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\NameContext;
-use Firehed\PhpLsp\Resolution\Position\ScopeAtPositionInterface;
+use Firehed\PhpLsp\Resolution\NameQuery;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
@@ -41,8 +41,13 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testSearchHitIsOfferedByItsReferenceRankedByReach(): void
     {
-        $items = self::candidates(new NameContext('App'), search: ['App\Widget', 'App\Gadget'])
-            ->find(self::requestAfter('$x = Wid'), [NameKind::ClassLike], ClassCandidateFilter::Any);
+        $context = new NameContext('App');
+        $items = self::candidates(search: ['App\Widget', 'App\Gadget'])
+            ->find(
+                self::requestAfter('$x = Wid'),
+                new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                'Wid',
+            );
 
         self::assertSame(
             [[
@@ -60,15 +65,19 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testUnreachableSearchHitIsDroppedBeforeTheFilterRuns(): void
     {
+        $context = new NameContext('Elsewhere');
         $asked = [];
         $items = self::candidates(
-            new NameContext('Elsewhere'),
             search: ['App\Widget'],
             isInstantiable: static function (ClasslikeName $name) use (&$asked): bool {
                 $asked[] = $name;
                 return true;
             },
-        )->find(self::requestAfter('$x = Wid'), [NameKind::ClassLike], ClassCandidateFilter::Instantiable);
+        )->find(
+            self::requestAfter('$x = Wid'),
+            new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Instantiable, $context),
+            'Wid',
+        );
 
         self::assertSame([], $items, 'a class-like that needs an import or a leading \\ is not offered bare');
         self::assertSame([], $asked, 'the cheap reachability check runs before the filter resolves the class');
@@ -108,14 +117,19 @@ final class SymbolCandidatesTest extends TestCase
                     'textEdit' => ['range' => $range, 'newText' => 'gather'],
                 ],
             ],
-            self::candidates($context)
-                ->find(self::requestAfter('$x = Ga'), NameKind::cases(), ClassCandidateFilter::Any),
+            self::candidates()
+                ->find(
+                    self::requestAfter('$x = Ga'),
+                    new NameQuery(NameKind::cases(), ClassCandidateFilter::Any, $context),
+                    'Ga',
+                ),
             'each kind\'s import is offered by the alias it binds',
         );
     }
 
     public function testCurrentNamespaceSymbolIsOfferedWithoutASearchHit(): void
     {
+        $context = new NameContext('App');
         $children = ['App' => new NamespaceContents(symbols: [
             new CatalogSymbol('App\Widget', NameKind::ClassLike),
             new CatalogSymbol('App\Gizmo', NameKind::ClassLike),
@@ -125,8 +139,12 @@ final class SymbolCandidatesTest extends TestCase
         self::assertSame(
             ['Widget'],
             self::labels(
-                self::candidates(new NameContext('App'), children: $children)
-                    ->find(self::requestAfter('$x = Wid'), [NameKind::ClassLike], ClassCandidateFilter::Any),
+                self::candidates(children: $children)
+                    ->find(
+                        self::requestAfter('$x = Wid'),
+                        new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                        'Wid',
+                    ),
             ),
             'a symbol declared in the current namespace is offered when it matches and is of a requested kind',
         );
@@ -134,12 +152,17 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testGlobalNamespaceListingIsLeftToSearch(): void
     {
+        $context = new NameContext('');
         $children = ['' => new NamespaceContents(symbols: [new CatalogSymbol('Widget', NameKind::ClassLike)])];
 
         self::assertSame(
             [],
-            self::candidates(new NameContext(''), children: $children)
-                ->find(self::requestAfter('$x = Wid'), [NameKind::ClassLike], ClassCandidateFilter::Any),
+            self::candidates(children: $children)
+                ->find(
+                    self::requestAfter('$x = Wid'),
+                    new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                    'Wid',
+                ),
             'outside a namespace, only search offers global symbols',
         );
     }
@@ -157,11 +180,14 @@ final class SymbolCandidatesTest extends TestCase
         ])];
 
         $items = self::candidates(
-            $context,
             search: ['App\WidgetFound', 'App\WidgetRejectedFound'],
             children: $children,
             isInstantiable: static fn (ClasslikeName $name): bool => self::isOneOf($name, $accepted),
-        )->find(self::requestAfter('$x = Wid'), [NameKind::ClassLike], ClassCandidateFilter::Instantiable);
+        )->find(
+            self::requestAfter('$x = Wid'),
+            new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Instantiable, $context),
+            'Wid',
+        );
 
         self::assertSame(
             ['WidgetFound', 'WidgetImported', 'WidgetDeclared'],
@@ -192,11 +218,19 @@ final class SymbolCandidatesTest extends TestCase
     public function testEachFilterAdmitsWhatItsPredicateAccepts(ClassCandidateFilter $filter, array $predicates): void
     {
         // Every predicate not named answers false, so a filter asking any other leaves the class-like out.
-        $candidates = self::candidates(new NameContext(''), search: ['Widget'], accepting: $predicates);
+        $context = new NameContext('');
+        $candidates = self::candidates(
+            search: ['Widget'],
+            accepting: $predicates,
+        );
 
         self::assertSame(
             ['Widget'],
-            self::labels($candidates->find(self::requestAfter('$x = Wid'), [NameKind::ClassLike], $filter)),
+            self::labels($candidates->find(
+                self::requestAfter('$x = Wid'),
+                new NameQuery([NameKind::ClassLike], $filter, $context),
+                'Wid',
+            )),
             'the filter asks its own predicate',
         );
     }
@@ -206,8 +240,12 @@ final class SymbolCandidatesTest extends TestCase
         $children = ['App' => new NamespaceContents(symbols: [new CatalogSymbol('App\Widget', NameKind::ClassLike)])];
         $context = new NameContext('App', classImports: ['Wireless' => 'Lib\Wireless']);
 
-        $items = self::candidates($context, search: ['App\Widget', 'Lib\Wireless'], children: $children)
-            ->find(self::requestAfter('$x = Wi'), [NameKind::ClassLike], ClassCandidateFilter::Any);
+        $items = self::candidates(search: ['App\Widget', 'Lib\Wireless'], children: $children)
+            ->find(
+                self::requestAfter('$x = Wi'),
+                new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                'Wi',
+            );
 
         self::assertSame(
             ['Widget' => '0_Widget', 'Wireless' => '1_Wireless'],
@@ -218,13 +256,18 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testNameSharedAcrossKindsIsOfferedOnceAsTheFirstRequestedKind(): void
     {
-        $candidates = self::candidates(new NameContext('App'), search: ['App\Thing'], functionSearch: ['App\Thing']);
+        $context = new NameContext('App');
+        $candidates = self::candidates(search: ['App\Thing'], functionSearch: ['App\Thing']);
         $request = self::requestAfter('$x = Thi');
 
         self::assertSame(
             [CompletionItemKind::Class_->value],
             array_column(
-                $candidates->find($request, [NameKind::ClassLike, NameKind::Function_], ClassCandidateFilter::Any),
+                $candidates->find(
+                    $request,
+                    new NameQuery([NameKind::ClassLike, NameKind::Function_], ClassCandidateFilter::Any, $context),
+                    'Thi',
+                ),
                 'kind',
             ),
             'asked for class-likes first, the class is offered',
@@ -232,7 +275,11 @@ final class SymbolCandidatesTest extends TestCase
         self::assertSame(
             [CompletionItemKind::Function->value],
             array_column(
-                $candidates->find($request, [NameKind::Function_, NameKind::ClassLike], ClassCandidateFilter::Any),
+                $candidates->find(
+                    $request,
+                    new NameQuery([NameKind::Function_, NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                    'Thi',
+                ),
                 'kind',
             ),
             'asked for functions first, the function is offered',
@@ -247,10 +294,13 @@ final class SymbolCandidatesTest extends TestCase
         ])];
 
         $items = self::candidates(
-            $context,
             functionSearch: ['App\calculateSum', 'App\calculateProduct'],
             children: $children,
-        )->find(self::requestAfter('$x = calc'), [NameKind::Function_], ClassCandidateFilter::Any);
+        )->find(
+            self::requestAfter('$x = calc'),
+            new NameQuery([NameKind::Function_], ClassCandidateFilter::Any, $context),
+            'calc',
+        );
 
         self::assertSame(
             ['calculateProduct' => 'App\calculateProduct', 'calculateSum' => 'str_contains'],
@@ -261,11 +311,15 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testFunctionShowsItsSignature(): void
     {
+        $context = new NameContext('App');
         $items = self::candidates(
-            new NameContext('App'),
             functionSearch: ['App\count_widgets'],
             function: self::functionInfo(QualifiedName::fromFullyQualified('App\count_widgets')),
-        )->find(self::requestAfter('$x = count_'), [NameKind::Function_], ClassCandidateFilter::Any);
+        )->find(
+            self::requestAfter('$x = count_'),
+            new NameQuery([NameKind::Function_], ClassCandidateFilter::Any, $context),
+            'count_',
+        );
 
         self::assertSame(
             ['function count_widgets()'],
@@ -276,8 +330,13 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testCurrentNamespaceFunctionRanksAboveAGlobalOne(): void
     {
-        $items = self::candidates(new NameContext('App'), functionSearch: ['App\calc_widgets', 'calc_total'])
-            ->find(self::requestAfter('$x = calc'), [NameKind::Function_], ClassCandidateFilter::Any);
+        $context = new NameContext('App');
+        $items = self::candidates(functionSearch: ['App\calc_widgets', 'calc_total'])
+            ->find(
+                self::requestAfter('$x = calc'),
+                new NameQuery([NameKind::Function_], ClassCandidateFilter::Any, $context),
+                'calc',
+            );
 
         self::assertSame(
             ['calc_widgets' => '0_calc_widgets', 'calc_total' => '3_calc_total'],
@@ -288,11 +347,15 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testCallableSnippetFollowsTheClient(): void
     {
+        $context = new NameContext('App');
         $items = self::candidates(
-            new NameContext('App'),
             functionSearch: ['App\count_widgets'],
             capabilities: new SessionCapabilities(snippetSupport: true),
-        )->find(self::requestAfter('$x = count_'), [NameKind::Function_], ClassCandidateFilter::Any);
+        )->find(
+            self::requestAfter('$x = count_'),
+            new NameQuery([NameKind::Function_], ClassCandidateFilter::Any, $context),
+            'count_',
+        );
 
         self::assertSame(
             ['count_widgets($0)'],
@@ -303,6 +366,7 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testAbsolutePrefixOffersMatchingContentsOfItsNamespace(): void
     {
+        $context = new NameContext('App');
         $children = [
             'Lib' => new NamespaceContents(
                 childNamespaces: ['Lib\Web', 'Lib\Other'],
@@ -315,8 +379,12 @@ final class SymbolCandidatesTest extends TestCase
             'Lib\Web' => self::largeNamespace('Lib\Web'),
         ];
 
-        $items = self::candidates(new NameContext('App'), children: $children)
-            ->find(self::requestAfter('$x = \Lib\W'), [NameKind::ClassLike], ClassCandidateFilter::Any);
+        $items = self::candidates(children: $children)
+            ->find(
+                self::requestAfter('$x = \Lib\W'),
+                new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                '\Lib\W',
+            );
 
         self::assertSame(
             ['Web\\' => '1_Web\\', 'Widget' => '0_Widget'],
@@ -327,6 +395,7 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testNavigationOffersOnlyClassLikesThatResolveAndPassTheFilter(): void
     {
+        $context = new NameContext('App');
         $children = ['Lib' => new NamespaceContents(symbols: [
             new CatalogSymbol('Lib\Concrete', NameKind::ClassLike),
             new CatalogSymbol('Lib\Phantom', NameKind::ClassLike),
@@ -334,11 +403,14 @@ final class SymbolCandidatesTest extends TestCase
         ])];
 
         $items = self::candidates(
-            new NameContext('App'),
             children: $children,
             phantoms: ['Lib\Phantom'],
             isInstantiable: static fn (ClasslikeName $name): bool => !self::isOneOf($name, ['Lib\Abstraction']),
-        )->find(self::requestAfter('$x = new \Lib\\'), [NameKind::ClassLike], ClassCandidateFilter::Instantiable);
+        )->find(
+            self::requestAfter('$x = new \Lib\\'),
+            new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Instantiable, $context),
+            '\\Lib\\',
+        );
 
         self::assertSame(
             ['Concrete'],
@@ -349,6 +421,7 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testSmallChildNamespaceIsInlinedOneLevel(): void
     {
+        $context = new NameContext('App');
         $children = [
             'Lib' => new NamespaceContents(childNamespaces: ['Lib\Wire', 'Lib\Void']),
             'Lib\Wire' => new NamespaceContents(
@@ -360,8 +433,12 @@ final class SymbolCandidatesTest extends TestCase
             ),
         ];
 
-        $items = self::candidates(new NameContext('App'), children: $children)
-            ->find(self::requestAfter('$x = \Lib\\'), [NameKind::ClassLike], ClassCandidateFilter::Any);
+        $items = self::candidates(children: $children)
+            ->find(
+                self::requestAfter('$x = \Lib\\'),
+                new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                '\\Lib\\',
+            );
 
         self::assertSame(
             [
@@ -386,12 +463,16 @@ final class SymbolCandidatesTest extends TestCase
             ]),
         ];
         $context = new NameContext('App', classImports: ['Http' => 'Psr\Http']);
-        $candidates = self::candidates($context, children: $children);
+        $candidates = self::candidates(children: $children);
 
         self::assertSame(
             ['Client' => 'Psr\Http\Client'],
             array_column(
-                $candidates->find(self::requestAfter('new Http\Cl'), [NameKind::ClassLike], ClassCandidateFilter::Any),
+                $candidates->find(
+                    self::requestAfter('new Http\Cl'),
+                    new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                    'Http\Cl',
+                ),
                 'detail',
                 'label',
             ),
@@ -400,7 +481,11 @@ final class SymbolCandidatesTest extends TestCase
         self::assertSame(
             ['Client' => 'Psr\Http\Client'],
             array_column(
-                $candidates->find(self::requestAfter('new http\Cl'), [NameKind::ClassLike], ClassCandidateFilter::Any),
+                $candidates->find(
+                    self::requestAfter('new http\Cl'),
+                    new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                    'http\Cl',
+                ),
                 'detail',
                 'label',
             ),
@@ -411,8 +496,8 @@ final class SymbolCandidatesTest extends TestCase
             array_column(
                 $candidates->find(
                     self::requestAfter('new Parent\Ch'),
-                    [NameKind::ClassLike],
-                    ClassCandidateFilter::Any,
+                    new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                    'Parent\Ch',
                 ),
                 'detail',
                 'label',
@@ -422,7 +507,11 @@ final class SymbolCandidatesTest extends TestCase
         self::assertSame(
             ['Customer' => 'App\Model\Customer'],
             array_column(
-                $candidates->find(self::requestAfter('new Model\Cu'), [NameKind::ClassLike], ClassCandidateFilter::Any),
+                $candidates->find(
+                    self::requestAfter('new Model\Cu'),
+                    new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                    'Model\Cu',
+                ),
                 'detail',
                 'label',
             ),
@@ -441,19 +530,27 @@ final class SymbolCandidatesTest extends TestCase
         ];
         $context = new NameContext('App', classImports: ['Http' => 'Lib\Http', 'Hammer' => 'Lib\Hammer']);
 
-        $candidates = self::candidates($context, children: $children);
+        $candidates = self::candidates(children: $children);
 
         self::assertSame(
             ['Model\Customer'],
             self::labels(
-                $candidates->find(self::requestAfter('$x = Mod'), [NameKind::ClassLike], ClassCandidateFilter::Any),
+                $candidates->find(
+                    self::requestAfter('$x = Mod'),
+                    new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                    'Mod',
+                ),
             ),
             'a child namespace of the current one is navigable without an import',
         );
         self::assertSame(
             ['Http', 'Hammer', 'Http\\'],
             self::labels(
-                $candidates->find(self::requestAfter('$x = H'), [NameKind::ClassLike], ClassCandidateFilter::Any),
+                $candidates->find(
+                    self::requestAfter('$x = H'),
+                    new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context),
+                    'H',
+                ),
             ),
             'every import is offered by its alias, and one naming a namespace is also a node to descend into',
         );
@@ -461,20 +558,22 @@ final class SymbolCandidatesTest extends TestCase
 
     public function testUseStatementNavigatesClassLikesFromTheGlobalNamespace(): void
     {
+        $context = new NameContext('App');
         $children = ['Lib' => new NamespaceContents(symbols: [
             new CatalogSymbol('Lib\Widget', NameKind::ClassLike),
             new CatalogSymbol('Lib\wrap', NameKind::Function_),
         ])];
-        $candidates = self::candidates(new NameContext('App'), children: $children);
+        $candidates = self::candidates(children: $children);
+        $import = new NameQuery([NameKind::ClassLike], ClassCandidateFilter::Any, $context, absolute: true);
 
         self::assertSame(
             ['Widget'],
-            self::labels($candidates->forUseStatement('Lib\W', 1, 9)),
+            self::labels($candidates->find(self::requestAfter('use Lib\W'), $import, 'Lib\W')),
             'an import names class-likes from the global namespace, not the current one',
         );
         self::assertSame(
             ['Widget'],
-            self::labels($candidates->forUseStatement('\Lib\W', 1, 10)),
+            self::labels($candidates->find(self::requestAfter('use \Lib\W'), $import, '\Lib\W')),
             'a leading \\ names the same place',
         );
     }
@@ -488,7 +587,6 @@ final class SymbolCandidatesTest extends TestCase
      * @param list<string> $accepting predicates that accept every class-like
      */
     private static function candidates(
-        NameContext $context,
         array $search = [],
         array $functionSearch = [],
         array $children = [],
@@ -526,13 +624,9 @@ final class SymbolCandidatesTest extends TestCase
             $resolver->method($predicate)->willReturn(true);
         }
 
-        $scope = self::createStub(ScopeAtPositionInterface::class);
-        $scope->method('nameContextAt')->willReturn($context);
-
         return new SymbolCandidates(
             $symbols,
             $resolver,
-            $scope,
             self::capabilitiesProvider($capabilities),
             new CompletionItemFactory(new ResolvedSymbolPresenter()),
         );
