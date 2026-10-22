@@ -1,5 +1,14 @@
 # Contributing
 
+## Architecture
+
+The project's architectural goals are captured in `docs/adrs`.
+Contributions must be in line with the ADRs.
+Deviations must be justified and should be accompanied by a replacement or supplemental ADR.
+
+Note: ADRs capture intent, not necessarily the current state of the codebase.
+If you encounter a conflict between the current structure and the ADRs when contributing, the ADRs should guide the new code.
+
 ## Development Workflow
 
 - Follow TDD. Coverage must be 100% for new code. Rewrite a dead branch out instead of excluding it.
@@ -8,8 +17,6 @@
 - Update `docs/features/*.md` when merging features.
 - Run `composer test` before commits.
 - `composer.lock` is gitignored. Do not stage or commit it.
-- One route per fact. Before writing code that answers a question (what a symbol is, where it is declared, what type an expression has), check whether the codebase already answers it. If it does, extend that answer even when it is incomplete, moving it first if it sits where the design says it should not; if it does not, add the one place that will.
-- Before a pull request leaves draft, a fresh agent runs the `pr-review` skill on it.
 
 ## Code Style
 
@@ -59,3 +66,12 @@ Each incomplete statement needs its own method; two in one method confuse parser
 
 `//hover:marker` puts the cursor on the last member access or function call on that line.
 Use it for complete code such as `$this->method()`.
+
+## Code Reviews
+
+Reviewing code should focus on things not covered by CI or automated tooling:
+
+- Does the code make sense in the context of the project?
+- Does it agree with the actual Language Server Protocol specs?
+- Does it adhere to the architectural guidance covered in ADR docs (`docs/adrs`)?
+- Can the code be simplified, DRYed out, or better follow general software best practices?

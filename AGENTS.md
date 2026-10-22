@@ -1,5 +1,7 @@
 # AGENTS.md
 
+This document supplements instructions in CONTRIBUTING.md rather than replacing them.
+
 ## Quick Start
 
 ```bash
@@ -10,6 +12,10 @@ composer phpstan -- --error-format=raw --no-progress path/to/analyze # run phpst
 composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 ```
 
+## Development Workflow
+
+- Before a pull request leaves draft, a fresh agent runs the `pr-review` skill on it.
+
 ## Design
 
 The project is a language server for PHP.
@@ -17,7 +23,10 @@ Every design rule below exists to stop one problem: multiple routes to one fact.
 Routes drift, and the drift shows up as a feature that works in hover but not in completion, or a member kind that inherits while another does not.
 
 The codebase is undergoing structural transition to eliminate this issue.
-This document's guidance should override matching existing structure.
+
+ADR documents are being added in `docs/adrs` to capture the intended architecture and context behind it.
+If a session leads to a design decision, that decision should be captured in a new ADR.
+ADRs should be considered read-only once landed to main, with the exception of changing the status (e.g. superseding or abandoning).
 
 ### Services and data types
 
@@ -28,31 +37,10 @@ Application-wide data types live in `src/Domain/`.
 A data type that only one service uses lives next to that service, and should not be referenced outside of that service.
 
 A service produces or exposes facts: which symbols a file declares, which file defines a symbol, what type an expression has.
-Every service is used through an interface, even when it has one implementation.
 The interface describes what a caller can ask.
 It never says where the answer comes from, and it never takes a parser node or a reflection object where another implementation would take something else.
 
 Code decides by what a symbol can do, such as whether it can be instantiated, not by checking which kind of symbol it is.
-
-### One wiring place
-
-Instantiating services is to occur in one wiring place: a PSR-11 container.
-
-### Interfaces, Implementations, and Composites
-
-Where services rely on other services, the references are to be named by interface only, never an implementation.
-
-Concrete implementations may be referenced in exactly two places:
-1) the interface-to-implementation mapping in the PSR-11 container
-2) the constructor arguments for a composite service.
-
-A composite is defined as an implementation of an interface that wires together two or more other implementations of the same interface.
-
-A composite MUST be added once an interface gains a second implementation and MUST be the only place that contains logic of how to switch between the implementations.
-Stated directly: there should never be only two implementations of an interface; there's a single one wired directly, or 2+ functional implementations with a composite with the composite wired.
-Composites SHOULD name the other concrete classes as their constructor arguments.
-
-Note: applying decorators to the wired class (example: caching) is still permitted, and this should also be done in the PSR-11 wiring.
 
 ### Factories
 
@@ -67,11 +55,6 @@ An LSP handler extracts parameters, calls a resolver interface, and formats the 
 A handler never parses a document, walks a tree, resolves a type, or looks up a member.
 If a handler is about to do one of those, the logic belongs in a resolver implementation.
 
-### The litmus test
-
-Adding tree-sitter as a parser touches two files: the new tool class, and the composite that wires the parsing tools together.
-A completion handler cannot tell whether a tree came from tree-sitter, php-parser, or the text skeleton.
-A change that needs more files than that has found a second route to a fact.
 
 ### Type graph
 
@@ -100,7 +83,6 @@ Every request is answered correctly without background work, and background work
 
 Code being edited usually does not parse, and every feature must keep working on it.
 At any position, every feature sees the same structure, and it is the structure the code will have once completed.
-
 
 ### Source text
 
