@@ -12,6 +12,6 @@ class PartlyReadStatement
     public function unreadable(): void
     {
         $this->
-        ]]
+        )(
     }
 }

@@ -65,6 +65,12 @@ final class SkeletonRecovery implements RecoveryInterface
 {
     use BuildsWrittenNamesTrait;
 
+    /**
+     * Set on each class member the skeleton reads from its text alone, whose
+     * code a fuller reading should read again.
+     */
+    public const string APPROXIMATE = 'approximate';
+
     private const string NAME_PATTERN = '[A-Za-z_\\\\][A-Za-z0-9_\\\\]*';
     private const string SIMPLE_NAME_PATTERN = '[A-Za-z_][A-Za-z0-9_]*';
     private const string GROUP_USE_ITEM_ALIAS_PATTERN
@@ -242,6 +248,9 @@ final class SkeletonRecovery implements RecoveryInterface
             ...$this->buildConstants($c['body'], $c['start'], $positions),
         ];
         self::extendMemberSpans($members, $c);
+        foreach ($members as $member) {
+            $member->setAttribute(self::APPROXIMATE, true);
+        }
         $nameNode = new Identifier(
             $c['name'],
             self::positions($positions, $c['nameStart'], $c['nameStart'] + strlen($c['name'])),

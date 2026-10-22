@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Parser\Recovery;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\Recovery\GapGraftingRecovery;
 use Firehed\PhpLsp\Parser\Recovery\SkeletonRecovery;
+use Firehed\PhpLsp\Parser\SyntaxSource\CodeParserInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\ParseAttempt;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserCodeParser;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -125,6 +126,34 @@ final class GapGraftingRecoveryTest extends TestCase
             (new NodeFinder())->findFirstInstanceOf(self::methodBody($tree, 'unreadable'), Expr\PropertyFetch::class),
             'what the parser read of it is kept',
         );
+    }
+
+    public function testCodeThatReadsAsNothingAddsNothing(): void
+    {
+        $tree = $this->recover('Recovery/StrayKeyword.php');
+
+        self::assertCount(2, $tree, 'the statements around the stray keyword, and nothing for it');
+    }
+
+    public function testAGapNoEndingReadsLeavesTheTreeAsTheParserReadIt(): void
+    {
+        $code = $this->loadFixture('Recovery/StrayKeyword.php');
+        $parser = new PhpParserCodeParser();
+        $attempt = $parser->parse($code);
+        $readsOnlyTheFile = new class ($parser, $code) implements CodeParserInterface {
+            public function __construct(private PhpParserCodeParser $parser, private string $file)
+            {
+            }
+
+            public function parse(string $code): ParseAttempt
+            {
+                return $code === $this->file ? $this->parser->parse($code) : new ParseAttempt([], [], []);
+            }
+        };
+
+        $tree = (new GapGraftingRecovery($readsOnlyTheFile))->recover($code, $attempt)->tree;
+
+        self::assertSame($attempt->tree, $tree, 'nothing is grafted where nothing reads');
     }
 
     public function testASkeletonsMethodBodiesAreRead(): void

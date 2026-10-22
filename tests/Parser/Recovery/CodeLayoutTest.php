@@ -83,14 +83,12 @@ final class CodeLayoutTest extends TestCase
         );
     }
 
-    public function testAPieceMustBeShorterThanTheLongestReadable(): void
+    public function testClosingBracketsAloneAreNotAPiece(): void
     {
-        $code = $this->loadFixture('Recovery/DroppedInStatementNamespace.php');
-        $attempt = (new PhpParserCodeParser())->parse($code);
-        $start = (int) strpos($code, '$dropped');
-        $layout = new CodeLayout($code, $attempt->tokens, $attempt->errors, 5);
+        [$code, $layout] = $this->layout('Recovery/UnbracedIf.php');
+        $close = (int) strrpos($code, '}');
 
-        self::assertSame([], $layout->piecesOf($start, $start + 5), 'a region as long as the limit is not read');
+        self::assertSame([], $layout->piecesOf($close, $close + 1), 'a closing brace cannot read as anything');
     }
 
     public function testLinesAndTextAreReadFromTheCode(): void
@@ -109,6 +107,6 @@ final class CodeLayoutTest extends TestCase
     {
         $code = $this->loadFixture($fixture);
         $attempt = (new PhpParserCodeParser())->parse($code);
-        return [$code, new CodeLayout($code, $attempt->tokens, $attempt->errors, PHP_INT_MAX)];
+        return [$code, new CodeLayout($code, $attempt->tokens, $attempt->errors, false)];
     }
 }

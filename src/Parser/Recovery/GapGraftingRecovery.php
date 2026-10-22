@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser\Recovery;
 
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\CodeParserInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\ParseAttempt;
 use PhpParser\Node;
@@ -37,11 +38,17 @@ final class GapGraftingRecovery implements RecoveryInterface
     private const string FILE = '<?php ';
 
     /**
-     * Endings that complete an unfinished class member: none, a declaration
-     * for a dangling attribute or modifier to apply to, the rest of a method
-     * header, or a property name.
+     * Endings that complete an unfinished class member: none, a method body,
+     * a declaration for a dangling attribute or modifier to apply to, the
+     * rest of a method header, or a property name.
      */
-    private const array MEMBER_ENDINGS = ['', ' function _() {}', '() {}', ' $_;'];
+    private const array MEMBER_ENDINGS = ['', ' {}', ' function _() {}', '() {}', ' $_;'];
+
+    /**
+     * Endings that complete an unfinished statement: its semicolon, the block
+     * a control structure or declaration header is waiting for, or none.
+     */
+    private const array STATEMENT_ENDINGS = [';', ' {}', ''];
 
     public function __construct(
         private readonly CodeParserInterface $parser,
@@ -50,20 +57,19 @@ final class GapGraftingRecovery implements RecoveryInterface
 
     public function recover(string $code, ParseAttempt $attempt): ParseAttempt
     {
-        return $this->graftGaps($code, $attempt, PHP_INT_MAX);
+        return $this->graftGaps($code, $attempt, false);
     }
 
     /**
      * Reading a gap can drop code again, so what it reads has its own gaps
-     * grafted; each must be shorter than the gap it came from, so the reading
-     * ends.
+     * grafted once more, though no further.
      */
-    private function graftGaps(string $code, ParseAttempt $attempt, int $longest): ParseAttempt
+    private function graftGaps(string $code, ParseAttempt $attempt, bool $nested): ParseAttempt
     {
         if ($attempt->tree === [] || $attempt->errors === []) {
             return $attempt;
         }
-        $layout = new CodeLayout($code, $attempt->tokens, $attempt->errors, $longest);
+        $layout = new CodeLayout($code, $attempt->tokens, $attempt->errors, $nested);
 
         $bodies = [];
         $nodes = (new NodeFinder())->find($attempt->tree, static fn (): bool => true);
@@ -165,7 +171,8 @@ final class GapGraftingRecovery implements RecoveryInterface
     /**
      * The statements of a body with what each gap between them reads as. A
      * statement the parser read only part of, followed by a gap, is the start
-     * of what it dropped, so it is read again with the gap.
+     * of what it dropped, so it is read again with the gap; so is a member the
+     * skeleton read from its text alone.
      *
      * @param array<Stmt> $statements
      * @param array{int, int} $body
@@ -181,8 +188,9 @@ final class GapGraftingRecovery implements RecoveryInterface
             $out = [...$out, ...$this->readGapAfter($layout, $partial, $cursor, $statement->getStartFilePos(), $host)];
             $cursor = max($cursor, $statement->getEndFilePos() + 1);
             $next = $statements[$i + 1] ?? null;
-            $partial = (new NodeFinder())->findFirstInstanceOf([$statement], Expr\Error::class) !== null
-                && $layout->piecesOf($cursor, $next?->getStartFilePos() ?? $end) !== []
+            $partial = $statement->getAttribute(SkeletonRecovery::APPROXIMATE) === true
+                || ((new NodeFinder())->findFirstInstanceOf([$statement], Expr\Error::class) !== null
+                    && $layout->piecesOf($cursor, $next?->getStartFilePos() ?? $end) !== [])
                 ? $statement
                 : null;
             if ($partial === null) {
@@ -226,20 +234,31 @@ final class GapGraftingRecovery implements RecoveryInterface
     private function readPiece(CodeLayout $layout, int $start, int $end, string $host): array
     {
         $text = $host . $layout->text($start, $end);
-        $read = [];
+        $chosen = null;
         foreach (self::endings($host, $text) as $ending) {
-            $attempt = $this->graftGaps($text . $ending, $this->parser->parse($text . $ending), $end - $start);
-            $statements = self::statementsIn($attempt->tree, $host);
-            if ($statements === []) {
+            $attempt = $this->parser->parse($text . $ending);
+            if (self::statementsIn($attempt->tree, $host) === []) {
                 continue;
             }
-            $read = $statements;
+            // Without an ending that reads cleanly, the earliest that reads
+            // anything is the most faithful.
+            $chosen ??= [$text . $ending, $attempt];
             if ($attempt->errors === []) {
+                $chosen = [$text . $ending, $attempt];
                 break;
             }
         }
+        if ($chosen === null) {
+            return [];
+        }
+        [$finished, $attempt] = $chosen;
+        $read = self::statementsIn(
+            $layout->nested ? $attempt->tree : $this->graftGaps($finished, $attempt, true)->tree,
+            $host,
+        );
         self::place($read, $start - strlen($host), $layout->lineOf($start) - 1, $end - 1);
-        return $read;
+        // A statement only the ending wrote reads none of the gap's code.
+        return array_values(array_filter($read, ParsedDocument::isWritten(...)));
     }
 
     /**
@@ -247,13 +266,14 @@ final class GapGraftingRecovery implements RecoveryInterface
      */
     private static function endings(string $host, string $text): array
     {
-        $tokens = array_values(\PhpToken::tokenize($text));
-        if ($host !== self::CLASS_BODY) {
-            return [self::finish($tokens)];
-        }
-        [$standIn, $open, $previous] = self::unfinished($tokens);
-        $inner = $standIn . self::terminated(array_slice($open, 1), $previous);
-        return array_map(static fn (string $member): string => $inner . $member . '}', self::MEMBER_ENDINGS);
+        [$standIn, $open, $previous] = self::unfinished(array_values(\PhpToken::tokenize($text)));
+        // A class body or block is read inside a wrapper whose brace opens first.
+        $wrapped = $host !== self::FILE;
+        $inner = $standIn . self::terminated($wrapped ? array_slice($open, 1) : $open, $previous);
+        return array_map(
+            static fn (string $ending): string => $inner . $ending . ($wrapped ? '}' : ''),
+            $host === self::CLASS_BODY ? self::MEMBER_ENDINGS : self::STATEMENT_ENDINGS,
+        );
     }
 
     /**

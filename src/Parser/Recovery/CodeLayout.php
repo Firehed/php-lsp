@@ -51,13 +51,14 @@ final class CodeLayout
     /**
      * @param list<Token> $tokens
      * @param list<Error> $errors
-     * @param int $longest The length a piece must be shorter than to be read
+     * @param bool $nested Whether this is the code of a gap read on its own,
+     *        whose own gaps are read without reading further gaps in them
      */
     public function __construct(
         private readonly string $code,
         array $tokens,
         array $errors,
-        private readonly int $longest,
+        public readonly bool $nested,
     ) {
         $length = strlen($code);
         $opened = [];
@@ -141,7 +142,7 @@ final class CodeLayout
 
     /**
      * The parts of a region that hold code, split where the parser reported
-     * an error, each shorter than the longest this layout reads.
+     * an error.
      *
      * @return list<array{int, int}>
      */
@@ -157,7 +158,7 @@ final class CodeLayout
         $cuts[] = $end;
         $pieces = [];
         for ($i = 0; $i < count($cuts) - 1; $i++) {
-            if ($cuts[$i + 1] - $cuts[$i] < $this->longest && $this->holdsCode($cuts[$i], $cuts[$i + 1])) {
+            if ($this->holdsCode($cuts[$i], $cuts[$i + 1])) {
                 $pieces[] = [$cuts[$i], $cuts[$i + 1]];
             }
         }
@@ -174,10 +175,21 @@ final class CodeLayout
         return 1 + substr_count($this->code, "\n", 0, $position);
     }
 
+    /**
+     * Whether a region holds code that can read as something: closing
+     * brackets alone cannot.
+     */
     private function holdsCode(int $start, int $end): bool
     {
-        $next = $this->firstCodeAfter($start - 1);
-        return $next !== null && $this->positions[$next] < $end;
+        for ($next = $this->firstCodeAfter($start - 1); $next !== null && $this->positions[$next] < $end; $next++) {
+            if (!$this->tokens[$next]->is(['}', ')', ']'])) {
+                return true;
+            }
+            if ($next + 1 >= count($this->positions)) {
+                return false;
+            }
+        }
+        return false;
     }
 
     /**
