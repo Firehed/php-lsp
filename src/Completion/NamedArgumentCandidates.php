@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\PrefixMatcher;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\Position\CallAtPositionInterface;
 
 /**
  * Produces named-argument completion items (`name:`) for a call, skipping
@@ -19,18 +19,14 @@ use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 final class NamedArgumentCandidates implements CompletionSourceInterface
 {
     public function __construct(
-        private readonly CodeResolverInterface $codeResolver,
+        private readonly CallAtPositionInterface $calls,
         private readonly CompletionItemFactory $itemFactory,
     ) {
     }
 
     public function find(CompletionRequest $request): ?array
     {
-        $callContext = $this->codeResolver->getCallContext(
-            $request->document,
-            $request->line,
-            $request->character,
-        );
+        $callContext = $this->calls->callAt($request->document, $request->offset);
         if ($callContext === null) {
             return null;
         }

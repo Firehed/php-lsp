@@ -156,6 +156,15 @@ final class GapGraftingRecoveryTest extends TestCase
         self::assertSame($attempt->tree, $tree, 'nothing is grafted where nothing reads');
     }
 
+    public function testCodeBeingTypedIsReadWithoutTheLinesAfterIt(): void
+    {
+        $tree = $this->recover('src/Completion/AttributeNamedArgumentsIncomplete.php');
+
+        $attribute = (new NodeFinder())->findFirstInstanceOf($tree, Node\Attribute::class);
+        self::assertInstanceOf(Node\Attribute::class, $attribute, 'the attribute being typed is read');
+        self::assertSame('Route', $attribute->name->toString());
+    }
+
     public function testASkeletonsMethodBodiesAreRead(): void
     {
         $code = $this->loadFixture('Recovery/OnlySkeletonReads.php');

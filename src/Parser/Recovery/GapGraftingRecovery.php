@@ -227,6 +227,23 @@ final class GapGraftingRecovery implements RecoveryInterface
      */
     private function readPiece(CodeLayout $layout, int $start, int $end, string $host): array
     {
+        $read = $this->readWhole($layout, $start, $end, $host);
+        if ($read !== []) {
+            return $read;
+        }
+        // Code being typed ends with its line; the lines after it belong to
+        // what follows. Read it again without its last line.
+        $lastLine = strrpos($layout->text($start, $end), "\n");
+        return $lastLine === false || $lastLine === 0
+            ? []
+            : $this->readPiece($layout, $start, $start + $lastLine, $host);
+    }
+
+    /**
+     * @return list<Stmt>
+     */
+    private function readWhole(CodeLayout $layout, int $start, int $end, string $host): array
+    {
         $text = $host . $layout->text($start, $end);
         $chosen = null;
         foreach (self::endings($host, $text) as $ending) {

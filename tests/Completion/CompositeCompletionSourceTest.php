@@ -31,6 +31,7 @@ use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\NameContext;
+use Firehed\PhpLsp\Resolution\Position\CallAtPositionInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -51,14 +52,14 @@ final class CompositeCompletionSourceTest extends TestCase
 
         self::assertSame(
             ['name:', '$variable'],
-            self::labelsAfter('foo($va', $symbols, self::insideACall()),
+            self::labelsAfter('foo($va', $symbols, self::resolverWithAVariable(), self::aCall()),
             'a variable being typed in a call offers argument names and variables, not expressions',
         );
     }
 
     public function testAnExpressionInsideACallAlsoOffersKeywordsAndSymbols(): void
     {
-        $labels = self::labelsAfter('foo(n', self::everySymbolKind(), self::insideACall());
+        $labels = self::labelsAfter('foo(n', self::everySymbolKind(), self::resolverWithAVariable(), self::aCall());
 
         foreach (['name:', '$variable', 'null', 'Widget', 'Mixin', 'strlen', 'PHP_VERSION'] as $label) {
             self::assertContains(
@@ -116,14 +117,14 @@ final class CompositeCompletionSourceTest extends TestCase
     {
         self::assertSame(
             ['$variable'],
-            self::labelsAfter('foo("Z', self::everySymbolKind(), self::insideACall()),
+            self::labelsAfter('foo("Z', self::everySymbolKind(), self::resolverWithAVariable(), self::aCall()),
             'only a variable can be interpolated, even inside a call',
         );
     }
 
     public function testMemberAccessAnswersAloneEvenWithNoMembers(): void
     {
-        $codeResolver = self::insideACall();
+        $codeResolver = self::resolverWithAVariable();
         $codeResolver->method('getMemberAccessContext')->willReturn(MemberAccessContext::forInstance(
             new ClasslikeType(ClasslikeName::fromFullyQualified('Widget')),
             Visibility::Public,
@@ -134,7 +135,7 @@ final class CompositeCompletionSourceTest extends TestCase
 
         self::assertSame(
             [],
-            self::labelsAfter('foo($x->', $symbols, $codeResolver),
+            self::labelsAfter('foo($x->', $symbols, $codeResolver, self::aCall()),
             'member access owns the position: no argument names or variables from the enclosing call',
         );
     }
@@ -297,16 +298,23 @@ final class CompositeCompletionSourceTest extends TestCase
     }
 
     /**
-     * A resolver that places the cursor in a call taking `$name`, with `$variable` in scope.
+     * A call taking `$name`.
      */
-    private static function insideACall(): CodeResolverInterface&Stub
+    private static function aCall(): CallContext
     {
         $callable = self::createStub(ResolvedCallableInterface::class);
         $callable->method('getParameters')->willReturn([
             new ParameterInfo('name', new PrimitiveType('string'), null, 0, false, false),
         ]);
+        return new CallContext($callable, 0, []);
+    }
+
+    /**
+     * A resolver with `$variable` in scope.
+     */
+    private static function resolverWithAVariable(): CodeResolverInterface&Stub
+    {
         $codeResolver = self::createStub(CodeResolverInterface::class);
-        $codeResolver->method('getCallContext')->willReturn(new CallContext($callable, 0, []));
         $codeResolver->method('getVariablesInScope')->willReturn([
             new ResolvedVariable('variable', new PrimitiveType('string')),
         ]);
@@ -322,16 +330,19 @@ final class CompositeCompletionSourceTest extends TestCase
         string $code,
         SymbolSourceInterface $symbols,
         CodeResolverInterface $codeResolver,
+        ?CallContext $call = null,
     ): array {
         $capabilities = self::capabilitiesProvider();
         $itemFactory = new CompletionItemFactory(new ResolvedSymbolPresenter());
+        $calls = self::createStub(CallAtPositionInterface::class);
+        $calls->method('callAt')->willReturn($call);
         $source = new CompositeCompletionSource(
-            $codeResolver,
+            $calls,
             new SymbolCandidates($symbols, $codeResolver, $capabilities, $itemFactory),
             new KeywordCandidates($itemFactory),
             new VariableCandidates($codeResolver, $itemFactory),
             new MemberCandidates($codeResolver, $capabilities, $itemFactory),
-            new NamedArgumentCandidates($codeResolver, $itemFactory),
+            new NamedArgumentCandidates($calls, $itemFactory),
             new BuiltinTypeCandidates($itemFactory),
         );
 

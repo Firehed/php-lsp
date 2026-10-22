@@ -18,6 +18,7 @@ use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\Position\CallAtPositionInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -154,7 +155,7 @@ final class CompositeHandlerTest extends TestCase
             ),
             new SignatureHelpHandler(
                 $probes['signatureHelp'],
-                self::createStub(CodeResolverInterface::class),
+                self::createStub(CallAtPositionInterface::class),
                 self::createStub(ResolvedSymbolPresenterInterface::class),
             ),
             new CompletionHandler($probes['completion'], self::createStub(CompletionSourceInterface::class)),

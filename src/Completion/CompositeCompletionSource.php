@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\NameKind;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\Position\CallAtPositionInterface;
 
 /**
  * The one completion source the handler consumes. It owns the whole dispatch:
@@ -17,7 +17,7 @@ use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 final class CompositeCompletionSource implements CompletionSourceInterface
 {
     public function __construct(
-        private readonly CodeResolverInterface $codeResolver,
+        private readonly CallAtPositionInterface $calls,
         private readonly SymbolCandidates $symbols,
         private readonly KeywordCandidates $keywords,
         private readonly VariableCandidates $variableCandidates,
@@ -48,7 +48,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
         }
 
         // Inside a call context, offer named arguments + variables + expressions.
-        if ($this->codeResolver->getCallContext($request->document, $request->line, $request->character) !== null) {
+        if ($this->calls->callAt($request->document, $request->offset) !== null) {
             return $this->deduplicate($this->callContextItems($request));
         }
 

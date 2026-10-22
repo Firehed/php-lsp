@@ -10,6 +10,7 @@ use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\Slot;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PhpParser\Node\Expr;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -103,6 +104,57 @@ final class PositionLocatorTest extends TestCase
         yield 'an argument name' => [$p, '(first: 1', Slot::ArgumentName, 'first', true];
         yield 'a declared name' => [$p, 'function method', Slot::DeclaredName, 'method', false];
         yield 'a called function' => [$p, 'printf(', Slot::CalledName, 'printf', false];
+    }
+
+    /**
+     * @return iterable<string, array{string, string, class-string, int, list<string>, int}>
+     */
+    public static function callSites(): iterable
+    {
+        $s = 'SignatureHelp.php';
+        $b = 'src/Resolution/ArgumentBoundaries.php';
+        yield 'the first argument' => [$s, 'first_param', Expr\FuncCall::class, 0, [], 0];
+        yield 'the second argument' => [$s, 'second_param', Expr\FuncCall::class, 1, [], 1];
+        yield 'a named argument' => [$s, 'named_arg', Expr\FuncCall::class, 1, ['a', 'b'], 0];
+        yield 'a constructor' => [$s, 'constructor', Expr\New_::class, 0, [], 0];
+        yield 'a static call' => [$s, 'static_call', Expr\StaticCall::class, 0, [], 0];
+        $m = Expr\MethodCall::class;
+        yield 'typing the first argument' => [$b, 'typing_first', $m, 0, [], 0];
+        yield 'after the first argument and a space' => [$b, 'after_first_with_space', $m, 0, [], 0];
+        yield 'after a comma' => [$b, 'after_comma', $m, 1, [], 1];
+        yield 'after a comma with no space' => [$b, 'after_comma_no_space', $m, 1, [], 1];
+        yield 'typing the second argument' => [$b, 'typing_second', $m, 1, [], 1];
+        yield 'inside the second argument\'s value' => [$b, 'inside_second_value', $m, 1, [], 1];
+        yield 'a named argument after the position' => [
+            'src/Completion/EditingNamedArg.php', 'editing_in_complete', Expr\New_::class, 1, ['age'], 1,
+        ];
+    }
+
+    /**
+     * @param class-string $callClass
+     * @param list<string> $usedNames
+     */
+    #[DataProvider('callSites')]
+    public function testTheCallSiteIsLocated(
+        string $fixture,
+        string $marker,
+        string $callClass,
+        int $argumentIndex,
+        array $usedNames,
+        int $positionalCount,
+    ): void {
+        $code = $this->loadFixture($fixture);
+
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $code);
+        $call = (new PositionLocator(ProductionSyntaxSource::create()->source))
+            ->locate($document, new ByteOffset($this->markerOffset($code, $marker)))
+            ->call;
+
+        self::assertNotNull($call, 'the position is in a call\'s arguments');
+        self::assertInstanceOf($callClass, $call->call, 'the call whose arguments hold it');
+        self::assertSame($argumentIndex, $call->argumentIndex, 'commas before the position advance the argument');
+        self::assertSame($usedNames, $call->usedNames, 'every argument written by name counts as used');
+        self::assertSame($positionalCount, $call->positionalCount, 'only positional arguments before it are filled');
     }
 
     #[DataProvider('wordEnds')]

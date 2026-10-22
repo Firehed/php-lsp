@@ -63,7 +63,6 @@ use Throwable;
  */
 final class SymbolResolver implements CodeResolverInterface
 {
-    private readonly CallContextDetector $callDetector;
     private readonly MemberAccessDetector $memberAccessDetector;
 
     public function __construct(
@@ -74,7 +73,6 @@ final class SymbolResolver implements CodeResolverInterface
         private readonly TypeSourceInterface $typeSource,
         private readonly ExpressionResolverInterface $expressions,
     ) {
-        $this->callDetector = new CallContextDetector($locator);
         $this->memberAccessDetector = new MemberAccessDetector(
             $memberResolver,
             $locator,
@@ -304,33 +302,6 @@ final class SymbolResolver implements CodeResolverInterface
         }
 
         return $variables;
-    }
-
-    /**
-     * Get parameters for active call at position.
-     * Used by: SignatureHelp, Completion (named args)
-     */
-    public function getCallContext(
-        TextDocument $document,
-        int $line,
-        int $character,
-    ): ?CallContext {
-        $parsed = $this->parser->parse($document);
-
-        $offset = $document->offsetAt($line, $character)->value;
-
-        $callInfo = $this->callDetector->detect($parsed, $offset);
-        if ($callInfo === null) {
-            return null;
-        }
-
-        [$callNode, $activeParameter, $usedNames, $positionalCount, $inArgumentValue] = $callInfo;
-        $callable = $this->resolveCallable($callNode, $parsed->tree, $document);
-        if ($callable === null) {
-            return null;
-        }
-
-        return new CallContext($callable, $activeParameter, $usedNames, $positionalCount, $inArgumentValue);
     }
 
     public function getNameContext(TextDocument $document, int $line): NameContext

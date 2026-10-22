@@ -8,7 +8,7 @@ use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 use Firehed\PhpLsp\Resolution\CallContext;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\Position\CallAtPositionInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 
 /**
@@ -25,7 +25,7 @@ final class SignatureHelpHandler implements DocumentFeatureHandlerInterface
 
     public function __construct(
         private readonly DocumentSourceInterface $documents,
-        private readonly CodeResolverInterface $codeResolver,
+        private readonly CallAtPositionInterface $calls,
         private readonly ResolvedSymbolPresenterInterface $presenter,
     ) {
     }
@@ -50,7 +50,7 @@ final class SignatureHelpHandler implements DocumentFeatureHandlerInterface
             return null;
         }
 
-        $context = $this->codeResolver->getCallContext($document, $position->line, $position->character);
+        $context = $this->calls->callAt($document, $document->offsetAt($position->line, $position->character));
         if ($context === null) {
             return null;
         }

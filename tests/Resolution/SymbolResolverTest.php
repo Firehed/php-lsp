@@ -9,14 +9,11 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeName;
-use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
-use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
@@ -205,55 +202,6 @@ final class SymbolResolverTest extends TestCase
             self::parsingResolver(self::createStub(SymbolSourceInterface::class))
                 ->resolveAtPosition(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character),
             'nothing at the cursor names a symbol',
-        );
-    }
-
-    public function testCallContextCarriesTheArgumentAtTheCursor(): void
-    {
-        $fixture = 'src/Resolution/ArgumentBoundaries.php';
-        $content = $this->loadFixture($fixture);
-        ['line' => $line, 'character' => $character] = $this->locateCursor($content, 'function_named_value');
-        $function = self::functionInfo(
-            QualifiedName::fromFullyQualified('boundaryTarget'),
-            parameters: [self::parameterInfo('name'), self::parameterInfo('count', position: 1)],
-        );
-        $symbols = self::createStub(SymbolSourceInterface::class);
-        $symbols->method('lookupFunction')->willReturn($function);
-
-        $context = self::parsingResolver($symbols)
-            ->getCallContext(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
-
-        self::assertEquals(
-            new CallContext($function, 1, ['count'], 1, inArgumentValue: true),
-            $context,
-            'the call context reports the callable, the arguments supplied, and that a value is being typed',
-        );
-    }
-
-    public function testCallContextNamesTheCallableAndActiveParameter(): void
-    {
-        $add = self::functionInfo(QualifiedName::fromFullyQualified('signatureHelpAdd'));
-        $symbols = self::createStub(SymbolSourceInterface::class);
-        $symbols->method('lookupFunction')->willReturnCallback(
-            fn (FunctionName $name) => $name->qualifiedName->fullyQualifiedName() === 'signatureHelpAdd' ? $add : null,
-        );
-        [$document, $line, $character] = $this->signatureHelpCursor('second_param');
-
-        self::assertEquals(
-            new CallContext($add, 1, [], 1),
-            self::parsingResolver($symbols)->getCallContext($document, $line, $character),
-            'the call at the cursor resolves to its function, past the one argument already written',
-        );
-    }
-
-    public function testNoCallContextOutsideACall(): void
-    {
-        [$document, $line, $character] = $this->signatureHelpCursor('outside_call');
-
-        self::assertNull(
-            self::parsingResolver(self::createStub(SymbolSourceInterface::class))
-                ->getCallContext($document, $line, $character),
-            'no call encloses the cursor',
         );
     }
 

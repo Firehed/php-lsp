@@ -116,16 +116,6 @@ interface CodeResolverInterface
     ): array;
 
     /**
-     * Get call context at cursor position (for signature help).
-     * Used by: SignatureHelp
-     */
-    public function getCallContext(
-        TextDocument $document,
-        int $line,
-        int $character,
-    ): ?CallContext;
-
-    /**
      * Get the name-resolution context at a line: the enclosing namespace and the
      * import tables (`use`, `use function`, `use const`) in effect there.
      *
