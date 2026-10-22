@@ -7,10 +7,10 @@ namespace Firehed\PhpLsp\Tests\Parser\NodeLocator;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
+use Firehed\PhpLsp\Tests\Parser\SkeletonOnlySyntaxSource;
 use PhpParser\Node\Identifier;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -81,7 +81,7 @@ final class TreeNodeLocatorTest extends TestCase
     {
         return [
             'php-parser' => [ParserOnlySyntaxSource::create()],
-            'skeleton' => [new SkeletonSyntaxSource()],
+            'skeleton' => [new SkeletonOnlySyntaxSource()],
         ];
     }
 

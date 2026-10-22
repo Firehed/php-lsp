@@ -2,12 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Parser\SyntaxSource;
+namespace Firehed\PhpLsp\Parser\Recovery;
 
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\BuildsWrittenNamesTrait;
-use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Parser\SyntaxSource\ParseAttempt;
 use PhpParser\Modifiers;
 use PhpParser\Node;
 use PhpParser\Node\Const_;
@@ -17,11 +15,11 @@ use PhpParser\Node\Stmt;
 use PhpParser\Node\UseItem;
 
 /**
- * The regex-based {@see SyntaxSourceInterface}. Reads the structural shape of PHP source
- * — namespace, imports, class-likes with `extends`/`implements`, and their
- * top-level members — from the text alone, so a document php-parser cannot make
- * sense of still yields a tree that {@see \Firehed\PhpLsp\Resolution\Scope},
- * {@see \Firehed\PhpLsp\Knowledge\DeclarationScanner}, and
+ * The last-resort {@see RecoveryInterface}: when nothing else produced a tree,
+ * reads the structural shape of PHP source — namespace, imports, class-likes
+ * with `extends`/`implements`, and their top-level members — from the text
+ * alone, so a document php-parser cannot make sense of still yields a tree
+ * that {@see \Firehed\PhpLsp\Knowledge\DeclarationScanner} and
  * {@see \Firehed\PhpLsp\Repository\DefaultClassInfoFactory} read the same way
  * they read a php-parser tree.
  *
@@ -63,7 +61,7 @@ use PhpParser\Node\UseItem;
  *   endLine: int,
  * }
  */
-final class SkeletonSyntaxSource implements SyntaxSourceInterface
+final class SkeletonRecovery implements RecoveryInterface
 {
     use BuildsWrittenNamesTrait;
 
@@ -72,22 +70,13 @@ final class SkeletonSyntaxSource implements SyntaxSourceInterface
     private const string GROUP_USE_ITEM_ALIAS_PATTERN
         = '/^(' . self::NAME_PATTERN . ')\s+as\s+(' . self::SIMPLE_NAME_PATTERN . ')$/';
 
-    private readonly TreeAnnotator $annotator;
-
-    public function __construct()
+    public function recover(string $code, ParseAttempt $attempt): ParseAttempt
     {
-        $this->annotator = new TreeAnnotator();
-    }
-
-    public function parse(TextDocument $document): ParsedDocument
-    {
-        $content = $document->getContent();
-        $positions = self::indexContent($content);
-        $tree = $this->buildTree($content, $positions);
-        if ($tree === []) {
-            return new ParsedDocument($document, []);
+        if ($attempt->tree !== []) {
+            return $attempt;
         }
-        return new ParsedDocument($document, $this->annotator->annotate($tree));
+        $tree = $this->buildTree($code, self::indexContent($code));
+        return new ParseAttempt($tree, $attempt->tokens, $attempt->errors);
     }
 
     /**

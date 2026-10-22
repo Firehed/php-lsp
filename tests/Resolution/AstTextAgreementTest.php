@@ -13,10 +13,10 @@ use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\DescribesSyntaxTreesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use Firehed\PhpLsp\Tests\Parser\SkeletonOnlySyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr\FuncCall;
@@ -422,7 +422,7 @@ final class AstTextAgreementTest extends TestCase
         $content = $this->loadFixture($fixture);
         $document = new TextDocument('file:///' . $fixture, 'php', 1, $content);
         $parsed = $this->parser->parse($document)->tree;
-        $skeleton = (new SkeletonSyntaxSource())->parse($document)->tree;
+        $skeleton = (new SkeletonOnlySyntaxSource())->parse($document)->tree;
 
         $parsedShape = self::describe($parsed);
         $skeletonShape = self::describe($skeleton);

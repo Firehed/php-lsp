@@ -12,9 +12,12 @@ use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
-use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
+use Firehed\PhpLsp\Parser\Recovery\SkeletonRecovery;
 use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\ParsingSyntaxSource;
+use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserCodeParser;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Parser\TreeAnnotator;
 
 /**
  * The test-facing wiring for the production SyntaxSourceInterface and
@@ -36,12 +39,7 @@ final readonly class ProductionSyntaxSource
 
     private function __construct()
     {
-        $this->counter = new CountingSyntaxSource(
-            new CompositeSyntaxSource(
-                ParserOnlySyntaxSource::create(),
-                new SkeletonSyntaxSource(),
-            ),
-        );
+        $this->counter = new CountingSyntaxSource(self::unmemoized());
         $this->source = new MemoizingSyntaxSource($this->counter);
         $this->locator = new CompositeNodeLocator(new TreeNodeLocator(), new CursorTextNodeLocator());
         $this->reader = new SourceFileReader();
@@ -55,5 +53,13 @@ final readonly class ProductionSyntaxSource
     public static function create(): self
     {
         return new self();
+    }
+
+    /**
+     * The production syntax source alone, with every recovery step but no memo.
+     */
+    public static function unmemoized(): SyntaxSourceInterface
+    {
+        return new ParsingSyntaxSource(new PhpParserCodeParser(), new SkeletonRecovery(), new TreeAnnotator());
     }
 }

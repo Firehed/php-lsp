@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\MemoizingSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\AssertsTreeContractTrait;
 use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use Firehed\PhpLsp\Tests\Parser\SkeletonOnlySyntaxSource;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -47,20 +46,18 @@ final class SyntaxSourceContractTest extends TestCase
     private const string SKELETON_ONLY = 'src/IncompleteCode/VeryBroken.php';
 
     /**
-     * Each source on every file it makes a tree of, and the memoized composite
-     * over them once through each of its members.
+     * Each reader on every file it makes a tree of, and the memoized
+     * production source over a file php-parser reads and one it does not.
      *
      * @return iterable<string, array{SyntaxSourceInterface, string}>
      */
     public static function treesFromEverySource(): iterable
     {
-        $parser = ParserOnlySyntaxSource::create();
-        $skeleton = new SkeletonSyntaxSource();
         $sources = [
-            'php-parser' => [$parser, self::PARSEABLE],
-            'skeleton' => [$skeleton, [...self::PARSEABLE, self::SKELETON_ONLY]],
-            'memoized composite' => [
-                new MemoizingSyntaxSource(new CompositeSyntaxSource($parser, $skeleton)),
+            'php-parser' => [ParserOnlySyntaxSource::create(), self::PARSEABLE],
+            'skeleton' => [new SkeletonOnlySyntaxSource(), [...self::PARSEABLE, self::SKELETON_ONLY]],
+            'memoized production' => [
+                ProductionSyntaxSource::create()->source,
                 [self::PARSEABLE[0], self::SKELETON_ONLY],
             ],
         ];

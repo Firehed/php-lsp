@@ -2,14 +2,17 @@
 
 declare(strict_types=1);
 
-namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
+namespace Firehed\PhpLsp\Tests\Parser\Recovery;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
+use Firehed\PhpLsp\Parser\Recovery\SkeletonRecovery;
+use Firehed\PhpLsp\Parser\SyntaxSource\ParseAttempt;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
+use Firehed\PhpLsp\Tests\Parser\SkeletonOnlySyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
@@ -17,16 +20,28 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
-#[CoversClass(SkeletonSyntaxSource::class)]
-final class SkeletonSyntaxSourceTest extends TestCase
+#[CoversClass(SkeletonRecovery::class)]
+final class SkeletonRecoveryTest extends TestCase
 {
     use LoadsFixturesTrait;
 
-    private SkeletonSyntaxSource $source;
+    private SyntaxSourceInterface $source;
 
     protected function setUp(): void
     {
-        $this->source = new SkeletonSyntaxSource();
+        $this->source = new SkeletonOnlySyntaxSource();
+    }
+
+    public function testATreeAlreadyReadIsLeftAlone(): void
+    {
+        $tree = [new Stmt\Nop()];
+        $attempt = new ParseAttempt($tree, [], []);
+
+        self::assertSame(
+            $attempt,
+            (new SkeletonRecovery())->recover("<?php\nclass Foo {}\n", $attempt),
+            'the skeleton is a last resort, never a replacement for what was read',
+        );
     }
 
     public function testEmptyContentYieldsNoStatements(): void

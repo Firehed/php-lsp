@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Parser\ParsedDocument;
+use Firehed\PhpLsp\Parser\Recovery\SkeletonRecovery;
 use Firehed\PhpLsp\Parser\SyntaxSource\ParsingSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserCodeParser;
 use Firehed\PhpLsp\Parser\TreeAnnotator;
@@ -46,6 +47,22 @@ final class ParsingSyntaxSourceTest extends TestCase
         self::assertSame('B\\Bar', $new->class->toString(), 'names are resolved against the imports');
     }
 
+    public function testWhatRecoveryReadsIsTheTree(): void
+    {
+        $code = "<?php\nnamespace A;\nclass Foo\n{\n    public function bar(";
+        $doc = new TextDocument('file:///test.php', 'php', 1, $code);
+
+        $tree = self::source()->parse($doc)->tree;
+
+        $class = (new NodeFinder())->findFirstInstanceOf($tree, Class_::class);
+        self::assertNotNull($class, 'code php-parser cannot read still yields the structure recovery found');
+        self::assertInstanceOf(
+            Namespace_::class,
+            $class->getAttribute('parent'),
+            'and it is annotated like any tree',
+        );
+    }
+
     public function testParseReturnTypeIsNonNullable(): void
     {
         $return = (new \ReflectionMethod(ParsingSyntaxSource::class, 'parse'))->getReturnType();
@@ -60,6 +77,6 @@ final class ParsingSyntaxSourceTest extends TestCase
 
     private static function source(): ParsingSyntaxSource
     {
-        return new ParsingSyntaxSource(new PhpParserCodeParser(), new TreeAnnotator());
+        return new ParsingSyntaxSource(new PhpParserCodeParser(), new SkeletonRecovery(), new TreeAnnotator());
     }
 }

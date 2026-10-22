@@ -34,13 +34,13 @@ return [
     Parser\TreeAnnotator::class => fn () => new Parser\TreeAnnotator(),
     Parser\SyntaxSource\PhpParserCodeParser::class,
     Parser\SyntaxSource\CodeParserInterface::class => Parser\SyntaxSource\PhpParserCodeParser::class,
+    Parser\Recovery\SkeletonRecovery::class,
+    Parser\Recovery\RecoveryInterface::class => Parser\Recovery\SkeletonRecovery::class,
     Parser\SyntaxSource\ParsingSyntaxSource::class,
-    Parser\SyntaxSource\SkeletonSyntaxSource::class,
-    Parser\SyntaxSource\CompositeSyntaxSource::class,
-    // The memo decorates the composite and is the one instance both the
+    // The memo decorates the parsing source and is the one instance both the
     // resolvers parse through and the message loop clears.
     Parser\SyntaxSource\MemoizingSyntaxSource::class => fn (TC $c) => new Parser\SyntaxSource\MemoizingSyntaxSource(
-        $c->get(Parser\SyntaxSource\CompositeSyntaxSource::class),
+        $c->get(Parser\SyntaxSource\ParsingSyntaxSource::class),
     ),
     Parser\SyntaxSource\SyntaxSourceInterface::class => Parser\SyntaxSource\MemoizingSyntaxSource::class,
     Parser\SyntaxSource\MessageScopedInterface::class => Parser\SyntaxSource\MemoizingSyntaxSource::class,

@@ -10,12 +10,12 @@ use Firehed\PhpLsp\Parser\NodeLocator\CompositeNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\CursorTextNodeLocator;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
-use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\AssertsTreeContractTrait;
 use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use Firehed\PhpLsp\Tests\Parser\SkeletonOnlySyntaxSource;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -41,7 +41,7 @@ final class NodeLocatorContractTest extends TestCase
         $tree = new TreeNodeLocator();
         $cursorText = new CursorTextNodeLocator();
         $parser = ParserOnlySyntaxSource::create();
-        $skeleton = new SkeletonSyntaxSource();
+        $skeleton = new SkeletonOnlySyntaxSource();
 
         yield 'tree, parsed: method in a class' => [
             $tree, $parser, 'src/Inheritance/ChildClass.php', self::atHover('inherited_method'),
@@ -75,7 +75,7 @@ final class NodeLocatorContractTest extends TestCase
         ];
 
         $composite = new CompositeNodeLocator($tree, $cursorText);
-        $sources = new CompositeSyntaxSource($parser, $skeleton);
+        $sources = ProductionSyntaxSource::unmemoized();
         yield 'composite: a node the tree holds' => [
             $composite, $sources, 'src/Inheritance/ChildClass.php', self::atHover('inherited_method'),
         ];
