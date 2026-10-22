@@ -22,6 +22,7 @@ use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\MemberAccessDetector;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
@@ -60,10 +61,13 @@ class MemberAccessDetectorTest extends TestCase
         $emptySource->method('lookupClassLike')->willReturn(null);
         $emptyMemberResolver = new MemberResolver($emptySource);
         $this->detector = new MemberAccessDetector(
-            $emptySource,
             $emptyMemberResolver,
-            new NativeTypeSource($emptySource, $emptyMemberResolver),
             $production->locator,
+            new ExpressionResolver(
+                $emptyMemberResolver,
+                $emptySource,
+                new NativeTypeSource($emptySource, $emptyMemberResolver),
+            ),
         );
     }
 
@@ -496,7 +500,11 @@ class MemberAccessDetectorTest extends TestCase
             },
         );
 
-        return new MemberAccessDetector($symbols, $memberResolver, $types, $locator);
+        return new MemberAccessDetector(
+            $memberResolver,
+            $locator,
+            new ExpressionResolver($memberResolver, $symbols, $types),
+        );
     }
 
     private static function instance(TypeInterface $type, Visibility $visibility): MemberAccessContext

@@ -79,25 +79,19 @@ final class GapGraftingRecovery implements RecoveryInterface
                 $bodies[] = [$host, $body, $host instanceof Stmt\ClassLike ? self::CLASS_BODY : self::BLOCK];
             }
         }
-        // A `namespace Name;` holds everything up to the next top-level
-        // statement, so a gap after its last statement belongs inside it.
-        $top = array_values($attempt->tree);
-        foreach ($top as $i => $statement) {
+        foreach ($attempt->tree as $statement) {
             if (
-                !$statement instanceof Stmt\Namespace_
-                || $statement->getAttribute('kind') !== Stmt\Namespace_::KIND_SEMICOLON
+                $statement instanceof Stmt\Namespace_
+                && $statement->getAttribute('kind') === Stmt\Namespace_::KIND_SEMICOLON
             ) {
-                continue;
-            }
-            $end = isset($top[$i + 1]) ? $top[$i + 1]->getStartFilePos() : strlen($code);
-            $body = $layout->statementBody(self::headerEnd($statement), $end);
-            if ($body !== null) {
-                $statement->setAttribute('endFilePos', $body[1] - 1);
-                $bodies[] = [$statement, $body, self::FILE];
+                $body = $layout->statementBody(self::headerEnd($statement), $statement->getEndFilePos() + 1);
+                if ($body !== null) {
+                    $bodies[] = [$statement, $body, self::FILE];
+                }
             }
         }
 
-        $tree = $this->graft($layout, $top, $layout->fileBody(), self::FILE);
+        $tree = $this->graft($layout, $attempt->tree, $layout->fileBody(), self::FILE);
         foreach ($bodies as [$host, $body, $kind]) {
             $host->stmts = $this->graft($layout, $host->stmts ?? [], $body, $kind);
         }

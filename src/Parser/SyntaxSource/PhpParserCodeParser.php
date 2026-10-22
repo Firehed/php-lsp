@@ -9,6 +9,7 @@ use PhpParser\ErrorHandler;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr\CallLike;
+use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
@@ -32,6 +33,7 @@ final class PhpParserCodeParser implements CodeParserInterface
         $errors = new ErrorHandler\Collecting();
         $tree = $this->parser->parse($code, $errors) ?? [];
         $tokens = $this->parser->getTokens();
+        self::spanStatementNamespaces($tree, $code);
         $calls = (new NodeFinder())->find(
             $tree,
             static fn (Node $node): bool => $node instanceof CallLike || $node instanceof Attribute,
@@ -41,6 +43,29 @@ final class PhpParserCodeParser implements CodeParserInterface
             $call->setAttribute(ParsedDocument::ARGUMENT_SEPARATORS, self::argumentSeparators($call, $tokens));
         }
         return new ParseAttempt($tree, array_values($tokens), array_values($errors->getErrors()));
+    }
+
+    /**
+     * A `namespace Name;` declaration holds everything up to the next
+     * top-level statement or the end of the code, though php-parser ends it at
+     * its last statement.
+     *
+     * @param array<Stmt> $tree
+     */
+    private static function spanStatementNamespaces(array $tree, string $code): void
+    {
+        $top = array_values($tree);
+        foreach ($top as $i => $statement) {
+            if (
+                !$statement instanceof Stmt\Namespace_
+                || $statement->getAttribute('kind') !== Stmt\Namespace_::KIND_SEMICOLON
+            ) {
+                continue;
+            }
+            $end = (isset($top[$i + 1]) ? $top[$i + 1]->getStartFilePos() : strlen($code)) - 1;
+            $statement->setAttribute('endFilePos', max($statement->getEndFilePos(), $end));
+            $statement->setAttribute('endLine', substr_count($code, "\n", 0, max(0, $end)) + 1);
+        }
     }
 
     /**

@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
@@ -71,23 +72,13 @@ final class SymbolResolver implements CodeResolverInterface
         private readonly SymbolSourceInterface $symbolSource,
         private readonly MemberResolverInterface $memberResolver,
         private readonly TypeSourceInterface $typeSource,
+        private readonly ExpressionResolverInterface $expressions,
     ) {
         $this->callDetector = new CallContextDetector($locator);
         $this->memberAccessDetector = new MemberAccessDetector(
-            $symbolSource,
             $memberResolver,
-            $typeSource,
             $locator,
-        );
-    }
-
-    private function expressionResolver(TextDocument $document): ExpressionResolver
-    {
-        return new ExpressionResolver(
-            $this->memberResolver,
-            $this->symbolSource,
-            $this->typeSource,
-            $document,
+            $expressions,
         );
     }
 
@@ -290,11 +281,11 @@ final class SymbolResolver implements CodeResolverInterface
         int $line,
         int $character,
     ): array {
-        $ast = $this->parser->parse($document)->tree;
+        $parsed = $this->parser->parse($document);
+        $ast = $parsed->tree;
 
         $offset = $document->offsetAt($line, $character);
         $scope = Scope::atOffset($ast, $offset);
-        $exprResolver = $this->expressionResolver($document);
 
         $nearest = [];
         foreach (VariableBindings::before($scope, $offset) as $binding) {
@@ -309,7 +300,7 @@ final class SymbolResolver implements CodeResolverInterface
         }
 
         foreach ($nearest as $binding) {
-            $variables[] = $exprResolver->resolveBinding($binding, $scope, $ast);
+            $variables[] = $this->expressions->resolveBinding($binding, $scope, $parsed);
         }
 
         return $variables;
@@ -358,7 +349,7 @@ final class SymbolResolver implements CodeResolverInterface
         array $ast,
         TextDocument $document,
     ): ?ResolvedCallableInterface {
-        return $this->expressionResolver($document)->resolveCallable($call, $ast);
+        return $this->expressions->resolveCallable($call, new ParsedDocument($document, $ast));
     }
 
     /**
@@ -396,23 +387,23 @@ final class SymbolResolver implements CodeResolverInterface
         // Instance method call: $obj->method() or $obj?->method()
         if (self::isMethodCall($parent)) {
             /** @var MethodCall|NullsafeMethodCall $parent */
-            return $this->expressionResolver($document)->resolve($parent, $ast);
+            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
         }
 
         // Static method call: ClasslikeName::method()
         if ($parent instanceof StaticCall) {
-            return $this->expressionResolver($document)->resolve($parent, $ast);
+            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
         }
 
         // Property fetch: $obj->property or $obj?->property
         if (self::isPropertyFetch($parent)) {
             /** @var PropertyFetch|NullsafePropertyFetch $parent */
-            return $this->expressionResolver($document)->resolve($parent, $ast);
+            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
         }
 
         // Class constant or enum case: ClasslikeName::CONSTANT or Enum::Case
         if ($parent instanceof ClassConstFetch) {
-            return $this->expressionResolver($document)->resolve($parent, $ast);
+            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
         }
 
         // Named argument: func(name: value) - cursor on 'name'
@@ -431,7 +422,7 @@ final class SymbolResolver implements CodeResolverInterface
         $parent = $node->getAttribute('parent');
 
         if ($parent instanceof FuncCall || $parent instanceof ConstFetch) {
-            return $this->expressionResolver($document)->resolve($parent, $ast);
+            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
         }
 
         // Class reference (new, instanceof, static call, type hint, etc.)
@@ -459,7 +450,7 @@ final class SymbolResolver implements CodeResolverInterface
             return $this->resolveParameter($parent);
         }
 
-        return $this->expressionResolver($document)->resolve($node, $ast)
+        return $this->expressions->resolve($node, new ParsedDocument($document, $ast))
             ?? new ResolvedVariable($name, null);
     }
 
@@ -585,7 +576,7 @@ final class SymbolResolver implements CodeResolverInterface
 
         // Static property fetch: ClasslikeName::$property
         if ($parent instanceof StaticPropertyFetch) {
-            return $this->expressionResolver($document)->resolve($parent, $ast);
+            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
         }
 
         return null;

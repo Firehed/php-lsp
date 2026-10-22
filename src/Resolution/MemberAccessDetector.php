@@ -4,17 +4,14 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
-use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
-use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
@@ -44,10 +41,9 @@ use PhpParser\Node\Name;
 final class MemberAccessDetector
 {
     public function __construct(
-        private readonly SymbolSourceInterface $symbolSource,
         private readonly MemberResolverInterface $memberResolver,
-        private readonly TypeSourceInterface $typeSource,
         private readonly NodeLocatorInterface $locator,
+        private readonly ExpressionResolverInterface $expressions,
     ) {
     }
 
@@ -90,7 +86,7 @@ final class MemberAccessDetector
             }
 
             $prefix = self::typedPrefix($node->name, $offset);
-            $type = $this->expressionResolver($document)->resolve($node->var, $ast)?->getType();
+            $type = $this->expressions->resolve($node->var, $parsed)?->getType();
             $vantage = self::vantageFor($node);
             $visibility = $this->visibilityForReceiver($vantage, $type);
             if ($type !== null && $visibility !== null) {
@@ -136,16 +132,6 @@ final class MemberAccessDetector
     {
         $enclosingName = ScopeFinder::findEnclosingClasslikeName($node);
         return $enclosingName !== null ? ClasslikeName::fromFullyQualified($enclosingName) : null;
-    }
-
-    private function expressionResolver(TextDocument $document): ExpressionResolver
-    {
-        return new ExpressionResolver(
-            $this->memberResolver,
-            $this->symbolSource,
-            $this->typeSource,
-            $document,
-        );
     }
 
     /**

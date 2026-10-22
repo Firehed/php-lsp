@@ -58,6 +58,8 @@ return [
 
     Resolution\ResolvedSymbolPresenter::class,
     Resolution\ResolvedSymbolPresenterInterface::class => Resolution\ResolvedSymbolPresenter::class,
+    Resolution\ExpressionResolver::class,
+    Resolution\ExpressionResolverInterface::class => Resolution\ExpressionResolver::class,
     Resolution\SymbolResolver::class,
     Resolution\CodeResolverInterface::class => Resolution\SymbolResolver::class,
     Resolution\TypeSource\NativeTypeSource::class,

@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\CallContext;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
@@ -324,12 +325,15 @@ final class SymbolResolverTest extends TestCase
         ?SyntaxSourceInterface $syntax = null,
         ?NodeLocatorInterface $locator = null,
     ): SymbolResolver {
+        $members ??= self::createStub(MemberResolverInterface::class);
+        $types = self::createStub(TypeSourceInterface::class);
         return new SymbolResolver(
             $syntax ?? self::createStub(SyntaxSourceInterface::class),
             $locator ?? self::createStub(NodeLocatorInterface::class),
             $symbols,
-            $members ?? self::createStub(MemberResolverInterface::class),
-            self::createStub(TypeSourceInterface::class),
+            $members,
+            $types,
+            new ExpressionResolver($members, $symbols, $types),
         );
     }
 }

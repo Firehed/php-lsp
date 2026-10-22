@@ -24,15 +24,24 @@ final class NameContextFactory
      */
     public static function fromAst(array $ast, int $line): NameContext
     {
-        $namespace = ScopeFinder::findNamespaceNodeAtLine($ast, $line);
+        return self::in(ScopeFinder::findNamespaceNodeAtLine($ast, $line), $ast);
+    }
 
+    /**
+     * The name context of a namespace block, or of a file's own statements
+     * when there is none.
+     *
+     * @param array<Stmt> $tree
+     */
+    public static function in(?Stmt\Namespace_ $namespace, array $tree): NameContext
+    {
         $imports = [
             Stmt\Use_::TYPE_NORMAL => [],
             Stmt\Use_::TYPE_FUNCTION => [],
             Stmt\Use_::TYPE_CONSTANT => [],
         ];
 
-        foreach (self::statementsIn($ast, $namespace) as $stmt) {
+        foreach (self::statementsIn($tree, $namespace) as $stmt) {
             if ($stmt instanceof Stmt\Use_) {
                 foreach ($stmt->uses as $use) {
                     $imports[self::typeOf($use, $stmt->type)][self::aliasOf($use)] = $use->name->toString();

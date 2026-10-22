@@ -301,7 +301,14 @@ final class ExpressionResolutionTest extends TestCase
         MemberResolverInterface $members,
     ): SymbolResolver {
         $production = ProductionSyntaxSource::create();
-        return new SymbolResolver($production->source, $production->locator, $symbols, $members, $types);
+        return new SymbolResolver(
+            $production->source,
+            $production->locator,
+            $symbols,
+            $members,
+            $types,
+            new ExpressionResolver($members, $symbols, $types),
+        );
     }
 
     private static function uri(string $fixture): string

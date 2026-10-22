@@ -247,44 +247,37 @@ class ScopeTest extends TestCase
         self::assertNotEmpty($hasFunction, 'Namespace-level statements should be exposed for global scope');
     }
 
-    #[DataProvider('fileScopeThisFixtures')]
-    public function testClassLikeForThisAtWalksBackToTheClassDeclaredAbove(string $fixture, string $expected): void
+    public function testANodeInAFunctionLikeIsInItsScope(): void
     {
-        $ast = self::parseWithParents($this->loadFixture($fixture));
-        $thisNode = self::findVariableNode('this', $ast);
-        self::assertNotNull($thisNode);
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
+        $closure = self::findClosureWithUses($ast);
 
-        $classLike = Scope::classLikeForThisAt($ast, $thisNode->getStartFilePos());
+        $scope = Scope::enclosing($closure->stmts[0], $ast);
 
-        self::assertInstanceOf(
-            Stmt\Class_::class,
-            $classLike,
-            'file-scope $this should walk back to the class declared above',
-        );
-        self::assertSame($expected, $classLike->name?->toString());
+        self::assertSame($closure, $scope->getSourceNode(), 'the innermost function-like holding the node');
     }
 
-    /**
-     * @return array<string, array{string, string}>
-     */
-    public static function fileScopeThisFixtures(): array
+    public function testANodeAtNamespaceLevelIsInItsNamespacesStatements(): void
     {
-        return [
-            'across a namespace' => ['src/Utility/FileScopeThisAfterClass.php', 'FileScopeThisAfterClass'],
-            'skipping a class declared below' => ['TopLevel/this_between_classes.php', 'DeclaredAbove'],
-        ];
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/GlobalScope.php'));
+        $globalVar = self::findVariableNode('globalVar', $ast);
+        self::assertNotNull($globalVar);
+
+        $scope = Scope::enclosing($globalVar, $ast);
+
+        self::assertNull($scope->getSourceNode(), 'outside any function-like the scope is global');
+        $namespace = (new \PhpParser\NodeFinder())->findFirstInstanceOf($ast, Stmt\Namespace_::class);
+        self::assertNotNull($namespace);
+        self::assertSame($namespace->stmts, $scope->getStatements(), 'the namespace\'s statements, not the file\'s');
     }
 
-    public function testClassLikeForThisAtReturnsNullWhenNoClassLikeDeclared(): void
+    public function testANodeAtFileLevelIsInTheFilesStatements(): void
     {
-        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_outside_class.php'));
-        $thisNode = self::findVariableNode('this', $ast);
-        self::assertNotNull($thisNode);
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/global_scope_hover.php'));
+        $activeUser = self::findVariableNode('activeUser', $ast);
+        self::assertNotNull($activeUser);
 
-        self::assertNull(
-            Scope::classLikeForThisAt($ast, $thisNode->getStartFilePos()),
-            'no class-like in the file means $this binds to nothing',
-        );
+        self::assertSame($ast, Scope::enclosing($activeUser, $ast)->getStatements());
     }
 
     public function testAtOffsetInFilelessNamespaceUsesAstRoot(): void

@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -36,12 +37,16 @@ final class ThisTypingParityTest extends TestCase
     protected function setUp(): void
     {
         $production = ProductionSyntaxSource::create();
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $members = self::createStub(MemberResolverInterface::class);
+        $types = self::createStub(TypeSourceInterface::class);
         $this->resolver = new SymbolResolver(
             $production->source,
             $production->locator,
-            self::createStub(SymbolSourceInterface::class),
-            self::createStub(MemberResolverInterface::class),
-            self::createStub(TypeSourceInterface::class),
+            $symbols,
+            $members,
+            $types,
+            new ExpressionResolver($members, $symbols, $types),
         );
     }
 
@@ -63,20 +68,6 @@ final class ThisTypingParityTest extends TestCase
             'expectedClass' => 'Fixtures\\Resolution\\ThisTypingParity',
             // Vantage is the enclosing class, so `$this->` sees private members.
             'expectedVisibility' => Visibility::Private,
-        ];
-
-        // File-scope `$this`: the AST places the Variable in the namespace's
-        // top-level statement list, not inside the Class_ body. Both hover and
-        // completion read the enclosing class from the node's position via
-        // `Scope::atOffset`, so they agree on the receiver type; vantage
-        // inference remains AST-driven, so completion sees only public members
-        // here.
-        yield 'detached parent chain via file-scope $this' => [
-            'relative' => 'src/Resolution/BrokenThisTypingParity.php',
-            'hoverNeedle' => '$this;',
-            'completionMarker' => 'broken_member',
-            'expectedClass' => 'Fixtures\\Resolution\\BrokenThisTypingParity',
-            'expectedVisibility' => Visibility::Public,
         ];
     }
 
