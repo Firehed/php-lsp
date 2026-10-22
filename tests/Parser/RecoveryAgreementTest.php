@@ -116,7 +116,7 @@ final class RecoveryAgreementTest extends TestCase
     {
         try {
             $position = $this->locateHoverMarker($content, $marker);
-        } catch (\AssertionError) {
+        } catch (\RuntimeException) {
             return null;
         }
         $lines = explode("\n", $content);
