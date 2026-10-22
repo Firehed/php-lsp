@@ -13,7 +13,7 @@ A composite is not added proactively when there is a single implementation.
 A composite is the **only** place outside of implementations that holds switching or combining logic.
 It is the only place outside of the DI container that directly names concrete implementations, and **must** do so in its constructor.
 
-It is permissible to apply the decorator pattern to a composite; this should also be done in the container.
+It is permissible to apply the decorator pattern to any implementation inclduing a composite; this should also be done in the container.
 
 ## Context
 

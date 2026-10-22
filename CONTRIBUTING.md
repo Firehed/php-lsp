@@ -7,7 +7,7 @@ Contributions must be in line with the ADRs.
 Deviations must be justified and should be accompanied by a replacement or supplemental ADR.
 
 Note: ADRs capture intent, not necessarily the current state of the codebase.
-If you encounter a conflict between the current structure or the ADRs when contributing, the ADRs should guide the new code.
+If you encounter a conflict between the current structure and the ADRs when contributing, the ADRs should guide the new code.
 
 ## Development Workflow
 

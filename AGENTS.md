@@ -23,7 +23,6 @@ Every design rule below exists to stop one problem: multiple routes to one fact.
 Routes drift, and the drift shows up as a feature that works in hover but not in completion, or a member kind that inherits while another does not.
 
 The codebase is undergoing structural transition to eliminate this issue.
-This document's guidance should override matching existing structure.
 
 ADR documents are being added in `docs/adrs` to capture the intended architecture and context behind it.
 If a session leads to a design decision, that decision should be captured in a new ADR.
@@ -38,7 +37,6 @@ Application-wide data types live in `src/Domain/`.
 A data type that only one service uses lives next to that service, and should not be referenced outside of that service.
 
 A service produces or exposes facts: which symbols a file declares, which file defines a symbol, what type an expression has.
-Every service is used through an interface, even when it has one implementation.
 The interface describes what a caller can ask.
 It never says where the answer comes from, and it never takes a parser node or a reflection object where another implementation would take something else.
 
@@ -85,7 +83,6 @@ Every request is answered correctly without background work, and background work
 
 Code being edited usually does not parse, and every feature must keep working on it.
 At any position, every feature sees the same structure, and it is the structure the code will have once completed.
-
 
 ### Source text
 
