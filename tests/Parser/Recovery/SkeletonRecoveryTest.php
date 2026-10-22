@@ -5,8 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\Recovery;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
-use Firehed\PhpLsp\Parser\ParsedDocument;
+use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\Recovery\SkeletonRecovery;
 use Firehed\PhpLsp\Parser\SyntaxSource\ParseAttempt;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
@@ -541,11 +540,9 @@ final class SkeletonRecoveryTest extends TestCase
         self::assertNotFalse($afterEquals, "the fixture must declare `{$declaration}`");
         $afterEquals += strlen($declaration);
 
-        self::assertNull(
-            (new TreeNodeLocator())->nodeAt(
-                new ParsedDocument(new TextDocument('file:///' . $fixture, 'php', 1, $content), $tree),
-                $afterEquals,
-            ),
+        self::assertInstanceOf(
+            Stmt::class,
+            (new NodeAtPosition())->find($tree, $afterEquals),
             'no node sits on the unread value',
         );
     }

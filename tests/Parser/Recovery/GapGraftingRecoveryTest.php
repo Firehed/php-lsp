@@ -16,6 +16,7 @@ use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(GapGraftingRecovery::class)]
@@ -125,6 +126,36 @@ final class GapGraftingRecoveryTest extends TestCase
         self::assertNotNull(
             (new NodeFinder())->findFirstInstanceOf(self::methodBody($tree, 'unreadable'), Expr\PropertyFetch::class),
             'what the parser read of it is kept',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, class-string<Stmt|Expr>, class-string<Expr>}>
+     */
+    public static function unfinishedConstructs(): iterable
+    {
+        yield 'a name ending in a separator, before a comment' => ['separator', Expr\New_::class, Expr\New_::class];
+        yield 'a for header' => ['loop', Stmt\For_::class, Expr\NullsafePropertyFetch::class];
+        yield 'a match subject' => ['choice', Expr\Match_::class, Expr\ClassConstFetch::class];
+    }
+
+    /**
+     * @param class-string<Stmt|Expr> $construct
+     * @param class-string<Expr> $inside
+     */
+    #[DataProvider('unfinishedConstructs')]
+    public function testAnUnfinishedConstructIsReadAsItWillBeOnceFinished(
+        string $method,
+        string $construct,
+        string $inside,
+    ): void {
+        $body = self::methodBody($this->recover('Recovery/UnfinishedConstructs.php'), $method);
+        $found = (new NodeFinder())->findFirstInstanceOf($body, $construct);
+
+        self::assertInstanceOf($construct, $found, 'what was written is read as the construct it starts');
+        self::assertNotNull(
+            (new NodeFinder())->findFirstInstanceOf([$found], $inside),
+            'with what is written inside it',
         );
     }
 

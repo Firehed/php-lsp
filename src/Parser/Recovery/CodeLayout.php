@@ -151,7 +151,7 @@ final class CodeLayout
         $end = min($end, strlen($this->code));
         $cuts = [$start];
         foreach ($this->errors as $error) {
-            if ($error > $start && $error < $end) {
+            if ($error > $start && $error < $end && !$this->continuesCode($error)) {
                 $cuts[] = $error;
             }
         }
@@ -190,6 +190,27 @@ final class CodeLayout
             }
         }
         return false;
+    }
+
+    /**
+     * Whether code starts right at a position.
+     */
+    public function codeStartsAt(int $position): bool
+    {
+        $at = $this->firstCodeAfter($position - 1);
+        return $at !== null && $this->positions[$at] === $position;
+    }
+
+    /**
+     * Whether an error is at a token written right against the one before it,
+     * which continues what that token is part of.
+     */
+    private function continuesCode(int $error): bool
+    {
+        $previous = $this->tokens[($this->firstCodeAfter($error - 1) ?? 0) - 1] ?? null;
+        return $this->codeStartsAt($error)
+            && $previous !== null
+            && $previous->pos + strlen($previous->text) === $error;
     }
 
     /**

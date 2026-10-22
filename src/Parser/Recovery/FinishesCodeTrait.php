@@ -20,8 +20,7 @@ trait FinishesCodeTrait
      */
     private const array ENDS_OPERAND = [
         T_STRING, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, T_NAME_RELATIVE, T_VARIABLE,
-        T_LNUMBER, T_DNUMBER, T_CONSTANT_ENCAPSED_STRING, ')', ']', '}', ';', '{', '"',
-        T_OBJECT_OPERATOR, T_NULLSAFE_OBJECT_OPERATOR, T_DOUBLE_COLON, T_OPEN_TAG,
+        T_LNUMBER, T_DNUMBER, T_CONSTANT_ENCAPSED_STRING, ')', ']', '}', ';', '{', '"', T_OPEN_TAG,
     ];
 
     /**
@@ -67,9 +66,17 @@ trait FinishesCodeTrait
             }
             $closer = self::CLOSERS[$token->id] ?? self::CLOSERS[$token->text] ?? null;
             if ($closer !== null) {
-                $open[] = $closer;
+                // A `for` header holds three expressions, so two semicolons;
+                // a `match` subject is followed by its arms.
+                $open[] = match (true) {
+                    $token->is('(') && $last?->is(T_FOR) === true => ';;)',
+                    $token->is('(') && $last?->is(T_MATCH) === true => ') {}',
+                    default => $closer,
+                };
             } elseif ($token->is([')', ']', '}'])) {
                 array_pop($open);
+            } elseif ($token->is(';') && $open !== [] && str_starts_with($open[count($open) - 1], ';')) {
+                $open[count($open) - 1] = substr($open[count($open) - 1], 1);
             }
             if (!$token->isIgnorable() && $token->id !== 0) {
                 $last = $token;

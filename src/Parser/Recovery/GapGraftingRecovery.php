@@ -182,8 +182,10 @@ final class GapGraftingRecovery implements RecoveryInterface
             $out = [...$out, ...$this->readGapAfter($layout, $partial, $cursor, $statement->getStartFilePos(), $host)];
             $cursor = max($cursor, $statement->getEndFilePos() + 1);
             $next = $statements[$i + 1] ?? null;
+            // Code right against a statement's end continues what the parser stopped reading.
             $partial = $statement->getAttribute(SkeletonRecovery::APPROXIMATE) === true
-                || ((new NodeFinder())->findFirstInstanceOf([$statement], Expr\Error::class) !== null
+                || (((new NodeFinder())->findFirstInstanceOf([$statement], Expr\Error::class) !== null
+                        || $layout->codeStartsAt($cursor))
                     && $layout->piecesOf($cursor, $next?->getStartFilePos() ?? $end) !== [])
                 ? $statement
                 : null;
@@ -244,6 +246,7 @@ final class GapGraftingRecovery implements RecoveryInterface
      */
     private function readWhole(CodeLayout $layout, int $start, int $end, string $host): array
     {
+        $end = self::beforeTrailingComments($layout->text($start, $end)) + $start;
         $text = $host . $layout->text($start, $end);
         $chosen = null;
         foreach (self::endings($host, $text) as $ending) {
@@ -270,6 +273,24 @@ final class GapGraftingRecovery implements RecoveryInterface
         self::place($read, $start - strlen($host), $layout->lineOf($start) - 1, $end - 1);
         // A statement only the ending wrote reads none of the gap's code.
         return array_values(array_filter($read, ParsedDocument::isWritten(...)));
+    }
+
+    /**
+     * Where a piece's code ends once the comments after its last token are
+     * left out: what finishes the code must follow that token.
+     */
+    private static function beforeTrailingComments(string $piece): int
+    {
+        $end = strlen($piece);
+        foreach (array_reverse(\PhpToken::tokenize('<?php ' . $piece)) as $token) {
+            if (!$token->isIgnorable() || $token->is(T_OPEN_TAG)) {
+                break;
+            }
+            if ($token->is([T_COMMENT, T_DOC_COMMENT])) {
+                $end = $token->pos - strlen('<?php ');
+            }
+        }
+        return $end;
     }
 
     /**

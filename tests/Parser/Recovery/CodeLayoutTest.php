@@ -83,6 +83,29 @@ final class CodeLayoutTest extends TestCase
         );
     }
 
+    public function testAnErrorRightAgainstTheCodeBeforeItDoesNotSplitIt(): void
+    {
+        [$code, $layout] = $this->layout('Recovery/UnfinishedConstructs.php');
+        $start = (int) strpos($code, 'new Foo\\');
+        $end = (int) strpos($code, '/*|after_separator*/');
+
+        self::assertSame(
+            [[$start, $end]],
+            $layout->piecesOf($start, $end),
+            'a separator continues the name before it, wherever the parser stopped',
+        );
+    }
+
+    public function testCodeStartsOnlyWhereAToken(): void
+    {
+        [$code, $layout] = $this->layout('Recovery/UnfinishedConstructs.php');
+        $name = (int) strpos($code, 'Foo\\');
+
+        self::assertTrue($layout->codeStartsAt($name), 'a token starts here');
+        self::assertFalse($layout->codeStartsAt($name - 1), 'whitespace is before it');
+        self::assertFalse($layout->codeStartsAt($name + 1), 'the token began before here');
+    }
+
     public function testClosingBracketsAloneAreNotAPiece(): void
     {
         [$code, $layout] = $this->layout('Recovery/UnbracedIf.php');
