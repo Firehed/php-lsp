@@ -16,5 +16,4 @@ It is actively maintained and does a good job handling files under different ver
 Creating custom internal data types and formats is reinventing work and offers little value.
 
 The library, reasonably, does not perfectly handle syntax-invalid files, which are an extremely common case in the mid-edit state seen by this project.
-Downstream consumers no knowledge of whether the file or buffer is valid or went through syntax recovery (or what the recovery process looked like).
-They can rely on a single, well-known format for the AST.
+A recovery process must still generate a well-formed AST so downstream consumers have a stable format.
