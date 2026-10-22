@@ -66,7 +66,7 @@ final class GapGraftingRecovery implements RecoveryInterface
      */
     private function graftGaps(string $code, ParseAttempt $attempt, bool $nested): ParseAttempt
     {
-        if ($attempt->tree === [] || $attempt->errors === []) {
+        if ($attempt->errors === []) {
             return $attempt;
         }
         $layout = new CodeLayout($code, $attempt->tokens, $attempt->errors, $nested);
@@ -234,11 +234,26 @@ final class GapGraftingRecovery implements RecoveryInterface
             return $read;
         }
         // Code being typed ends with its line; the lines after it belong to
-        // what follows. Read it again without its last line.
-        $lastLine = strrpos($layout->text($start, $end), "\n");
-        return $lastLine === false || $lastLine === 0
-            ? []
-            : $this->readPiece($layout, $start, $start + $lastLine, $host);
+        // what follows. Read the most whole lines that read, found by halving
+        // so a long piece costs a few reads rather than one per line.
+        $text = $layout->text($start, $end);
+        $lineEnds = [];
+        for ($at = strpos($text, "\n", strspn($text, " \t\r\n")); $at !== false; $at = strpos($text, "\n", $at + 1)) {
+            $lineEnds[] = $at;
+        }
+        $read = [];
+        [$low, $high] = [0, count($lineEnds) - 1];
+        while ($low <= $high) {
+            $middle = intdiv($low + $high, 2);
+            $attempt = $this->readWhole($layout, $start, $start + $lineEnds[$middle], $host);
+            if ($attempt === []) {
+                $high = $middle - 1;
+            } else {
+                $read = $attempt;
+                $low = $middle + 1;
+            }
+        }
+        return $read;
     }
 
     /**

@@ -175,6 +175,43 @@ final class GapGraftingRecoveryTest extends TestCase
         );
     }
 
+    public function testAFileTheParserReadsNothingOfIsReadFromItsBody(): void
+    {
+        self::assertNotNull(
+            (new NodeFinder())->findFirstInstanceOf($this->recover('Position/CatchAtEnd.php'), Stmt\Catch_::class),
+            'a catch clause cut off at the end of the file is read as one',
+        );
+    }
+
+    public function testALongPieceThatNeverReadsCostsFewReads(): void
+    {
+        $code = $this->loadFixture('Recovery/UnterminatedHeredoc.php');
+        $parser = new PhpParserCodeParser();
+        $counting = new class ($parser) implements CodeParserInterface {
+            public int $parses = 0;
+
+            public function __construct(private PhpParserCodeParser $parser)
+            {
+            }
+
+            public function parse(string $code): ParseAttempt
+            {
+                $this->parses++;
+                return $this->parser->parse($code);
+            }
+        };
+
+        // The parser reads none of it, so the bodies come from the skeleton.
+        $skeleton = (new SkeletonRecovery())->recover($code, $parser->parse($code));
+        (new GapGraftingRecovery($counting))->recover($code, $skeleton);
+
+        self::assertLessThan(
+            substr_count($code, "\n"),
+            $counting->parses,
+            'a string left open swallows the rest of the file; reading it again line by line would cost a read per line',
+        );
+    }
+
     public function testCodeThatReadsAsNothingAddsNothing(): void
     {
         $tree = $this->recover('Recovery/StrayKeyword.php');
