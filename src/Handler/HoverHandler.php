@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Protocol\MarkupContent;
 use Firehed\PhpLsp\Protocol\MarkupKind;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\Position\SymbolAtPositionInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 
 /**
@@ -23,7 +23,7 @@ final class HoverHandler implements DocumentFeatureHandlerInterface
 
     public function __construct(
         private readonly DocumentSourceInterface $documents,
-        private readonly CodeResolverInterface $codeResolver,
+        private readonly SymbolAtPositionInterface $symbols,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
         private readonly ResolvedSymbolPresenterInterface $presenter,
     ) {
@@ -49,7 +49,7 @@ final class HoverHandler implements DocumentFeatureHandlerInterface
             return null;
         }
 
-        $symbol = $this->codeResolver->resolveAtPosition($document, $position->line, $position->character);
+        $symbol = $this->symbols->symbolAt($document, $document->offsetAt($position->line, $position->character));
         if ($symbol === null) {
             return null;
         }

@@ -12,15 +12,18 @@ use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\MethodInfo;
+use Firehed\PhpLsp\Domain\ParameterInfo;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\Position\PositionLocator;
+use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
-use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -52,7 +55,7 @@ final class ExpressionResolutionTest extends TestCase
 
     private const string USER_CLASS = 'Fixtures\Domain\User';
 
-    private SymbolResolver $resolver;
+    private SymbolAtPosition $resolver;
 
     protected function setUp(): void
     {
@@ -218,6 +221,20 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testAParameterIsWhatItsDeclarationDeclares(): void
+    {
+        $this->typeEveryParameterAs(new PrimitiveType('int'));
+
+        self::assertEquals(
+            new ParameterInfo('count', new PrimitiveType('int'), '1', 1, false, false),
+            $this->resolveAt(
+                'src/Position/Symbols.php',
+                fn (string $content): array => $this->locateCursor($content, 'second_parameter'),
+            ),
+            'a declared parameter carries its type, default, and place in the list',
+        );
+    }
+
     public function testMethodCallResolvesOnTheReceiversClass(): void
     {
         $this->knowUserMembers();
@@ -299,15 +316,11 @@ final class ExpressionResolutionTest extends TestCase
         SymbolSourceInterface $symbols,
         TypeSourceInterface $types,
         MemberResolverInterface $members,
-    ): SymbolResolver {
-        $production = ProductionSyntaxSource::create();
-        return new SymbolResolver(
-            $production->source,
-            $production->locator,
-            $symbols,
-            $members,
-            $types,
+    ): SymbolAtPosition {
+        return new SymbolAtPosition(
+            new PositionLocator(ProductionSyntaxSource::create()->source),
             new ExpressionResolver($members, $symbols, $types),
+            $symbols,
         );
     }
 
@@ -427,10 +440,8 @@ final class ExpressionResolutionTest extends TestCase
         $content = $this->loadFixture($fixture);
         ['line' => $line, 'character' => $character] = $locate($content);
 
-        return $this->resolver->resolveAtPosition(
-            new TextDocument(self::uri($fixture), 'php', 1, $content),
-            $line,
-            $character,
-        );
+        $document = new TextDocument(self::uri($fixture), 'php', 1, $content);
+
+        return $this->resolver->symbolAt($document, $document->offsetAt($line, $character));
     }
 }

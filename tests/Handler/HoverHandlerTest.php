@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Protocol\MarkupKind;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\Position\SymbolAtPositionInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -44,8 +44,8 @@ class HoverHandlerTest extends TestCase
     {
         $documents = $this->createMock(DocumentSourceInterface::class);
         $documents->expects($this->never())->method('read');
-        $codeResolver = $this->createMock(CodeResolverInterface::class);
-        $codeResolver->expects($this->never())->method('resolveAtPosition');
+        $codeResolver = $this->createMock(SymbolAtPositionInterface::class);
+        $codeResolver->expects($this->never())->method('symbolAt');
 
         $handler = new HoverHandler(
             $documents,
@@ -68,8 +68,8 @@ class HoverHandlerTest extends TestCase
             ->method('read')
             ->with(self::URI)
             ->willReturn(null);
-        $codeResolver = $this->createMock(CodeResolverInterface::class);
-        $codeResolver->expects($this->never())->method('resolveAtPosition');
+        $codeResolver = $this->createMock(SymbolAtPositionInterface::class);
+        $codeResolver->expects($this->never())->method('symbolAt');
 
         $handler = new HoverHandler(
             $documents,
@@ -169,7 +169,7 @@ class HoverHandlerTest extends TestCase
     {
         return new HoverHandler(
             self::createStub(DocumentSourceInterface::class),
-            self::createStub(CodeResolverInterface::class),
+            self::createStub(SymbolAtPositionInterface::class),
             $this->capabilitiesFor($kind),
             new ResolvedSymbolPresenter(),
         );

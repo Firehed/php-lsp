@@ -17,6 +17,7 @@ use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
+use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
@@ -47,6 +48,7 @@ use PhpParser\Node\Name;
 use PhpParser\Node\Param;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\VarLikeIdentifier;
+use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
 
 /**
  * Resolves any expression to a {@see ResolvedSymbolInterface}; its value type is
@@ -171,6 +173,24 @@ final class ExpressionResolver implements ExpressionResolverInterface
         $type = $this->typeOfBinding($binding, $scope, $parsed);
         $location = self::locationFor($binding->node, $parsed->document);
         return new ResolvedVariable($binding->name, $type, $location);
+    }
+
+    public function resolveParameter(Param $param): ParameterInfo
+    {
+        assert($param->var instanceof Variable && is_string($param->var->name), 'a declared parameter is named');
+        $function = ScopeFinder::findEnclosingScope($param);
+        assert($function !== null, 'a parameter is declared by a function-like');
+        $position = array_search($param, $function->params, true);
+        assert(is_int($position), 'a parameter is among those of the function-like declaring it');
+
+        return new ParameterInfo(
+            name: $param->var->name,
+            type: $this->typeOfParameterBinding($param, $param->var->name, Scope::forNode($function)),
+            defaultValue: $param->default === null ? null : (new PrettyPrinter())->prettyPrintExpr($param->default),
+            position: $position,
+            isVariadic: $param->variadic,
+            isPassedByReference: $param->byRef,
+        );
     }
 
     private function typeOfBinding(VariableBinding $binding, Scope $scope, ParsedDocument $parsed): ?TypeInterface

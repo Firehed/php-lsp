@@ -8,36 +8,13 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
-use Firehed\PhpLsp\Domain\ParameterInfo;
-use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
-use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
-use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
-use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
-use LogicException;
-use PhpParser\Node;
-use PhpParser\Node\Attribute;
-use PhpParser\Node\Expr\ClassConstFetch;
-use PhpParser\Node\Expr\ConstFetch;
-use PhpParser\Node\Expr\FuncCall;
-use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Expr\New_;
-use PhpParser\Node\Expr\NullsafeMethodCall;
-use PhpParser\Node\Expr\NullsafePropertyFetch;
-use PhpParser\Node\Expr\PropertyFetch;
-use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Expr\StaticPropertyFetch;
-use PhpParser\Node\Expr\Variable;
-use PhpParser\Node\Identifier;
-use PhpParser\Node\Name;
-use PhpParser\Node\Stmt;
-use PhpParser\Node\VarLikeIdentifier;
 use Throwable;
 
 /**
@@ -69,7 +46,6 @@ final class SymbolResolver implements CodeResolverInterface
         private readonly NodeLocatorInterface $locator,
         private readonly SymbolSourceInterface $symbolSource,
         private readonly MemberResolverInterface $memberResolver,
-        private readonly TypeSourceInterface $typeSource,
         private readonly ExpressionResolverInterface $expressions,
     ) {
         $this->memberAccessDetector = new MemberAccessDetector(
@@ -77,27 +53,6 @@ final class SymbolResolver implements CodeResolverInterface
             $locator,
             $expressions,
         );
-    }
-
-    /**
-     * Resolve symbol at cursor position.
-     * Used by: Definition, Hover, TypeDefinition
-     */
-    public function resolveAtPosition(
-        TextDocument $document,
-        int $line,
-        int $character,
-    ): ?ResolvedSymbolInterface {
-        $parsed = $this->parser->parse($document);
-
-        $offset = $document->offsetAt($line, $character)->value;
-        $node = $this->locator->nodeAt($parsed, $offset);
-
-        if ($node === null) {
-            return null;
-        }
-
-        return $this->resolveNode($node, $parsed->tree, $document);
     }
 
     /**
@@ -265,257 +220,5 @@ final class SymbolResolver implements CodeResolverInterface
         int $character,
     ): ?MemberAccessContext {
         return $this->memberAccessDetector->detect($this->parser->parse($document), $line, $character);
-    }
-
-    /**
-     * @param FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call
-     * @param array<Stmt> $ast
-     */
-    private function resolveCallable(
-        FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
-        array $ast,
-        TextDocument $document,
-    ): ?ResolvedCallableInterface {
-        return $this->expressions->resolveCallable($call, new ParsedDocument($document, $ast));
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveNode(Node $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
-    {
-        // VarLikeIdentifier extends Identifier, so check it first
-        if ($node instanceof VarLikeIdentifier) {
-            return $this->resolveVarLikeIdentifier($node, $ast, $document);
-        }
-
-        if ($node instanceof Identifier) {
-            return $this->resolveIdentifier($node, $ast, $document);
-        }
-
-        if ($node instanceof Name) {
-            return $this->resolveName($node, $ast, $document);
-        }
-
-        if ($node instanceof Variable) {
-            return $this->resolveVariable($node, $ast, $document);
-        }
-
-        return null;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveIdentifier(Identifier $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
-    {
-        $parent = $node->getAttribute('parent');
-
-        // Instance method call: $obj->method() or $obj?->method()
-        if (self::isMethodCall($parent)) {
-            /** @var MethodCall|NullsafeMethodCall $parent */
-            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
-        }
-
-        // Static method call: ClasslikeName::method()
-        if ($parent instanceof StaticCall) {
-            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
-        }
-
-        // Property fetch: $obj->property or $obj?->property
-        if (self::isPropertyFetch($parent)) {
-            /** @var PropertyFetch|NullsafePropertyFetch $parent */
-            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
-        }
-
-        // Class constant or enum case: ClasslikeName::CONSTANT or Enum::Case
-        if ($parent instanceof ClassConstFetch) {
-            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
-        }
-
-        // Named argument: func(name: value) - cursor on 'name'
-        if ($parent instanceof Node\Arg && $parent->name === $node) {
-            return $this->resolveNamedArgument($node, $parent, $ast, $document);
-        }
-
-        return null;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveName(Name $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
-    {
-        $parent = $node->getAttribute('parent');
-
-        if ($parent instanceof FuncCall || $parent instanceof ConstFetch) {
-            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
-        }
-
-        // Class reference (new, instanceof, static call, type hint, etc.)
-        $classInfo = $this->symbolSource->lookupClassLike(ClasslikeName::fromFullyQualified($node->toString()));
-        if ($classInfo === null) {
-            return null;
-        }
-
-        return $classInfo;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveVariable(Variable $node, array $ast, TextDocument $document): ?ResolvedSymbolInterface
-    {
-        $name = $node->name;
-        if (!is_string($name)) {
-            return null;
-        }
-
-        // Check if this is a parameter declaration
-        $parent = $node->getAttribute('parent');
-        if ($parent instanceof Node\Param) {
-            return $this->resolveParameter($parent);
-        }
-
-        return $this->expressions->resolve($node, new ParsedDocument($document, $ast))
-            ?? new ResolvedVariable($name, null);
-    }
-
-    private function resolveParameter(Node\Param $param): ParameterInfo
-    {
-        $enclosingScope = ScopeFinder::findEnclosingScope($param);
-        // @codeCoverageIgnoreStart
-        if ($enclosingScope === null) {
-            throw new LogicException('Param node always has enclosing scope');
-        }
-        // @codeCoverageIgnoreEnd
-
-        // Find position in parameter list
-        $position = 0;
-        foreach ($enclosingScope->params as $i => $p) {
-            if ($p === $param) {
-                $position = $i;
-                break;
-            }
-        }
-
-        assert(
-            $param->var instanceof Node\Expr\Variable && is_string($param->var->name),
-            'Param->var is a named Variable',
-        );
-        $name = $param->var->name;
-
-        $defaultValue = null;
-        if ($param->default !== null) {
-            $printer = new \PhpParser\PrettyPrinter\Standard();
-            $defaultValue = $printer->prettyPrintExpr($param->default);
-        }
-
-        return new ParameterInfo(
-            name: $name,
-            type: $this->parameterType($param, $name, $enclosingScope),
-            defaultValue: $defaultValue,
-            position: $position,
-            isVariadic: $param->variadic,
-            isPassedByReference: $param->byRef,
-        );
-    }
-
-    private function parameterType(
-        Node\Param $param,
-        string $name,
-        Stmt\Function_|Stmt\ClassMethod|Node\Expr\Closure|Node\Expr\ArrowFunction $enclosingScope,
-    ): ?TypeInterface {
-        $enclosingClass = null;
-        $selfContext = null;
-        $parentContext = null;
-        if ($enclosingScope instanceof Stmt\ClassMethod) {
-            $selfContext = ScopeFinder::findEnclosingClasslikeName($enclosingScope);
-            // @codeCoverageIgnoreStart
-            if ($selfContext === null) {
-                throw new LogicException('ClassMethod always has enclosing class');
-            }
-            // @codeCoverageIgnoreEnd
-            $enclosingClass = ClasslikeName::fromFullyQualified($selfContext);
-            $classInfo = $this->symbolSource->lookupClassLike($enclosingClass);
-            $parentContext = $classInfo?->parent?->qualifiedName->fullyQualifiedName();
-        }
-        return ParameterTyping::resolve(
-            $this->typeSource,
-            $param,
-            $name,
-            $enclosingScope,
-            $enclosingClass,
-            $selfContext,
-            $parentContext,
-        );
-    }
-
-    /**
-     * Resolve a named argument to its parameter.
-     *
-     * @param array<Stmt> $ast
-     */
-    private function resolveNamedArgument(
-        Identifier $node,
-        Node\Arg $arg,
-        array $ast,
-        TextDocument $document,
-    ): ?ParameterInfo {
-        // Find the call this arg belongs to
-        $call = $arg->getAttribute('parent');
-
-        // @codeCoverageIgnoreStart
-        if (
-            !$call instanceof FuncCall
-            && !$call instanceof MethodCall
-            && !$call instanceof NullsafeMethodCall
-            && !$call instanceof StaticCall
-            && !$call instanceof New_
-            && !$call instanceof Attribute
-        ) {
-            throw new LogicException('Named arg parent must be a call or attribute');
-        }
-        // @codeCoverageIgnoreEnd
-
-        $callable = $this->resolveCallable($call, $ast, $document);
-        if ($callable === null) {
-            return null;
-        }
-
-        $paramInfo = $callable->getParameterByName($node->toString());
-        if ($paramInfo === null) {
-            return null;
-        }
-
-        return $paramInfo;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private function resolveVarLikeIdentifier(
-        VarLikeIdentifier $node,
-        array $ast,
-        TextDocument $document,
-    ): ?ResolvedSymbolInterface {
-        $parent = $node->getAttribute('parent');
-
-        // Static property fetch: ClasslikeName::$property
-        if ($parent instanceof StaticPropertyFetch) {
-            return $this->expressions->resolve($parent, new ParsedDocument($document, $ast));
-        }
-
-        return null;
-    }
-
-    private static function isMethodCall(mixed $node): bool
-    {
-        return $node instanceof MethodCall || $node instanceof NullsafeMethodCall;
-    }
-
-    private static function isPropertyFetch(mixed $node): bool
-    {
-        return $node instanceof PropertyFetch || $node instanceof NullsafePropertyFetch;
     }
 }

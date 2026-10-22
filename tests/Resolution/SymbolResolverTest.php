@@ -5,21 +5,17 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Closure;
-use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\NodeLocator\NodeLocatorInterface;
-use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
-use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
-use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
-use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -152,81 +148,17 @@ final class SymbolResolverTest extends TestCase
         );
     }
 
-    public function testAClassNameIsLookedUpAsTheTreeResolvedIt(): void
-    {
-        $fixture = 'SignatureHelp.php';
-        $content = $this->loadFixture($fixture);
-        ['line' => $line, 'character' => $character] = $this->locateHoverMarker($content, 'class_instantiation');
-        $user = self::classInfo('Fixtures\Domain\User');
-        $symbols = self::createStub(SymbolSourceInterface::class);
-        $symbols->method('lookupClassLike')->willReturnCallback(
-            fn (ClasslikeName $name) => $name->qualifiedName->fullyQualifiedName() === 'Fixtures\Domain\User'
-                ? $user
-                : null,
-        );
-
-        $resolved = self::resolver(
-            $symbols,
-            syntax: ParserOnlySyntaxSource::create(),
-            locator: new TreeNodeLocator(),
-        )
-            ->resolveAtPosition(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
-
-        self::assertSame($user, $resolved, 'the imported name is looked up by its fully qualified form');
-    }
-
-    /**
-     * @return iterable<string, array{string, string}>
-     */
-    public static function positionsWithNothingToResolve(): iterable
-    {
-        yield 'a literal' => ['return 42; //hover:literal_number', '42'];
-        // The inner `$name` resolves; the outer variable's name is an expression.
-        yield 'the outer $ of a variable variable' => ['echo /*|outer_var_var*/$$name;', '$$name'];
-    }
-
-    #[DataProvider('positionsWithNothingToResolve')]
-    public function testNothingResolvesAtAPositionWithoutASymbol(string $lineText, string $target): void
-    {
-        $fixture = 'src/Domain/User.php';
-        $content = $this->loadFixture($fixture);
-        $lines = explode("\n", $content);
-        $line = array_key_first(array_filter($lines, fn (string $text): bool => str_contains($text, $lineText)));
-        assert(is_int($line));
-        $character = strpos($lines[$line], $target);
-        assert($character !== false);
-
-        self::assertNull(
-            self::parsingResolver(self::createStub(SymbolSourceInterface::class))
-                ->resolveAtPosition(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character),
-            'nothing at the cursor names a symbol',
-        );
-    }
-
-    private static function parsingResolver(SymbolSourceInterface $symbols): SymbolResolver
-    {
-        return self::resolver(
-            $symbols,
-            syntax: ParserOnlySyntaxSource::create(),
-            locator: new TreeNodeLocator(),
-        );
-    }
-
     private static function resolver(
         SymbolSourceInterface $symbols,
         ?MemberResolverInterface $members = null,
-        ?SyntaxSourceInterface $syntax = null,
-        ?NodeLocatorInterface $locator = null,
     ): SymbolResolver {
         $members ??= self::createStub(MemberResolverInterface::class);
-        $types = self::createStub(TypeSourceInterface::class);
         return new SymbolResolver(
-            $syntax ?? self::createStub(SyntaxSourceInterface::class),
-            $locator ?? self::createStub(NodeLocatorInterface::class),
+            self::createStub(SyntaxSourceInterface::class),
+            self::createStub(NodeLocatorInterface::class),
             $symbols,
             $members,
-            $types,
-            new ExpressionResolver($members, $symbols, $types),
+            self::createStub(ExpressionResolverInterface::class),
         );
     }
 }

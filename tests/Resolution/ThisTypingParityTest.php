@@ -9,6 +9,8 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\Position\PositionLocator;
+use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -28,11 +30,14 @@ use PHPUnit\Framework\TestCase;
  * and the three knowledge interfaces are stubbed.
  */
 #[CoversClass(SymbolResolver::class)]
+#[CoversClass(SymbolAtPosition::class)]
 final class ThisTypingParityTest extends TestCase
 {
     use LoadsFixturesTrait;
 
     private SymbolResolver $resolver;
+
+    private SymbolAtPosition $symbols;
 
     protected function setUp(): void
     {
@@ -40,14 +45,15 @@ final class ThisTypingParityTest extends TestCase
         $symbols = self::createStub(SymbolSourceInterface::class);
         $members = self::createStub(MemberResolverInterface::class);
         $types = self::createStub(TypeSourceInterface::class);
+        $expressions = new ExpressionResolver($members, $symbols, $types);
         $this->resolver = new SymbolResolver(
             $production->source,
             $production->locator,
             $symbols,
             $members,
-            $types,
-            new ExpressionResolver($members, $symbols, $types),
+            $expressions,
         );
+        $this->symbols = new SymbolAtPosition(new PositionLocator($production->source), $expressions, $symbols);
     }
 
     /**
@@ -86,7 +92,7 @@ final class ThisTypingParityTest extends TestCase
         // names. The marker syntax cannot land inside a variable token, so
         // the position is derived from the fixture line and needle column.
         ['line' => $hoverLine, 'column' => $hoverColumn] = self::hoverAt($content, $hoverNeedle);
-        $hover = $this->resolver->resolveAtPosition($document, $hoverLine, $hoverColumn);
+        $hover = $this->symbols->symbolAt($document, $document->offsetAt($hoverLine, $hoverColumn));
         self::assertNotNull($hover, 'hover on $this should resolve to a symbol');
 
         $completionCursor = $this->locateCursor($content, $completionMarker);

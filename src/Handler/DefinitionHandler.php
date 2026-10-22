@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Handler;
 use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\Position\SymbolAtPositionInterface;
 
 final class DefinitionHandler implements DocumentFeatureHandlerInterface
 {
@@ -15,7 +15,7 @@ final class DefinitionHandler implements DocumentFeatureHandlerInterface
 
     public function __construct(
         private readonly DocumentSourceInterface $documents,
-        private readonly CodeResolverInterface $codeResolver,
+        private readonly SymbolAtPositionInterface $symbols,
     ) {
     }
 
@@ -45,7 +45,7 @@ final class DefinitionHandler implements DocumentFeatureHandlerInterface
             return null;
         }
 
-        $symbol = $this->codeResolver->resolveAtPosition($document, $position->line, $position->character);
+        $symbol = $this->symbols->symbolAt($document, $document->offsetAt($position->line, $position->character));
 
         return $symbol?->getDefinitionLocation()?->toLspLocation();
     }

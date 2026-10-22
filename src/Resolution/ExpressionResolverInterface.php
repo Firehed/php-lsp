@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
@@ -14,6 +15,7 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Param;
 
 /**
  * What an expression in a parsed document resolves to, its type included.
@@ -30,6 +32,11 @@ interface ExpressionResolverInterface
         FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
         ParsedDocument $parsed,
     ): ?ResolvedCallableInterface;
+
+    /**
+     * A parameter as its declaration declares it.
+     */
+    public function resolveParameter(Param $param): ParameterInfo;
 
     /**
      * A variable as a binding in a scope declares it.

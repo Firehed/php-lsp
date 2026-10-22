@@ -8,7 +8,6 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
-use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Domain\Visibility;
 
@@ -23,16 +22,6 @@ use Firehed\PhpLsp\Domain\Visibility;
  */
 interface CodeResolverInterface
 {
-    /**
-     * Resolve symbol at cursor position.
-     * Used by: Definition, Hover, TypeDefinition
-     */
-    public function resolveAtPosition(
-        TextDocument $document,
-        int $line,
-        int $character,
-    ): ?ResolvedSymbolInterface;
-
     /**
      * Get members accessible on a type.
      * Used by: Completion (after -> or ::)

@@ -7,7 +7,7 @@ namespace Firehed\PhpLsp\Tests\Handler;
 use Firehed\PhpLsp\Document\DocumentSourceInterface;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\Position\SymbolAtPositionInterface;
 
 /**
  * Stubs of the interface collaborators every handler unit test needs. Handler-
@@ -24,10 +24,10 @@ trait StubsCollaboratorsTrait
         return $stub;
     }
 
-    private function resolverReturning(?ResolvedSymbolInterface $symbol): CodeResolverInterface
+    private function resolverReturning(?ResolvedSymbolInterface $symbol): SymbolAtPositionInterface
     {
-        $stub = self::createStub(CodeResolverInterface::class);
-        $stub->method('resolveAtPosition')->willReturn($symbol);
+        $stub = self::createStub(SymbolAtPositionInterface::class);
+        $stub->method('symbolAt')->willReturn($symbol);
         return $stub;
     }
 }

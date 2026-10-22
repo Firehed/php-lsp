@@ -66,6 +66,8 @@ return [
     Resolution\Position\CallAtPositionInterface::class => Resolution\Position\CallAtPosition::class,
     Resolution\Position\ScopeAtPosition::class,
     Resolution\Position\ScopeAtPositionInterface::class => Resolution\Position\ScopeAtPosition::class,
+    Resolution\Position\SymbolAtPosition::class,
+    Resolution\Position\SymbolAtPositionInterface::class => Resolution\Position\SymbolAtPosition::class,
     Resolution\SymbolResolver::class,
     Resolution\CodeResolverInterface::class => Resolution\SymbolResolver::class,
     Resolution\TypeSource\NativeTypeSource::class,

@@ -17,8 +17,8 @@ use Firehed\PhpLsp\Handler\HoverHandler;
 use Firehed\PhpLsp\Handler\SignatureHelpHandler;
 use Firehed\PhpLsp\Handler\TextDocumentSyncHandler;
 use Firehed\PhpLsp\Knowledge\SymbolSinkInterface;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\Position\CallAtPositionInterface;
+use Firehed\PhpLsp\Resolution\Position\SymbolAtPositionInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenterInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -146,10 +146,10 @@ final class CompositeHandlerTest extends TestCase
                 $probes['sync'],
             ),
             new DidChangeWatchedFilesHandler($probes['watchedFiles']),
-            new DefinitionHandler($probes['definition'], self::createStub(CodeResolverInterface::class)),
+            new DefinitionHandler($probes['definition'], self::createStub(SymbolAtPositionInterface::class)),
             new HoverHandler(
                 $probes['hover'],
-                self::createStub(CodeResolverInterface::class),
+                self::createStub(SymbolAtPositionInterface::class),
                 self::createStub(SessionCapabilitiesProviderInterface::class),
                 self::createStub(ResolvedSymbolPresenterInterface::class),
             ),
