@@ -85,16 +85,16 @@ final class NativeTypeSourceTest extends TestCase
 
         $members = self::createStub(MemberResolverInterface::class);
         $members->method('findConstant')->willReturnCallback(
-            static fn (ClasslikeName $class, string $name, Visibility $visibility): ?ClasslikeConstantInfo =>
-                self::isOwnMember($class, $name, $visibility, 'LIMIT') ? $constant : null,
+            static fn (ClasslikeName $class, string $name, ?ClasslikeName $from): ?ClasslikeConstantInfo =>
+                self::isOwnMember($class, $name, $from, 'LIMIT') ? $constant : null,
         );
         $members->method('findMethod')->willReturnCallback(
-            static fn (ClasslikeName $class, string $name, Visibility $visibility): ?MethodInfo =>
-                self::isOwnMember($class, $name, $visibility, 'run') ? $method : null,
+            static fn (ClasslikeName $class, string $name, ?ClasslikeName $from): ?MethodInfo =>
+                self::isOwnMember($class, $name, $from, 'run') ? $method : null,
         );
         $members->method('findProperty')->willReturnCallback(
-            static fn (ClasslikeName $class, string $name, Visibility $visibility): ?PropertyInfo =>
-                self::isOwnMember($class, $name, $visibility, 'name') ? $property : null,
+            static fn (ClasslikeName $class, string $name, ?ClasslikeName $from): ?PropertyInfo =>
+                self::isOwnMember($class, $name, $from, 'name') ? $property : null,
         );
 
         $function = self::functionInfo(
@@ -238,18 +238,19 @@ final class NativeTypeSourceTest extends TestCase
     }
 
     /**
-     * A member's type is wanted whatever its visibility, so only a lookup that
-     * admits private members finds it.
+     * A member's type is wanted whatever its visibility, so only a lookup made
+     * from inside its owner, which reaches private members, finds it.
      */
     private static function isOwnMember(
         ClasslikeName $class,
         string $name,
-        Visibility $visibility,
+        ?ClasslikeName $from,
         string $declared,
     ): bool {
         return $class->equals(self::className(self::OWNER))
             && $name === $declared
-            && $visibility === Visibility::Private;
+            && $from !== null
+            && $from->equals($class);
     }
 
     private static function type(string $label): ClasslikeType

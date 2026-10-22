@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Tests\Repository;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodInfo;
-use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Repository\MemberResolver;
@@ -174,7 +173,7 @@ final class MemberResolverTypeGraphTest extends TestCase
     public function testInsteadofPicksTheWinningTraitOnFind(string $fqcn, string $method, string $expectedTrait): void
     {
         $class = ClasslikeName::fromFullyQualified($fqcn);
-        $resolved = $this->resolver->findMethod($class, $method, Visibility::Public);
+        $resolved = $this->resolver->findMethod($class, $method, null);
 
         self::assertNotNull($resolved, 'the conflict method should resolve');
         self::assertSame(
@@ -196,7 +195,7 @@ final class MemberResolverTypeGraphTest extends TestCase
         $methods = $this->resolver->getMembersOfKind(
             ClasslikeName::fromFullyQualified($fqcn),
             MemberKind::Method,
-            Visibility::Public,
+            null,
         );
         $conflicting = null;
         foreach ($methods as $candidate) {
@@ -217,7 +216,7 @@ final class MemberResolverTypeGraphTest extends TestCase
     public function testFindMethodResolvesAnAliasByItsNewName(): void
     {
         $user = ClasslikeName::fromFullyQualified('Fixtures\Hierarchy\TraitAdaptationUser');
-        $resolved = $this->resolver->findMethod($user, 'conflictMethodFromB', Visibility::Public);
+        $resolved = $this->resolver->findMethod($user, 'conflictMethodFromB', null);
 
         self::assertNotNull($resolved, 'an `as` alias must be reachable by findMethod');
         self::assertSame(
@@ -247,7 +246,7 @@ final class MemberResolverTypeGraphTest extends TestCase
         $methods = $this->resolver->getMembersOfKind(
             ClasslikeName::fromFullyQualified('Fixtures\Hierarchy\TraitAliasCollidingUser'),
             MemberKind::Method,
-            Visibility::Public,
+            null,
         );
         $collision = null;
         foreach ($methods as $candidate) {
@@ -279,7 +278,7 @@ final class MemberResolverTypeGraphTest extends TestCase
     {
         return array_map(
             fn ($member) => $member->getName()->name,
-            $this->resolver->getMembersOfKind(ClasslikeName::fromFullyQualified($fqcn), $kind, Visibility::Public),
+            $this->resolver->getMembersOfKind(ClasslikeName::fromFullyQualified($fqcn), $kind, null),
         );
     }
 

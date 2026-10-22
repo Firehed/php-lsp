@@ -241,6 +241,7 @@ final class ExpressionResolutionTest extends TestCase
     {
         $parent = 'src/Inheritance/ParentClass.php';
         $outsider = 'src/Inheritance/Outsider.php';
+        $sibling = 'src/Inheritance/SiblingClass.php';
         yield 'private, from its own class' => [$parent, 'private_method_internal', 'privateMethod'];
         yield 'private, from a subclass' => ['src/Inheritance/ChildClass.php', 'private_method', null];
         yield 'protected, from a parent class' => [$parent, 'child_protected_from_parent', 'childProtectedMethod'];
@@ -248,6 +249,17 @@ final class ExpressionResolutionTest extends TestCase
         yield 'protected, from an unrelated class' => [$outsider, 'protected_from_outside', null];
         yield 'public, from an unrelated class' => [$outsider, 'public_from_outside', 'parentMethod'];
         yield 'protected constant, from an unrelated class' => [$outsider, 'protected_constant_from_outside', null];
+        yield 'protected the shared parent declares, from a sibling' => [
+            $sibling,
+            'parent_protected_from_sibling',
+            'protectedMethod',
+        ];
+        yield 'protected only the receiver declares, from a sibling' => [
+            $sibling,
+            'child_protected_from_sibling',
+            null,
+        ];
+        yield 'private, from its class on a subclass instance' => [$parent, 'own_private_on_child', 'privateMethod'];
     }
 
     /**
@@ -346,7 +358,6 @@ final class ExpressionResolutionTest extends TestCase
         $child = self::className('Fixtures\Inheritance\ChildClass');
         $property = self::propertyInfo($child, 'staticProperty', self::userType());
         $members = self::createStub(MemberResolverInterface::class);
-        $members->method('visibilityFrom')->willReturn(Visibility::Private);
         $members->method('findProperty')->willReturnCallback(
             static fn (ClasslikeName $class, string $name): ?PropertyInfo
                 => $class->equals($child) && $name === 'staticProperty' ? $property : null,
@@ -391,7 +402,6 @@ final class ExpressionResolutionTest extends TestCase
     {
         $parameter = self::parameterInfo('name', new PrimitiveType('string'));
         $members = self::createStub(MemberResolverInterface::class);
-        $members->method('visibilityFrom')->willReturn(Visibility::Public);
         $members->method('findMethod')->willReturnCallback(
             static fn (ClasslikeName $class, string $name): ?MethodInfo => self::isUser($class)
                 && $name === '__construct'
@@ -461,7 +471,6 @@ final class ExpressionResolutionTest extends TestCase
     public function testMemberTheReceiversClassLacksIsUnresolved(): void
     {
         $members = $this->createMock(MemberResolverInterface::class);
-        $members->method('visibilityFrom')->willReturn(Visibility::Private);
         $members->expects(self::once())
             ->method('findProperty')
             ->with(self::className(self::USER_CLASS), 'unknownProperty')
@@ -558,7 +567,6 @@ final class ExpressionResolutionTest extends TestCase
     private function knowUserMembers(): void
     {
         $members = self::createStub(MemberResolverInterface::class);
-        $members->method('visibilityFrom')->willReturn(Visibility::Private);
         $members->method('findMethod')->willReturnCallback(
             static fn (ClasslikeName $class, string $name): ?MethodInfo => self::isUser($class)
                 && in_array($name, ['setName', 'create'], true)

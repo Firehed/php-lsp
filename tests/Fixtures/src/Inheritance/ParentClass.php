@@ -84,4 +84,9 @@ class ParentClass extends Grandparent
     {
         return self::PARENT_CONST; //hover:class_constant
     }
+
+    public function triggerHoverOwnPrivateOnChild(ChildClass $child): void
+    {
+        $child->privateMethod(); //hover:own_private_on_child
+    }
 }

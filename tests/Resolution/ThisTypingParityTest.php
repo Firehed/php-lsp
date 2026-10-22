@@ -6,9 +6,8 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
-use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
-use Firehed\PhpLsp\Repository\MemberResolver;
+use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\Position\CallAtPosition;
 use Firehed\PhpLsp\Resolution\Position\ExpectedAtPosition;
@@ -28,8 +27,8 @@ use PHPUnit\Framework\TestCase;
  * The two features must agree on the receiver type for the same source input.
  *
  * Enclosing-class resolution runs off the AST alone — no backend lookup, no
- * member walk, no type source — so the symbol and type sources are stubbed,
- * and the member resolver needs no class to say `$this` sees private members.
+ * member walk, no type source — so the parser is the only live collaborator
+ * and the three knowledge interfaces are stubbed.
  */
 #[CoversClass(ExpectedAtPosition::class)]
 #[CoversClass(SymbolAtPosition::class)]
@@ -45,7 +44,7 @@ final class ThisTypingParityTest extends TestCase
     {
         $production = ProductionSyntaxSource::create();
         $symbols = self::createStub(SymbolSourceInterface::class);
-        $members = new MemberResolver($symbols);
+        $members = self::createStub(MemberResolverInterface::class);
         $types = self::createStub(TypeSourceInterface::class);
         $expressions = new ExpressionResolver($members, $symbols, $types);
         $locator = new PositionLocator($production->source);
@@ -53,7 +52,6 @@ final class ThisTypingParityTest extends TestCase
             $locator,
             new CallAtPosition($locator, $expressions),
             $expressions,
-            $members,
         );
         $this->symbols = new SymbolAtPosition($locator, $expressions, $symbols);
     }
@@ -64,7 +62,6 @@ final class ThisTypingParityTest extends TestCase
      *     hoverNeedle: string,
      *     completionMarker: string,
      *     expectedClass: string,
-     *     expectedVisibility: Visibility,
      * }>
      */
     public static function parityCases(): iterable
@@ -74,8 +71,6 @@ final class ThisTypingParityTest extends TestCase
             'hoverNeedle' => '$this;',
             'completionMarker' => 'this_member',
             'expectedClass' => 'Fixtures\\Resolution\\ThisTypingParity',
-            // Vantage is the enclosing class, so `$this->` sees private members.
-            'expectedVisibility' => Visibility::Private,
         ];
     }
 
@@ -85,7 +80,6 @@ final class ThisTypingParityTest extends TestCase
         string $hoverNeedle,
         string $completionMarker,
         string $expectedClass,
-        Visibility $expectedVisibility,
     ): void {
         $content = $this->loadFixture($relative);
         $document = new TextDocument('file:///' . $relative, 'php', 1, $content);
@@ -113,9 +107,9 @@ final class ThisTypingParityTest extends TestCase
             'the shared helper resolves the enclosing class in the fixture',
         );
         self::assertSame(
-            $expectedVisibility,
-            $access->minVisibility,
-            'completion visibility must match the case expectation for this fixture',
+            $expectedClass,
+            $access->from?->qualifiedName->fullyQualifiedName(),
+            'the access is written in the enclosing class, so `$this->` reaches its private members',
         );
     }
 

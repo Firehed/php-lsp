@@ -13,7 +13,6 @@ use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
 use Firehed\PhpLsp\Domain\UnionType;
-use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\SymbolCapabilities;
@@ -176,10 +175,11 @@ final class SymbolCapabilitiesTest extends TestCase
                 $byClassAndKind[$class][$kind->name] = self::createStub(ResolvedMemberInterface::class);
             }
         }
+        $from = ClasslikeName::fromFullyQualified('Caller');
         $members = self::createStub(MemberResolverInterface::class);
         $members->method('getMembersOfKind')->willReturnCallback(
-            static fn (ClasslikeName $class, MemberKind $kind, Visibility $visibility, MemberFilter $passed): array
-                => $visibility === Visibility::Protected && $passed === $filter
+            static fn (ClasslikeName $class, MemberKind $kind, ?ClasslikeName $passedFrom, MemberFilter $passed): array
+                => $passedFrom === $from && $passed === $filter
                     ? [$byClassAndKind[$class->qualifiedName->fullyQualifiedName()][$kind->name]]
                     : [],
         );
@@ -197,10 +197,10 @@ final class SymbolCapabilitiesTest extends TestCase
                     static fn (string $class): ClasslikeType => new ClasslikeType(self::className($class)),
                     $classes,
                 )),
-                Visibility::Protected,
+                $from,
                 $filter,
             ),
-            'every class the type may be, each with the kinds of member its access reaches, at the given visibility',
+            'every class the type may be, each with the kinds of member its access reaches, from the given class',
         );
     }
 

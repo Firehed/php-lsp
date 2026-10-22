@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
-use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Tests\ProvidesMemberKindsTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -27,7 +26,7 @@ class MemberAccessContextTest extends TestCase
 
     public function testForInstanceSetsExpectedValues(): void
     {
-        $ctx = MemberAccessContext::forInstance(self::type(), Visibility::Public, 'prefix');
+        $ctx = MemberAccessContext::forInstance(self::type(), null, 'prefix');
 
         self::assertSame(MemberAccessKind::Instance, $ctx->kind, 'kind');
         self::assertSame(MemberFilter::Instance, $ctx->memberFilter, 'memberFilter');
@@ -37,8 +36,10 @@ class MemberAccessContextTest extends TestCase
 
     public function testForStaticSetsExpectedValues(): void
     {
-        $ctx = MemberAccessContext::forStatic(self::type(), Visibility::Protected, 'pre');
+        $from = ClasslikeName::fromFullyQualified('App\\Caller');
+        $ctx = MemberAccessContext::forStatic(self::type(), $from, 'pre');
 
+        self::assertSame($from, $ctx->from, 'from');
         self::assertSame(MemberAccessKind::Static, $ctx->kind, 'kind');
         self::assertSame(MemberFilter::Static, $ctx->memberFilter, 'memberFilter');
         self::assertTrue($ctx->offersClassConstant, 'offersClassConstant');
@@ -47,7 +48,7 @@ class MemberAccessContextTest extends TestCase
 
     public function testForParentSetsExpectedValues(): void
     {
-        $ctx = MemberAccessContext::forParent(self::type(), Visibility::Private, '');
+        $ctx = MemberAccessContext::forParent(self::type(), null, '');
 
         self::assertSame(MemberAccessKind::Parent, $ctx->kind, 'kind');
         self::assertSame(MemberFilter::All, $ctx->memberFilter, 'memberFilter');
@@ -58,7 +59,7 @@ class MemberAccessContextTest extends TestCase
     #[DataProvider('allMemberKinds')]
     public function testInstanceAcceptsAllKinds(MemberKind $memberKind): void
     {
-        $ctx = MemberAccessContext::forInstance(self::type(), Visibility::Public, '');
+        $ctx = MemberAccessContext::forInstance(self::type(), null, '');
         $member = self::createStub(ResolvedMemberInterface::class);
         $member->method('getMemberKind')->willReturn($memberKind);
 
@@ -68,7 +69,7 @@ class MemberAccessContextTest extends TestCase
     #[DataProvider('allMemberKinds')]
     public function testStaticAcceptsAllKinds(MemberKind $memberKind): void
     {
-        $ctx = MemberAccessContext::forStatic(self::type(), Visibility::Public, '');
+        $ctx = MemberAccessContext::forStatic(self::type(), null, '');
         $member = self::createStub(ResolvedMemberInterface::class);
         $member->method('getMemberKind')->willReturn($memberKind);
 
@@ -78,7 +79,7 @@ class MemberAccessContextTest extends TestCase
     #[DataProvider('parentAcceptsCases')]
     public function testParentAcceptsOnlyMethods(MemberKind $memberKind, bool $expected): void
     {
-        $ctx = MemberAccessContext::forParent(self::type(), Visibility::Public, '');
+        $ctx = MemberAccessContext::forParent(self::type(), null, '');
         $member = self::createStub(ResolvedMemberInterface::class);
         $member->method('getMemberKind')->willReturn($memberKind);
 

@@ -23,7 +23,6 @@ use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\TypeInterface;
-use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
@@ -375,7 +374,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
      * visible from where the access is written is found.
      *
      * @template T of MemberInfoInterface
-     * @param callable(ClasslikeName, string, Visibility): ?T $find
+     * @param callable(ClasslikeName, string, ?ClasslikeName): ?T $find
      * @return ?T
      */
     private function resolveMember(
@@ -391,12 +390,11 @@ final class ExpressionResolver implements ExpressionResolverInterface
             if ($classNameStr === null) {
                 return null;
             }
-            $className = ClasslikeName::fromFullyQualified($classNameStr);
-            return $find($className, $memberName, $this->visibilityFrom($scope, $className));
+            return $find(ClasslikeName::fromFullyQualified($classNameStr), $memberName, $scope->getSelfName());
         }
         $receiverType = $this->resolve($receiver, $parsed)?->getType();
         foreach (self::receiverClasslikeNames($receiverType) as $className) {
-            $member = $find($className, $memberName, $this->visibilityFrom($scope, $className));
+            $member = $find($className, $memberName, $scope->getSelfName());
             if ($member !== null) {
                 return $member;
             }
@@ -412,23 +410,18 @@ final class ExpressionResolver implements ExpressionResolverInterface
         return $type?->getResolvableClasslikeNames() ?? [];
     }
 
-    private function visibilityFrom(Scope $scope, ClasslikeName $className): Visibility
+    private function findMethod(ClasslikeName $className, string $name, ?ClasslikeName $from): ?MethodInfo
     {
-        return $this->memberResolver->visibilityFrom($scope->getSelfName(), $className);
-    }
-
-    private function findMethod(ClasslikeName $className, string $name, Visibility $visibility): ?MethodInfo
-    {
-        $info = $this->memberResolver->findMethod($className, $name, $visibility);
+        $info = $this->memberResolver->findMethod($className, $name, $from);
         if ($info === null) {
             return null;
         }
         return $this->resolveLateBoundReturn($info, $className);
     }
 
-    private function findProperty(ClasslikeName $className, string $name, Visibility $visibility): ?PropertyInfo
+    private function findProperty(ClasslikeName $className, string $name, ?ClasslikeName $from): ?PropertyInfo
     {
-        return $this->memberResolver->findProperty($className, $name, $visibility);
+        return $this->memberResolver->findProperty($className, $name, $from);
     }
 
     private function resolveClassConstFetch(ClassConstFetch $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
@@ -446,11 +439,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if ($enumCase !== null) {
             return $enumCase;
         }
-        return $this->memberResolver->findConstant(
-            $className,
-            $expr->name->toString(),
-            $this->visibilityFrom($scope, $className),
-        );
+        return $this->memberResolver->findConstant($className, $expr->name->toString(), $scope->getSelfName());
     }
 
     private function resolveConstFetch(Expr\ConstFetch $expr, ParsedDocument $parsed): ?ConstantInfo
