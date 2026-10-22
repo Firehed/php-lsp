@@ -83,8 +83,6 @@ Every request is answered correctly without background work, and background work
 
 Code being edited usually does not parse, and every feature must keep working on it.
 At any position, every feature sees the same structure, and it is the structure the code will have once completed.
-Unreadable code is handled by a recovery step inside the syntax source, never by a feature reading text ([ADR 0004](docs/adrs/0004-one-structure-per-document.md)).
-Features ask the position services in `src/Resolution/Position/` what is at a position; only `PositionLocator` reads the structure there.
 
 ### Source text
 
