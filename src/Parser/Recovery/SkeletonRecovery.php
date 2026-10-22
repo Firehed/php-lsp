@@ -241,7 +241,7 @@ final class SkeletonRecovery implements RecoveryInterface
             ...$this->buildProperties($c['body'], $c['start'], $positions),
             ...$this->buildConstants($c['body'], $c['start'], $positions),
         ];
-        self::extendMemberSpans($members, $c['end']);
+        self::extendMemberSpans($members, $c);
         $nameNode = new Identifier(
             $c['name'],
             self::positions($positions, $c['nameStart'], $c['nameStart'] + strlen($c['name'])),
@@ -562,21 +562,34 @@ final class SkeletonRecovery implements RecoveryInterface
     }
 
     /**
-     * The regexes pin each member to its declaration line; a method's body ends
-     * only at the next member (or the class body's end). Stretching the span
-     * to that boundary is what makes {@see \Firehed\PhpLsp\Resolution\Scope::atOffset}
-     * find the enclosing method for a cursor sitting in the body — including a
-     * body php-parser could not close.
+     * The regexes pin each member to its declaration line. A member ends where
+     * its own `;` or its body's closing brace does; a body that never closes
+     * before the next member (or the class body's end) runs to that boundary,
+     * so a position in it still has an enclosing method. Code between members
+     * that no member covers stays uncovered, for later recovery to read.
      *
      * @param list<Stmt> $members
+     * @param ClassLikeMatch $class
      */
-    private static function extendMemberSpans(array $members, int $classEnd): void
+    private static function extendMemberSpans(array $members, array $class): void
     {
         usort($members, static fn (Stmt $a, Stmt $b): int => $a->getStartFilePos() - $b->getStartFilePos());
         $lastIndex = count($members) - 1;
+        $base = $class['start'];
         foreach ($members as $i => $member) {
-            $next = $i === $lastIndex ? $classEnd : $members[$i + 1]->getStartFilePos();
-            $member->setAttribute('endFilePos', max($member->getEndFilePos(), $next - 1));
+            $next = $i === $lastIndex ? $class['end'] : $members[$i + 1]->getStartFilePos();
+            $end = $next - 1;
+            $declared = $member->getEndFilePos() + 1 - $base;
+            if (
+                preg_match('/[{;]/', $class['body'], $m, PREG_OFFSET_CAPTURE, $declared) === 1
+                && $base + $m[0][1] < $next
+            ) {
+                $closed = $m[0][0] === ';'
+                    ? $m[0][1]
+                    : self::findMatchingBrace($class['body'], $m[0][1] - 1) - 1;
+                $end = min($base + $closed, $end);
+            }
+            $member->setAttribute('endFilePos', max($member->getEndFilePos(), $end));
         }
     }
 

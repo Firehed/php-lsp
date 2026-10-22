@@ -13,8 +13,8 @@
     },
     "src/Domain/User.php#method_name (line cut short)": {
         "class": "User",
-        "function": "triggerUntypedProperty",
-        "node": "PhpParser\\Node\\Stmt\\ClassMethod",
+        "function": null,
+        "node": "PhpParser\\Node\\Stmt\\Class_",
         "text": null
     },
     "src/Domain/User.php#method_name (word cut short)": {
