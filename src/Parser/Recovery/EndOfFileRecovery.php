@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Parser\SyntaxSource\ParseAttempt;
  * reads nothing when it reaches the end of the file still recovering from an
  * error. This {@see RecoveryInterface} finishes the code and reads it again.
  * The added text sits past the end of the code, so every position in the code
- * is unchanged.
+ * is unchanged, and what it adds is not written.
  */
 final class EndOfFileRecovery implements RecoveryInterface
 {
@@ -29,6 +29,10 @@ final class EndOfFileRecovery implements RecoveryInterface
             return $attempt;
         }
         $finished = $this->parser->parse($code . self::finish($attempt->tokens));
-        return $finished->tree === [] ? $attempt : $finished;
+        if ($finished->tree === []) {
+            return $attempt;
+        }
+        self::place($finished->tree, 0, 0, strlen($code) - 1);
+        return $finished;
     }
 }

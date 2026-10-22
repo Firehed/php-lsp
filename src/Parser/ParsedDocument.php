@@ -24,6 +24,10 @@ use PhpParser\Node\Stmt;
  * - On every call and attribute, an {@see self::ARGUMENT_SEPARATORS} attribute:
  *   the file positions, in order, of the commas within its span that separate
  *   its own arguments, a trailing comma included.
+ * - Code that is not written yet but must be for the code around it to read
+ *   (a member name after `->`, an operand after `new`, a declaration for an
+ *   attribute to apply to) is a node that takes no space: it ends before it
+ *   starts, where the code would be written. See {@see self::isWritten()}.
  */
 final readonly class ParsedDocument
 {
@@ -36,6 +40,15 @@ final readonly class ParsedDocument
         public TextDocument $document,
         public array $tree,
     ) {
+    }
+
+    /**
+     * Whether a node's code is written in the document, rather than marking
+     * where code must still be written.
+     */
+    public static function isWritten(Node $node): bool
+    {
+        return $node->getStartFilePos() <= $node->getEndFilePos();
     }
 
     /**

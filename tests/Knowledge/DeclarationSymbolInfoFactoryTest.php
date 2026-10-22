@@ -169,6 +169,37 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         );
     }
 
+    public function testAMemberWhoseNameIsNotWrittenIsNotDeclared(): void
+    {
+        $info = $this->buildClassInfoFromFixture(
+            'Recovery/DanglingAttribute.php',
+            'Fixtures\Recovery\DanglingAttribute',
+        );
+
+        self::assertSame(
+            ['kept'],
+            array_keys($info->methods),
+            'what recovery supplies for an attribute to apply to is not a method the class declares',
+        );
+    }
+
+    public function testAPropertyWhoseNameIsNotWrittenIsNotDeclared(): void
+    {
+        $info = $this->buildClassInfoFromFixture(
+            'Recovery/UnfinishedMembers.php',
+            'Fixtures\Recovery\UnfinishedProperty',
+        );
+
+        self::assertSame(['kept'], array_keys($info->properties), 'a type being typed declares no property yet');
+    }
+
+    public function testAnEnumCaseWhoseNameIsNotWrittenIsNotDeclared(): void
+    {
+        $info = $this->buildClassInfoFromFixture('Recovery/UnfinishedMembers.php', 'Fixtures\Recovery\UnfinishedCase');
+
+        self::assertSame(['Kept'], array_keys($info->enumCases), 'a case being typed declares no case yet');
+    }
+
     public function testExtractsInsteadofExclusions(): void
     {
         $info = $this->buildClassInfoFromFixture(

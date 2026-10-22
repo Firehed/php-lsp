@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser\Recovery;
 
-use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\CodeParserInterface;
 use Firehed\PhpLsp\Parser\SyntaxSource\ParseAttempt;
 use PhpParser\Node;
@@ -239,9 +238,7 @@ final class GapGraftingRecovery implements RecoveryInterface
                 break;
             }
         }
-        foreach ((new NodeFinder())->find($read, static fn (): bool => true) as $node) {
-            self::move($node, $start - strlen($host), $layout->lineOf($start) - 1, $end - 1);
-        }
+        self::place($read, $start - strlen($host), $layout->lineOf($start) - 1, $end - 1);
         return $read;
     }
 
@@ -271,48 +268,5 @@ final class GapGraftingRecovery implements RecoveryInterface
         $wrapper = $tree[0] ?? null;
         $statements = $wrapper instanceof Stmt\Class_ || $wrapper instanceof Stmt\Function_ ? $wrapper->stmts : [];
         return array_values($statements);
-    }
-
-    /**
-     * Moves a node read on its own to where its code is in the file. A node
-     * the ending added past the gap takes no space, ending before it starts,
-     * so no position in the file finds it; one that spans code in the gap
-     * ends with the gap.
-     */
-    private static function move(Node $node, int $by, int $lines, int $last): void
-    {
-        $attributes = $node->getAttributes();
-        unset($attributes['startTokenPos'], $attributes['endTokenPos']);
-        $start = $node->getStartFilePos() + $by;
-        $attributes['startFilePos'] = min($start, $last + 1);
-        $attributes['endFilePos'] = $start > $last ? $last : min($node->getEndFilePos() + $by, $last);
-        foreach (['startLine', 'endLine'] as $key) {
-            if (is_int($attributes[$key] ?? null)) {
-                $attributes[$key] += $lines;
-            }
-        }
-        $separators = ParsedDocument::argumentSeparatorsOf($node);
-        if ($separators !== null) {
-            $attributes[ParsedDocument::ARGUMENT_SEPARATORS] = array_values(array_filter(
-                array_map(static fn (int $position): int => $position + $by, $separators),
-                static fn (int $position): bool => $position <= $last,
-            ));
-        }
-        $comments = [];
-        foreach ($node->getComments() as $comment) {
-            $comments[] = new ($comment::class)(
-                $comment->getText(),
-                $comment->getStartLine() + $lines,
-                $comment->getStartFilePos() + $by,
-                -1,
-                $comment->getEndLine() + $lines,
-                $comment->getEndFilePos() + $by,
-                -1,
-            );
-        }
-        if ($comments !== []) {
-            $attributes['comments'] = $comments;
-        }
-        $node->setAttributes($attributes);
     }
 }

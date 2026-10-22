@@ -28,6 +28,26 @@ final class ParsedDocumentTest extends TestCase
     }
 
     /**
+     * @return array<string, array{int, int, bool}>
+     */
+    public static function spans(): array
+    {
+        return [
+            'one byte' => [4, 4, true],
+            'several bytes' => [4, 9, true],
+            'ends before it starts' => [5, 4, false],
+        ];
+    }
+
+    #[DataProvider('spans')]
+    public function testANodeIsWrittenWhenItTakesSpace(int $start, int $end, bool $written): void
+    {
+        $name = new Name('f', ['startFilePos' => $start, 'endFilePos' => $end]);
+
+        self::assertSame($written, ParsedDocument::isWritten($name));
+    }
+
+    /**
      * @return array<string, array{mixed, ?list<int>}>
      */
     public static function separatorAttributes(): array

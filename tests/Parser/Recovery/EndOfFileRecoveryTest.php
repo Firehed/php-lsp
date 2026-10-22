@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Parser\Recovery;
 
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\Recovery\EndOfFileRecovery;
 use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserCodeParser;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -57,11 +58,26 @@ final class EndOfFileRecoveryTest extends TestCase
         );
     }
 
+    public function testWhatTheEndingAddsIsNotWritten(): void
+    {
+        $code = $this->loadFixture('Recovery/EndsAfterNew.php');
+        $parser = new PhpParserCodeParser();
+
+        $tree = (new EndOfFileRecovery($parser))->recover($code, $parser->parse($code))->tree;
+
+        $new = (new NodeFinder())->findFirstInstanceOf($tree, Expr\New_::class);
+        self::assertNotNull($new);
+        self::assertFalse(ParsedDocument::isWritten($new->class), 'the class after `new` is not typed yet');
+        self::assertTrue(ParsedDocument::isWritten($new), 'the `new` that is typed is written');
+        self::assertSame(strlen($code) - 1, $new->getEndFilePos(), 'and ends where the code does');
+    }
+
     public function testAnEndingThatStillDoesNotParseLeavesTheAttempt(): void
     {
-        $code = $this->loadFixture('Recovery/EndsAtClassKeyword.php');
+        $code = $this->loadFixture('Recovery/OnlyClassKeyword.php');
         $parser = new PhpParserCodeParser();
         $attempt = $parser->parse($code);
+        self::assertSame([], $attempt->tree, 'the parser reads nothing of the code on its own');
 
         self::assertSame(
             $attempt,

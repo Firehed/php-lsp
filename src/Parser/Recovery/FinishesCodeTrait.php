@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser\Recovery;
 
+use Firehed\PhpLsp\Parser\ParsedDocument;
+use PhpParser\Node;
+use PhpParser\NodeFinder;
+
 /**
  * What code that stops mid-construct needs for php-parser to read it: a
  * stand-in word where an operand must follow, the closing quote of an
@@ -79,6 +83,53 @@ trait FinishesCodeTrait
             default => ' _',
         };
         return [$standIn, $open, $standIn === '' ? $last?->text : $standIn];
+    }
+
+    /**
+     * Moves what was read of finished code to where its code is in the
+     * document. Each node the ending added takes no space, ending before it
+     * starts where the code would be written; one that spans written code
+     * ends where that code does.
+     *
+     * @param array<Node> $tree
+     */
+    private static function place(array $tree, int $by, int $lines, int $last): void
+    {
+        foreach ((new NodeFinder())->find($tree, static fn (): bool => true) as $node) {
+            $attributes = $node->getAttributes();
+            unset($attributes['startTokenPos'], $attributes['endTokenPos']);
+            $start = $node->getStartFilePos() + $by;
+            $attributes['startFilePos'] = min($start, $last + 1);
+            $attributes['endFilePos'] = $start > $last ? $last : min($node->getEndFilePos() + $by, $last);
+            foreach (['startLine', 'endLine'] as $key) {
+                if (is_int($attributes[$key] ?? null)) {
+                    $attributes[$key] += $lines;
+                }
+            }
+            $separators = ParsedDocument::argumentSeparatorsOf($node);
+            if ($separators !== null) {
+                $attributes[ParsedDocument::ARGUMENT_SEPARATORS] = array_values(array_filter(
+                    array_map(static fn (int $position): int => $position + $by, $separators),
+                    static fn (int $position): bool => $position <= $last,
+                ));
+            }
+            $comments = [];
+            foreach ($node->getComments() as $comment) {
+                $comments[] = new ($comment::class)(
+                    $comment->getText(),
+                    $comment->getStartLine() + $lines,
+                    $comment->getStartFilePos() + $by,
+                    -1,
+                    $comment->getEndLine() + $lines,
+                    $comment->getEndFilePos() + $by,
+                    -1,
+                );
+            }
+            if ($comments !== []) {
+                $attributes['comments'] = $comments;
+            }
+            $node->setAttributes($attributes);
+        }
     }
 
     /**
