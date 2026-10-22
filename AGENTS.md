@@ -1,5 +1,7 @@
 # AGENTS.md
 
+This document supplements instructions in CONTRIBUTING.md, not replace them.
+
 ## Quick Start
 
 ```bash
@@ -9,7 +11,6 @@ composer phpstan -- --error-format=raw --no-progress # run phpstan
 composer phpstan -- --error-format=raw --no-progress path/to/analyze # run phpstan on a specific path
 composer phpcs -- -q --report=emacs # run code style checks (PSR-12)
 ```
-
 ## Design
 
 The project is a language server for PHP.
@@ -18,6 +19,14 @@ Routes drift, and the drift shows up as a feature that works in hover but not in
 
 The codebase is undergoing structural transition to eliminate this issue.
 This document's guidance should override matching existing structure.
+
+ADR documents are being added in `docs/adrs` to capture the intended architecture and context behind it.
+If a session leads to a design decision, that decision should be captured in a new ADR.
+ADRs should be considered read-only once landed to main, with the exception of changing the status (e.g. superceding or abandoning).
+
+## Development Workflow
+
+- Before a pull request leaves draft, a fresh agent runs the `pr-review` skill on it.
 
 ### Services and data types
 
@@ -49,8 +58,8 @@ If a handler is about to do one of those, the logic belongs in a resolver implem
 
 ### The litmus test
 
-Adding tree-sitter as a parser touches two files: the new tool class, and the composite that wires the parsing tools together.
-A completion handler cannot tell whether a tree came from tree-sitter, php-parser, or the text skeleton.
+Adding tree-sitter as a parser touches two source files: the new tool class, and the composite that wires the parsing tools together.
+A completion handler cannot tell whether a tree came from tree-sitter, php-parser, or a fallback handler.
 A change that needs more files than that has found a second route to a fact.
 
 ### Type graph

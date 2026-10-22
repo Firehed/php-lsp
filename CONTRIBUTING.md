@@ -8,8 +8,6 @@
 - Update `docs/features/*.md` when merging features.
 - Run `composer test` before commits.
 - `composer.lock` is gitignored. Do not stage or commit it.
-- One route per fact. Before writing code that answers a question (what a symbol is, where it is declared, what type an expression has), check whether the codebase already answers it. If it does, extend that answer even when it is incomplete, moving it first if it sits where the design says it should not; if it does not, add the one place that will.
-- Before a pull request leaves draft, a fresh agent runs the `pr-review` skill on it.
 
 ## Code Style
 
