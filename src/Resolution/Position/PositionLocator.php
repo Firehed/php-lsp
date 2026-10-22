@@ -62,10 +62,16 @@ final class PositionLocator implements PositionLocatorInterface
             if ($n instanceof Stmt\Namespace_) {
                 $namespace ??= $n;
             }
-            if ($n instanceof Stmt\ClassLike) {
+            if (
+                $n instanceof Stmt\Class_ || $n instanceof Stmt\Interface_
+                || $n instanceof Stmt\Trait_ || $n instanceof Stmt\Enum_
+            ) {
                 $classLike ??= $n;
             }
-            if ($n instanceof FunctionLike) {
+            if (
+                $n instanceof Stmt\Function_ || $n instanceof Stmt\ClassMethod
+                || $n instanceof Expr\Closure || $n instanceof Expr\ArrowFunction
+            ) {
                 $functionLikes[] = $n;
                 $crossedFunction = true;
             }

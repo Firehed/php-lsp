@@ -22,6 +22,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\NameContext;
+use Firehed\PhpLsp\Resolution\Position\ScopeAtPositionInterface;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -481,7 +482,6 @@ final class SymbolCandidatesTest extends TestCase
         $symbols->method('lookupFunction')->willReturn($function);
 
         $resolver = self::createStub(CodeResolverInterface::class);
-        $resolver->method('getNameContext')->willReturn($context);
         $resolver->method('isClassLike')->willReturnCallback(
             static fn (ClasslikeName $name): bool => !self::isOneOf($name, $phantoms),
         );
@@ -489,9 +489,13 @@ final class SymbolCandidatesTest extends TestCase
             $resolver->method('isInstantiable')->willReturnCallback($isInstantiable);
         }
 
+        $scope = self::createStub(ScopeAtPositionInterface::class);
+        $scope->method('nameContextAt')->willReturn($context);
+
         return new SymbolCandidates(
             $symbols,
             $resolver,
+            $scope,
             self::capabilitiesProvider($capabilities),
             new CompletionItemFactory(new ResolvedSymbolPresenter()),
         );

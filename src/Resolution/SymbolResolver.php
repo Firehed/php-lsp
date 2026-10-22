@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ClasslikeName;
-use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
@@ -266,49 +265,6 @@ final class SymbolResolver implements CodeResolverInterface
         int $character,
     ): ?MemberAccessContext {
         return $this->memberAccessDetector->detect($this->parser->parse($document), $line, $character);
-    }
-
-    /**
-     * Get variables in scope at position.
-     * Used by: Completion (variable names)
-     *
-     * @return list<ResolvedVariable>
-     */
-    public function getVariablesInScope(
-        TextDocument $document,
-        int $line,
-        int $character,
-    ): array {
-        $parsed = $this->parser->parse($document);
-        $ast = $parsed->tree;
-
-        $offset = $document->offsetAt($line, $character)->value;
-        $scope = Scope::atOffset($ast, $offset);
-
-        $nearest = [];
-        foreach (VariableBindings::before($scope, $offset) as $binding) {
-            $nearest[$binding->name] = $binding;
-        }
-
-        $variables = [];
-        $thisClass = $scope->getThisType();
-        if ($thisClass !== null) {
-            $variables[] = new ResolvedVariable('this', new ClasslikeType($thisClass));
-            unset($nearest['this']);
-        }
-
-        foreach ($nearest as $binding) {
-            $variables[] = $this->expressions->resolveBinding($binding, $scope, $parsed);
-        }
-
-        return $variables;
-    }
-
-    public function getNameContext(TextDocument $document, int $line): NameContext
-    {
-        $ast = $this->parser->parse($document)->tree;
-
-        return NameContextFactory::fromAst($ast, $line);
     }
 
     /**

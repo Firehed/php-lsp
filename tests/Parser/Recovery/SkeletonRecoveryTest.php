@@ -67,7 +67,7 @@ final class SkeletonRecoveryTest extends TestCase
         self::assertSame(
             Stmt\Namespace_::KIND_SEMICOLON,
             $ns->getAttribute('kind'),
-            'ScopeFinder::findNamespaceNodeAtLine reads the kind attribute',
+            'its kind tells a semicolon namespace from a braced one',
         );
     }
 

@@ -144,21 +144,20 @@ class ScopeTest extends TestCase
      * @param class-string $expectedNodeClass
      */
     #[DataProvider('classLikeKindFixtures')]
-    public function testAtOffsetCarriesAllClassLikeKinds(
+    public function testTheScopeCarriesEveryClassLikeKind(
         string $fixture,
         string $methodName,
         string $expectedNodeClass,
     ): void {
         $ast = self::parseWithParents($this->loadFixture($fixture));
         $method = self::findMethod($methodName, $ast);
-        $offset = $method->getStartFilePos() + 1;
 
-        $scope = Scope::atOffset($ast, $offset);
+        $scope = Scope::enclosing($method->name, $ast);
 
         self::assertInstanceOf(
             $expectedNodeClass,
             $scope->getEnclosingClassLike(),
-            "atOffset should carry enclosing $expectedNodeClass",
+            "the scope carries its enclosing $expectedNodeClass",
         );
     }
 
@@ -174,7 +173,7 @@ class ScopeTest extends TestCase
         ];
     }
 
-    public function testAtOffsetCarriesEnclosingInterface(): void
+    public function testTheScopeCarriesAnEnclosingInterface(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Domain/Entity.php'));
         $method = (new NodeFinder())->findFirst(
@@ -183,22 +182,22 @@ class ScopeTest extends TestCase
         );
         self::assertInstanceOf(Stmt\ClassMethod::class, $method);
 
-        $scope = Scope::atOffset($ast, $method->getStartFilePos());
+        $scope = Scope::enclosing($method->name, $ast);
 
         self::assertInstanceOf(
             Stmt\Interface_::class,
             $scope->getEnclosingClassLike(),
-            'atOffset should carry enclosing interface',
+            'the scope carries its enclosing interface',
         );
     }
 
-    public function testAtOffsetOutsideClassHasNullClassLike(): void
+    public function testAScopeOutsideAClassHasNoClassLike(): void
     {
         $ast = self::parseWithParents($this->loadFixture('src/Utility/GlobalScope.php'));
         $globalVar = self::findVariableNode('globalVar', $ast);
         self::assertNotNull($globalVar);
 
-        $scope = Scope::atOffset($ast, $globalVar->getStartFilePos());
+        $scope = Scope::enclosing($globalVar, $ast);
 
         self::assertNull($scope->getEnclosingClassLike(), 'Global scope outside class has no class-like');
     }
@@ -214,37 +213,6 @@ class ScopeTest extends TestCase
         self::assertNull($scope->getThisType());
         self::assertSame([], $scope->getUses(), 'Global scope declares no closure captures');
         self::assertNull($scope->getEnclosingClassLike(), 'Global scope has no class-like');
-    }
-
-    public function testAtOffsetReturnsEnclosingClosureNotMethod(): void
-    {
-        $ast = self::parseWithParents($this->loadFixture('src/Utility/ScopePatterns.php'));
-        $closure = self::findClosureWithUses($ast);
-        $offset = $closure->stmts[0]->getStartFilePos();
-
-        $scope = Scope::atOffset($ast, $offset);
-
-        self::assertContains(
-            'captured',
-            self::useNames($scope),
-            'Innermost function-like node (the closure) should win over the enclosing method',
-        );
-    }
-
-    public function testAtOffsetInNamespacedFileUsesNamespaceStatements(): void
-    {
-        $ast = self::parseWithParents($this->loadFixture('src/Utility/GlobalScope.php'));
-        $globalVar = self::findVariableNode('globalVar', $ast);
-        self::assertNotNull($globalVar);
-
-        $scope = Scope::atOffset($ast, $globalVar->getStartFilePos());
-
-        self::assertNull($scope->getSelfContext(), 'File-level code has no class context');
-        self::assertNull($scope->getThisType());
-        // The braceless namespace's statements (assignment + function declaration),
-        // not the AST root (which holds only the Namespace_ node).
-        $hasFunction = array_filter($scope->getStatements(), fn(Node $s) => $s instanceof Stmt\Function_);
-        self::assertNotEmpty($hasFunction, 'Namespace-level statements should be exposed for global scope');
     }
 
     public function testANodeInAFunctionLikeIsInItsScope(): void
@@ -278,18 +246,6 @@ class ScopeTest extends TestCase
         self::assertNotNull($activeUser);
 
         self::assertSame($ast, Scope::enclosing($activeUser, $ast)->getStatements());
-    }
-
-    public function testAtOffsetInFilelessNamespaceUsesAstRoot(): void
-    {
-        $ast = self::parseWithParents($this->loadFixture('TopLevel/global_scope_hover.php'));
-        $activeUser = self::findVariableNode('activeUser', $ast);
-        self::assertNotNull($activeUser);
-
-        $scope = Scope::atOffset($ast, $activeUser->getStartFilePos());
-
-        self::assertNull($scope->getSelfContext());
-        self::assertSame($ast, $scope->getStatements(), 'Without a namespace, global statements are the AST root');
     }
 
     /**

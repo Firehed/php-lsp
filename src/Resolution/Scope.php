@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
-use Firehed\PhpLsp\Parser\NodeAtPosition;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
@@ -40,23 +39,6 @@ final class Scope
         private readonly Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $enclosingClassLike,
         private readonly Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null $sourceNode,
     ) {
-    }
-
-    /**
-     * Build the scope enclosing a file offset: the innermost function-like node
-     * containing it, or file-level (global) scope when there is none.
-     *
-     * @param array<Stmt> $ast
-     */
-    public static function atOffset(array $ast, int $offset): self
-    {
-        $classLike = self::findEnclosingClassLike($ast, $offset);
-        $node = self::findEnclosingFunctionLike($ast, $offset);
-        if ($node !== null) {
-            return self::forNode($node, $classLike);
-        }
-
-        return self::global(self::globalStatementsAtOffset($ast, $offset), $classLike);
     }
 
     /**
@@ -194,83 +176,5 @@ final class Scope
     public function getSourceNode(): Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null
     {
         return $this->sourceNode;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private static function findEnclosingClassLike(
-        array $ast,
-        int $offset,
-    ): Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null {
-        $finder = new NodeAtPosition();
-        $node = $finder->find(
-            $ast,
-            $offset,
-            fn (Node $n) => $n instanceof Stmt\Class_
-                || $n instanceof Stmt\Interface_
-                || $n instanceof Stmt\Trait_
-                || $n instanceof Stmt\Enum_,
-        );
-
-        assert(
-            $node === null
-            || $node instanceof Stmt\Class_
-            || $node instanceof Stmt\Interface_
-            || $node instanceof Stmt\Trait_
-            || $node instanceof Stmt\Enum_,
-        );
-
-        return $node;
-    }
-
-    /**
-     * @param array<Stmt> $ast
-     */
-    private static function findEnclosingFunctionLike(
-        array $ast,
-        int $offset,
-    ): Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null {
-        $finder = new NodeAtPosition();
-        $node = $finder->find(
-            $ast,
-            $offset,
-            fn (Node $n) => $n instanceof Stmt\Function_
-                || $n instanceof Stmt\ClassMethod
-                || $n instanceof Closure
-                || $n instanceof ArrowFunction,
-        );
-
-        assert(
-            $node === null
-            || $node instanceof Stmt\Function_
-            || $node instanceof Stmt\ClassMethod
-            || $node instanceof Closure
-            || $node instanceof ArrowFunction,
-        );
-
-        return $node;
-    }
-
-    /**
-     * The file-level statement list containing the offset: the body of the
-     * enclosing namespace block, or the AST root when there is no namespace.
-     *
-     * @param array<Stmt> $ast
-     * @return array<Stmt>
-     */
-    private static function globalStatementsAtOffset(array $ast, int $offset): array
-    {
-        foreach ($ast as $stmt) {
-            if (
-                $stmt instanceof Stmt\Namespace_
-                && $stmt->getStartFilePos() <= $offset
-                && $stmt->getEndFilePos() >= $offset
-            ) {
-                return $stmt->stmts;
-            }
-        }
-
-        return $ast;
     }
 }

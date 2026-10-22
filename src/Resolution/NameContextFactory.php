@@ -19,15 +19,6 @@ use PhpParser\Node\UseItem;
 final class NameContextFactory
 {
     /**
-     * @param array<Stmt> $ast
-     * @param int $line Zero-based, as LSP positions are
-     */
-    public static function fromAst(array $ast, int $line): NameContext
-    {
-        return self::in(ScopeFinder::findNamespaceNodeAtLine($ast, $line), $ast);
-    }
-
-    /**
      * The name context of a namespace block, or of a file's own statements
      * when there is none.
      *

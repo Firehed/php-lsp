@@ -102,26 +102,4 @@ interface CodeResolverInterface
         int $line,
         int $character,
     ): ?MemberAccessContext;
-
-    /**
-     * Get variables in scope at cursor position.
-     * Used by: Completion
-     *
-     * @return list<ResolvedVariable>
-     */
-    public function getVariablesInScope(
-        TextDocument $document,
-        int $line,
-        int $character,
-    ): array;
-
-    /**
-     * Get the name-resolution context at a line: the enclosing namespace and the
-     * import tables (`use`, `use function`, `use const`) in effect there.
-     *
-     * Paired with {@see ReferenceResolver} to decide how a symbol must be written
-     * at the cursor.
-     * Used by: Completion
-     */
-    public function getNameContext(TextDocument $document, int $line): NameContext;
 }

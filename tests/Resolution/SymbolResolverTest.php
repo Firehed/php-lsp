@@ -15,8 +15,6 @@ use Firehed\PhpLsp\Parser\NodeLocator\TreeNodeLocator;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
-use Firehed\PhpLsp\Resolution\NameContext;
-use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\SymbolResolver;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
@@ -203,59 +201,6 @@ final class SymbolResolverTest extends TestCase
                 ->resolveAtPosition(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character),
             'nothing at the cursor names a symbol',
         );
-    }
-
-    public function testVariablesInScopeAreThoseBoundBeforeTheCursor(): void
-    {
-        [$document, $line, $character] = $this->signatureHelpCursor('assigned_var');
-
-        $variables = self::parsingResolver(self::createStub(SymbolSourceInterface::class))
-            ->getVariablesInScope($document, $line, $character);
-
-        self::assertSame(
-            ['user'],
-            array_map(fn (ResolvedVariable $variable) => $variable->getName(), $variables),
-            'the function\'s one assignment before the cursor is in scope',
-        );
-    }
-
-    public function testAReassignedVariableIsInScopeOnce(): void
-    {
-        $fixture = 'src/Completion/Variables.php';
-        $content = $this->loadFixture($fixture);
-        ['line' => $line, 'character' => $character] = $this->locateCursor($content, 'reassigned_prefix');
-
-        $variables = self::parsingResolver(self::createStub(SymbolSourceInterface::class))
-            ->getVariablesInScope(new TextDocument('file:///' . $fixture, 'php', 1, $content), $line, $character);
-        $names = array_map(fn (ResolvedVariable $variable) => $variable->getName(), $variables);
-
-        self::assertSame(
-            1,
-            count(array_keys($names, 'counter', true)),
-            'a variable assigned twice is one variable',
-        );
-    }
-
-    public function testNameContextCarriesTheImportsInEffect(): void
-    {
-        [$document, $line] = $this->signatureHelpCursor('first_param');
-
-        self::assertEquals(
-            new NameContext('', ['User' => 'Fixtures\Domain\User', 'Priority' => 'Fixtures\Enum\Priority']),
-            self::parsingResolver(self::createStub(SymbolSourceInterface::class))->getNameContext($document, $line),
-            'a file without a namespace carries its class imports',
-        );
-    }
-
-    /**
-     * @return array{TextDocument, int, int}
-     */
-    private function signatureHelpCursor(string $marker): array
-    {
-        $content = $this->loadFixture('SignatureHelp.php');
-        ['line' => $line, 'character' => $character] = $this->locateCursor($content, $marker);
-
-        return [new TextDocument('file:///SignatureHelp.php', 'php', 1, $content), $line, $character];
     }
 
     private static function parsingResolver(SymbolSourceInterface $symbols): SymbolResolver

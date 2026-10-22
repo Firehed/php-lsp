@@ -13,6 +13,7 @@ use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr\CallLike;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Function_;
+use PhpParser\Node\Stmt\Namespace_;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -51,6 +52,25 @@ final class PhpParserCodeParserTest extends TestCase
     public function testParseEmptyFile(): void
     {
         self::assertSame([], (new PhpParserCodeParser())->parse('')->tree);
+    }
+
+    public function testASemicolonNamespaceSpansToTheNextStatementOrTheEndOfTheFile(): void
+    {
+        $content = $this->loadFixture('src/TypeInference/MultiNamespaceFunction.php');
+        [, $first, $second] = (new PhpParserCodeParser())->parse($content)->tree;
+
+        self::assertInstanceOf(Namespace_::class, $first);
+        self::assertInstanceOf(Namespace_::class, $second);
+        self::assertSame(
+            $second->getStartFilePos() - 1,
+            $first->getEndFilePos(),
+            'a namespace runs up to the one that follows it, past its own last statement',
+        );
+        self::assertSame(
+            strlen($content) - 1,
+            $second->getEndFilePos(),
+            'the last namespace runs to the end of the file',
+        );
     }
 
     public function testRecordsTheCommasSeparatingEachCallsArguments(): void

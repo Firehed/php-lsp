@@ -15,6 +15,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
 use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\NameContext;
+use Firehed\PhpLsp\Resolution\Position\ScopeAtPositionInterface;
 use Firehed\PhpLsp\Resolution\Reference;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;
 
@@ -45,6 +46,7 @@ final class SymbolCandidates
     public function __construct(
         private readonly SymbolSourceInterface $symbolSource,
         private readonly CodeResolverInterface $codeResolver,
+        private readonly ScopeAtPositionInterface $scope,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
         private readonly CompletionItemFactory $itemFactory,
     ) {
@@ -59,7 +61,7 @@ final class SymbolCandidates
         $prefix = $request->classification()->prefix;
         $line = $request->line;
         $character = $request->character;
-        $context = $this->codeResolver->getNameContext($request->document, $line);
+        $context = $this->scope->nameContextAt($request->document, $request->offset);
         $range = $this->replaceRange($line, $character, $prefix);
         $snippets = $this->capabilities->getSessionCapabilities()->snippetSupport;
 

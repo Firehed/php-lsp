@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\PrefixMatcher;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\Position\ScopeAtPositionInterface;
 
 /**
  * Produces variable completion items for the variables in scope at a position.
@@ -20,7 +20,7 @@ use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 final class VariableCandidates implements CompletionSourceInterface
 {
     public function __construct(
-        private readonly CodeResolverInterface $codeResolver,
+        private readonly ScopeAtPositionInterface $scope,
         private readonly CompletionItemFactory $itemFactory,
     ) {
     }
@@ -28,11 +28,7 @@ final class VariableCandidates implements CompletionSourceInterface
     public function find(CompletionRequest $request): array
     {
         $prefix = CompletionClassifier::variablePrefix($request->textBeforeCursor());
-        $variables = $this->codeResolver->getVariablesInScope(
-            $request->document,
-            $request->line,
-            $request->character,
-        );
+        $variables = $this->scope->variablesAt($request->document, $request->offset);
         $items = [];
         foreach ($variables as $variable) {
             if (PrefixMatcher::matches($variable->getName(), $prefix)) {
