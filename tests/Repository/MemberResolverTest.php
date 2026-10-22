@@ -1906,6 +1906,12 @@ final class MemberResolverTest extends TestCase
             'helperPrivate',
             'App\\Helper',
         ];
+        yield 'private a class and its trait both declare, from the class on a subclass' => [
+            'App\\Uses',
+            'App\\UsesChild',
+            'both',
+            'App\\Uses',
+        ];
         yield 'private from a trait a parent uses, from the subclass' => [
             'App\\UsesChild',
             'App\\UsesChild',
@@ -1953,6 +1959,45 @@ final class MemberResolverTest extends TestCase
         );
     }
 
+    public function testAProtectedConstantIsCheckedAgainstItsNearestDeclaration(): void
+    {
+        $parent = ClasslikeName::fromFullyQualified('App\\P');
+        $redeclares = ClasslikeName::fromFullyQualified('App\\C1');
+        $resolver = $this->resolverOverClasses(
+            $this->createClassInfo($parent, constants: [
+                'X' => $this->createConstantInfo('X', Visibility::Protected, $parent),
+            ]),
+            $this->createClassInfo($redeclares, parent: $parent, constants: [
+                'X' => $this->createConstantInfo('X', Visibility::Protected, $redeclares),
+            ]),
+            $this->createClassInfo(ClasslikeName::fromFullyQualified('App\\C2'), parent: $parent),
+        );
+
+        self::assertNull(
+            $resolver->findConstant($redeclares, 'X', ClasslikeName::fromFullyQualified('App\\C2')),
+            'C1::X is declared in C1, which a sibling is not related to, whoever declared X first',
+        );
+    }
+
+    public function testAConstantHasNoParentPrivateException(): void
+    {
+        $parent = ClasslikeName::fromFullyQualified('App\\P');
+        $child = ClasslikeName::fromFullyQualified('App\\C');
+        $childX = $this->createConstantInfo('X', Visibility::Public, $child);
+        $resolver = $this->resolverOverClasses(
+            $this->createClassInfo($parent, constants: [
+                'X' => $this->createConstantInfo('X', Visibility::Private, $parent),
+            ]),
+            $this->createClassInfo($child, parent: $parent, constants: ['X' => $childX]),
+        );
+
+        self::assertSame(
+            $childX,
+            $resolver->findConstant($child, 'X', $parent),
+            'C::X from P is C\'s constant: a parent\'s own private one applies only to methods and properties',
+        );
+    }
+
     public function testAPropertyFollowsTheSameRule(): void
     {
         $base = ClasslikeName::fromFullyQualified('App\\Base');
@@ -1974,13 +2019,16 @@ final class MemberResolverTest extends TestCase
 
     /**
      * Base declares members of each visibility; Child and Sibling extend it;
-     * Uses takes a private method from the trait Helper, and UsesChild extends Uses.
+     * Uses takes private methods from the trait Helper and declares one of them
+     * itself; UsesChild extends Uses and redeclares that one publicly.
      */
     private function resolverOverAccessGraph(): MemberResolver
     {
         $base = ClasslikeName::fromFullyQualified('App\\Base');
         $child = ClasslikeName::fromFullyQualified('App\\Child');
         $helper = ClasslikeName::fromFullyQualified('App\\Helper');
+        $uses = ClasslikeName::fromFullyQualified('App\\Uses');
+        $usesChild = ClasslikeName::fromFullyQualified('App\\UsesChild');
         return $this->resolverOverClasses(
             $this->createClassInfo($base, methods: $this->methodsWith($base, [
                 'basePublic' => Visibility::Public,
@@ -1999,12 +2047,14 @@ final class MemberResolverTest extends TestCase
             $this->createClassInfo(ClasslikeName::fromFullyQualified('App\\Unrelated')),
             $this->createClassInfo($helper, ClassKind::Trait_, methods: $this->methodsWith($helper, [
                 'helperPrivate' => Visibility::Private,
+                'both' => Visibility::Private,
             ])),
-            $this->createClassInfo(ClasslikeName::fromFullyQualified('App\\Uses'), traits: [$helper]),
-            $this->createClassInfo(
-                ClasslikeName::fromFullyQualified('App\\UsesChild'),
-                parent: ClasslikeName::fromFullyQualified('App\\Uses'),
-            ),
+            $this->createClassInfo($uses, traits: [$helper], methods: $this->methodsWith($uses, [
+                'both' => Visibility::Private,
+            ])),
+            $this->createClassInfo($usesChild, parent: $uses, methods: $this->methodsWith($usesChild, [
+                'both' => Visibility::Public,
+            ])),
         );
     }
 

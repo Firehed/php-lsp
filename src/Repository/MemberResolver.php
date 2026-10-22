@@ -162,7 +162,7 @@ final class MemberResolver implements MemberResolverInterface
 
         $collected = [];
         foreach ($this->declarations($origin, $kind, null) as $declarations) {
-            $member = $this->usable($declarations, $from, $filter);
+            $member = $this->usable($declarations, $kind, $from, $filter);
             if ($member !== null) {
                 $collected[] = $member;
             }
@@ -195,7 +195,7 @@ final class MemberResolver implements MemberResolverInterface
         }
         $declarations = $this->declarations($origin, $kind, $kind->keyFor($name));
 
-        return $declarations === [] ? null : $this->usable($declarations[0], $from, MemberFilter::All);
+        return $declarations === [] ? null : $this->usable($declarations[0], $kind, $from, MemberFilter::All);
     }
 
     /**
@@ -227,21 +227,30 @@ final class MemberResolver implements MemberResolverInterface
 
     /**
      * The member one name resolves to, if code in $from may use it (PHP
-     * manual, Visibility; `zend_std_get_method` in php-src). The nearest
-     * declaration is what the name means, except that code in a class reaches
-     * that class's own private member even on an instance of a subclass. A
-     * private member is usable only from its declaring class; a protected one
-     * from classes related to the class that first declared the name.
+     * manual, Visibility; `zend_std_get_method` and `zend_verify_const_access`
+     * in php-src). The nearest declaration is what the name means. A private
+     * member is usable only from its declaring class; a protected one from
+     * classes related to the class it is checked against, which
+     * {@see MemberKind::checksAccessByFirstDeclaration()} chooses. For those
+     * kinds, code in a class also reaches that class's own private member on
+     * an instance of a subclass.
      *
      * @param non-empty-list<array{MemberInfoInterface, ClasslikeName}> $declarations
      */
-    private function usable(array $declarations, ?ClasslikeName $from, MemberFilter $filter): ?MemberInfoInterface
-    {
+    private function usable(
+        array $declarations,
+        MemberKind $kind,
+        ?ClasslikeName $from,
+        MemberFilter $filter,
+    ): ?MemberInfoInterface {
         [$member, $declaringClass] = $declarations[0];
-        if ($from !== null && !$from->equals($declaringClass)) {
+        $byFirstDeclaration = $kind->checksAccessByFirstDeclaration();
+        if ($byFirstDeclaration && $from !== null && !$from->equals($declaringClass)) {
             foreach ($declarations as [$candidate, $candidateClass]) {
+                // A class's own member precedes its traits' in the walk, as in its method table.
                 if ($candidate->getVisibility() === Visibility::Private && $from->equals($candidateClass)) {
                     [$member, $declaringClass] = [$candidate, $candidateClass];
+                    break;
                 }
             }
         }
@@ -249,10 +258,11 @@ final class MemberResolver implements MemberResolverInterface
         if (!$this->passes($member, $filter)) {
             return null;
         }
+        $checkedAgainst = $byFirstDeclaration ? self::firstDeclarer($declarations) : $declaringClass;
         $usable = match ($member->getVisibility()) {
             Visibility::Public => true,
             Visibility::Private => $from !== null && $from->equals($declaringClass),
-            Visibility::Protected => $from !== null && $this->isRelated($from, self::firstDeclarer($declarations)),
+            Visibility::Protected => $from !== null && $this->isRelated($from, $checkedAgainst),
         };
 
         return $usable ? $member : null;
@@ -430,10 +440,11 @@ final class MemberResolver implements MemberResolverInterface
         MemberFilter $filter,
     ): ?MethodInfo {
         $aliased = $this->resolveAlias($origin, $alias);
-        if ($aliased === null || $this->usable([[$aliased, $origin->name]], $from, $filter) === null) {
+        if ($aliased === null) {
             return null;
         }
-        return $aliased;
+        $declarations = [[$aliased, $origin->name]];
+        return $this->usable($declarations, MemberKind::Method, $from, $filter) === null ? null : $aliased;
     }
 
     /**

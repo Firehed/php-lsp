@@ -54,6 +54,28 @@ class MemberKindTest extends TestCase
         self::assertSame($expected, $kind->isMethod(), $kind->name . ' isMethod');
     }
 
+    /**
+     * Methods and properties are reached through an object's own table, with
+     * access checked against the name's first declaration; constants and enum
+     * cases against the nearest declaration (`zend_verify_const_access`).
+     */
+    #[DataProvider('accessByFirstDeclarationCases')]
+    public function testAccessIsCheckedByTheFirstDeclarationForObjectMembers(MemberKind $kind, bool $expected): void
+    {
+        self::assertSame($expected, $kind->checksAccessByFirstDeclaration(), $kind->name);
+    }
+
+    /**
+     * @return iterable<string, array{MemberKind, bool}>
+     */
+    public static function accessByFirstDeclarationCases(): iterable
+    {
+        yield 'constant' => [MemberKind::Constant, false];
+        yield 'enum case' => [MemberKind::EnumCase, false];
+        yield 'method' => [MemberKind::Method, true];
+        yield 'property' => [MemberKind::Property, true];
+    }
+
     public function testKeyForCollapsesACaseVariedMethodOverride(): void
     {
         self::assertSame(
