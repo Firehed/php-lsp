@@ -54,13 +54,12 @@ return [
         '(Countable&Ent',
         new Expectation\Offers('Entity'),
     ),
-    // A DNF group in a return type completes as a parameter type (#782).
-    // 'return type after a DNF group' => $typeThenComplete(
-    //     $hints,
-    //     'return_type',
-    //     '(Countable&Iterator)|',
-    //     new Expectation\Offers('int', 'null', 'static'),
-    // ),
+    'return type after a DNF group' => $typeThenComplete(
+        $hints,
+        'return_type',
+        '(Countable&Iterator)|',
+        new Expectation\Offers('int', 'null', 'static'),
+    ),
     'return type after ?' => $typeThenComplete($hints, 'return_type', '?', new Expectation\Offers(...$returnTypes)),
     'return type after ? and a space' => $typeThenComplete(
         $hints,
