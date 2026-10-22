@@ -1,6 +1,6 @@
 # 0002: Services Defined by Interfaces and Provided via DI
 
-Status: accepted
+Status: accepted, supplemented by 0003.
 
 ## Decision
 
