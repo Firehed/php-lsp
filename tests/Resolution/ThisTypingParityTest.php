@@ -5,10 +5,15 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
-use Firehed\PhpLsp\Resolution\SymbolResolver;
+use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\Position\CallAtPosition;
+use Firehed\PhpLsp\Resolution\Position\ExpectedAtPosition;
+use Firehed\PhpLsp\Resolution\Position\PositionLocator;
+use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -19,30 +24,38 @@ use PHPUnit\Framework\TestCase;
 /**
  * Both hover on `$this` and completion on `$this->` route through
  * `ExpressionResolver::resolve(Variable('this'))`, which reads the enclosing
- * class from the node's position via `Scope::atOffset`.
+ * class by walking up from the node.
  * The two features must agree on the receiver type for the same source input.
  *
  * Enclosing-class resolution runs off the AST alone — no backend lookup, no
  * member walk, no type source — so the parser is the only live collaborator
  * and the three knowledge interfaces are stubbed.
  */
-#[CoversClass(SymbolResolver::class)]
+#[CoversClass(ExpectedAtPosition::class)]
+#[CoversClass(SymbolAtPosition::class)]
 final class ThisTypingParityTest extends TestCase
 {
     use LoadsFixturesTrait;
 
-    private SymbolResolver $resolver;
+    private ExpectedAtPosition $expected;
+
+    private SymbolAtPosition $symbols;
 
     protected function setUp(): void
     {
         $production = ProductionSyntaxSource::create();
-        $this->resolver = new SymbolResolver(
-            $production->source,
-            $production->locator,
-            self::createStub(SymbolSourceInterface::class),
-            self::createStub(MemberResolverInterface::class),
-            self::createStub(TypeSourceInterface::class),
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $members = self::createStub(MemberResolverInterface::class);
+        $types = self::createStub(TypeSourceInterface::class);
+        $expressions = new ExpressionResolver($members, $symbols, $types);
+        $locator = new PositionLocator($production->source);
+        $this->expected = new ExpectedAtPosition(
+            $locator,
+            new CallAtPosition($locator, $expressions),
+            $expressions,
+            $members,
         );
+        $this->symbols = new SymbolAtPosition($locator, $expressions, $symbols);
     }
 
     /**
@@ -64,20 +77,6 @@ final class ThisTypingParityTest extends TestCase
             // Vantage is the enclosing class, so `$this->` sees private members.
             'expectedVisibility' => Visibility::Private,
         ];
-
-        // File-scope `$this`: the AST places the Variable in the namespace's
-        // top-level statement list, not inside the Class_ body. Both hover and
-        // completion read the enclosing class from the node's position via
-        // `Scope::atOffset`, so they agree on the receiver type; vantage
-        // inference remains AST-driven, so completion sees only public members
-        // here.
-        yield 'detached parent chain via file-scope $this' => [
-            'relative' => 'src/Resolution/BrokenThisTypingParity.php',
-            'hoverNeedle' => '$this;',
-            'completionMarker' => 'broken_member',
-            'expectedClass' => 'Fixtures\\Resolution\\BrokenThisTypingParity',
-            'expectedVisibility' => Visibility::Public,
-        ];
     }
 
     #[DataProvider('parityCases')]
@@ -95,15 +94,12 @@ final class ThisTypingParityTest extends TestCase
         // names. The marker syntax cannot land inside a variable token, so
         // the position is derived from the fixture line and needle column.
         ['line' => $hoverLine, 'column' => $hoverColumn] = self::hoverAt($content, $hoverNeedle);
-        $hover = $this->resolver->resolveAtPosition($document, $hoverLine, $hoverColumn);
+        $hover = $this->symbols->symbolAt($document, $document->offsetAt($hoverLine, $hoverColumn));
         self::assertNotNull($hover, 'hover on $this should resolve to a symbol');
 
-        $completionCursor = $this->locateCursor($content, $completionMarker);
-        $access = $this->resolver->getMemberAccessContext(
-            $document,
-            $completionCursor['line'],
-            $completionCursor['character'],
-        );
+        $access = $this->expected
+            ->expectedAt($document, new ByteOffset($this->markerOffset($content, $completionMarker)))
+            ->members;
         self::assertNotNull($access, 'completion on $this-> should detect a member-access context');
 
         self::assertSame(

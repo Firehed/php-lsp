@@ -50,7 +50,7 @@ class PositionRoundTripCorpusTest extends TestCase
         $document = new TextDocument('file:///test.php', 'php', 1, $content);
         $wire = $this->locateCursorUtf16($content, $marker);
 
-        $offset = $document->offsetAt($wire['line'], $wire['character']);
+        $offset = $document->offsetAt($wire['line'], $wire['character'])->value;
 
         self::assertSame(
             $wire,
@@ -82,7 +82,7 @@ class PositionRoundTripCorpusTest extends TestCase
 
         self::assertSame(
             $offset,
-            $document->offsetAt($position['line'], $position['character']),
+            $document->offsetAt($position['line'], $position['character'])->value,
             "byte offset $offset must survive a conversion to a wire position and back",
         );
     }

@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
-use Firehed\PhpLsp\Completion\TypeHintContext;
+use Firehed\PhpLsp\Domain\TypeHintContext;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -15,8 +15,6 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(BuiltinTypeCandidates::class)]
 final class BuiltinTypeCandidatesTest extends TestCase
 {
-    use BuildsCompletionInputsTrait;
-
     private const array COMMON = [
         'string', 'int', 'float', 'bool', 'array', 'object',
         'mixed', 'null', 'callable', 'iterable', 'true', 'false',
@@ -42,7 +40,7 @@ final class BuiltinTypeCandidatesTest extends TestCase
 
         self::assertSame(
             $expected,
-            array_column($candidates->find(self::requestAfter('foo('), $context), 'label'),
+            array_column($candidates->find($context, ''), 'label'),
             'each position offers the built-in types PHP accepts there',
         );
     }
@@ -54,7 +52,7 @@ final class BuiltinTypeCandidatesTest extends TestCase
         self::assertSame(
             ['string'],
             array_column(
-                $candidates->find(self::requestAfter('foo(str'), TypeHintContext::Parameter),
+                $candidates->find(TypeHintContext::Parameter, 'str'),
                 'label',
             ),
             'only types starting with what was typed',

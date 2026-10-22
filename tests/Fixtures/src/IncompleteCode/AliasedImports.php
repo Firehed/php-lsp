@@ -36,6 +36,6 @@ class IncompleteCollidingNew
 {
     public function testNew(): void
     {
-        new Widget(/*|colliding_new*/
+        new Widget(Wid/*|colliding_new*/
     }
 }

@@ -54,7 +54,7 @@ class VariableBindings
 
     public function longClosureUseIsBinding(): void
     {
-        $captured = 1;
+        $captured = new VariableBindings();
         $fn = function () use ($captured) {
             $captured; //jtd:use_clause_usage captured
         };

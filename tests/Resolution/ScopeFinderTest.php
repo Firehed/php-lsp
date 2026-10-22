@@ -209,90 +209,6 @@ class ScopeFinderTest extends TestCase
         self::assertNull($className);
     }
 
-    public function testGetClassLikeNameReturnsNamespacedName(): void
-    {
-        $code = $this->loadFixture('src/Domain/User.php');
-        $ast = self::parseWithParents($code);
-        $namespace = $ast[1];
-        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $class = self::findFirstClassLike($namespace->stmts, Stmt\Class_::class);
-        self::assertNotNull($class);
-
-        self::assertSame('Fixtures\Domain\User', ScopeFinder::getClassLikeName($class));
-    }
-
-    public function testGetClassLikeNameReturnsShortNameWhenNoNamespace(): void
-    {
-        $code = $this->loadFixture('TypeInference/GlobalFunction.php');
-        $ast = self::parseWithParents($code);
-        $class = self::findFirstClassLike($ast, Stmt\Class_::class);
-        self::assertNotNull($class);
-
-        self::assertSame('GlobalConfig', ScopeFinder::getClassLikeName($class));
-    }
-
-    public function testGetClassLikeNameReturnsNullForAnonymousClass(): void
-    {
-        $code = $this->loadFixture('src/Utility/AnonymousClassScope.php');
-        $ast = self::parseWithParents($code);
-
-        $visitor = new class () extends \PhpParser\NodeVisitorAbstract {
-            public ?Stmt\Class_ $found = null;
-
-            public function enterNode(Node $node): ?int
-            {
-                if ($node instanceof Stmt\Class_ && $node->name === null) {
-                    $this->found = $node;
-                    return NodeVisitor::STOP_TRAVERSAL;
-                }
-                return null;
-            }
-        };
-
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor($visitor);
-        $traverser->traverse($ast);
-
-        self::assertNotNull($visitor->found);
-        self::assertNull(ScopeFinder::getClassLikeName($visitor->found));
-    }
-
-    public function testGetClassLikeNameWorksWithInterface(): void
-    {
-        $code = $this->loadFixture('src/Domain/Entity.php');
-        $ast = self::parseWithParents($code);
-        $namespace = $ast[1];
-        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $interface = self::findFirstClassLike($namespace->stmts, Stmt\Interface_::class);
-        self::assertNotNull($interface);
-
-        self::assertSame('Fixtures\Domain\Entity', ScopeFinder::getClassLikeName($interface));
-    }
-
-    public function testGetClassLikeNameWorksWithTrait(): void
-    {
-        $code = $this->loadFixture('src/Traits/HasTimestamps.php');
-        $ast = self::parseWithParents($code);
-        $namespace = $ast[1];
-        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $trait = self::findFirstClassLike($namespace->stmts, Stmt\Trait_::class);
-        self::assertNotNull($trait);
-
-        self::assertSame('Fixtures\Traits\HasTimestamps', ScopeFinder::getClassLikeName($trait));
-    }
-
-    public function testGetClassLikeNameWorksWithEnum(): void
-    {
-        $code = $this->loadFixture('src/Enum/Status.php');
-        $ast = self::parseWithParents($code);
-        $namespace = $ast[1];
-        self::assertInstanceOf(Stmt\Namespace_::class, $namespace);
-        $enum = self::findFirstClassLike($namespace->stmts, Stmt\Enum_::class);
-        self::assertNotNull($enum);
-
-        self::assertSame('Fixtures\Enum\Status', ScopeFinder::getClassLikeName($enum));
-    }
-
     public function testResolveClasslikeNameInContextResolvesSelf(): void
     {
         $code = $this->loadFixture('src/TypeInference/NewKeywords.php');
@@ -412,22 +328,6 @@ class ScopeFinderTest extends TestCase
     }
 
     /**
-     * @template T of Stmt\ClassLike
-     * @param array<Stmt> $stmts
-     * @param class-string<T> $type
-     * @return T|null
-     */
-    private static function findFirstClassLike(array $stmts, string $type): ?Stmt\ClassLike
-    {
-        foreach ($stmts as $stmt) {
-            if ($stmt instanceof $type) {
-                return $stmt;
-            }
-        }
-        return null;
-    }
-
-    /**
      * @param array<Stmt> $ast
      */
     private static function findNameNode(string $name, array $ast): ?Node\Name
@@ -516,51 +416,5 @@ class ScopeFinderTest extends TestCase
         $traverser->traverse($ast);
 
         return $visitor->found;
-    }
-
-    public function testFindNamespaceAtLineReturnsNamespaceContainingLine(): void
-    {
-        $code = $this->loadFixture('TopLevel/two_namespaces.php');
-        $ast = self::parseWithParents($code);
-
-        // `class Alpha` is on 1-based line 4 => 0-based line 3 (inside namespace First)
-        self::assertSame('First', ScopeFinder::findNamespaceAtLine($ast, 3));
-        // `class Beta` is on 1-based line 10 => 0-based line 9 (inside namespace Second)
-        self::assertSame('Second', ScopeFinder::findNamespaceAtLine($ast, 9));
-    }
-
-    public function testFindNamespaceAtLineHandlesZeroBasedBoundary(): void
-    {
-        $code = $this->loadFixture('TopLevel/two_namespaces.php');
-        $ast = self::parseWithParents($code);
-
-        // `namespace First {` is on 1-based line 3 => 0-based line 2. A cursor on that
-        // line is inside namespace First; a raw (un-incremented) comparison misses it.
-        self::assertSame('First', ScopeFinder::findNamespaceAtLine($ast, 2));
-    }
-
-    public function testFindNamespaceAtLineCoversTheTailOfASemicolonNamespace(): void
-    {
-        $code = $this->loadFixture('Namespacing/FileWide.php');
-        $ast = self::parseWithParents($code);
-
-        // The blank line past the closing brace of the last class. The namespace
-        // node ends at that class, but the namespace itself runs to end of file.
-        $lineAfterLastStatement = substr_count($code, "\n");
-
-        self::assertSame(
-            'Fixtures\Namespacing',
-            ScopeFinder::findNamespaceAtLine($ast, $lineAfterLastStatement),
-            'A semicolon namespace extends past its last statement, to the end of the file',
-        );
-    }
-
-    public function testFindNamespaceAtLineReturnsNullOutsideAnyNamespace(): void
-    {
-        $code = $this->loadFixture('TopLevel/two_namespaces.php');
-        $ast = self::parseWithParents($code);
-
-        // 0-based line 0 is the `<?php` line, before any namespace block
-        self::assertNull(ScopeFinder::findNamespaceAtLine($ast, 0));
     }
 }

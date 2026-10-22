@@ -32,6 +32,7 @@ use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 use Firehed\PhpLsp\Domain\TraitAlias;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\Visibility;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use InvalidArgumentException;
 use PhpParser\Modifiers;
 use PhpParser\Node;
@@ -191,7 +192,7 @@ final readonly class DeclarationSymbolInfoFactory
         $cases = [];
 
         foreach ($node->stmts as $stmt) {
-            if (!$stmt instanceof Stmt\EnumCase) {
+            if (!$stmt instanceof Stmt\EnumCase || !ParsedDocument::isWritten($stmt->name)) {
                 continue;
             }
 
@@ -255,7 +256,7 @@ final readonly class DeclarationSymbolInfoFactory
         $parentClass = $this->resolveParent($node);
 
         foreach ($node->stmts as $stmt) {
-            if (!$stmt instanceof Stmt\ClassMethod) {
+            if (!$stmt instanceof Stmt\ClassMethod || !ParsedDocument::isWritten($stmt->name)) {
                 continue;
             }
 
@@ -325,6 +326,9 @@ final readonly class DeclarationSymbolInfoFactory
         foreach ($node->stmts as $stmt) {
             if ($stmt instanceof Stmt\Property) {
                 foreach ($stmt->props as $prop) {
+                    if (!ParsedDocument::isWritten($prop->name)) {
+                        continue;
+                    }
                     $name = $prop->name->toString();
                     $properties[$name] = new PropertyInfo(
                         name: new PropertyName($className, $name),

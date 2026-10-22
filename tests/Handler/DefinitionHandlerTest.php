@@ -9,7 +9,7 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Handler\DefinitionHandler;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\Position\SymbolAtPositionInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -26,7 +26,7 @@ class DefinitionHandlerTest extends TestCase
     {
         $handler = new DefinitionHandler(
             self::createStub(DocumentSourceInterface::class),
-            self::createStub(CodeResolverInterface::class),
+            self::createStub(SymbolAtPositionInterface::class),
         );
 
         self::assertTrue(
@@ -43,8 +43,8 @@ class DefinitionHandlerTest extends TestCase
     {
         $documents = $this->createMock(DocumentSourceInterface::class);
         $documents->expects($this->never())->method('read');
-        $codeResolver = $this->createMock(CodeResolverInterface::class);
-        $codeResolver->expects($this->never())->method('resolveAtPosition');
+        $codeResolver = $this->createMock(SymbolAtPositionInterface::class);
+        $codeResolver->expects($this->never())->method('symbolAt');
 
         $handler = new DefinitionHandler($documents, $codeResolver);
         $result = $handler->handle(
@@ -62,8 +62,8 @@ class DefinitionHandlerTest extends TestCase
             ->method('read')
             ->with(self::URI)
             ->willReturn(null);
-        $codeResolver = $this->createMock(CodeResolverInterface::class);
-        $codeResolver->expects($this->never())->method('resolveAtPosition');
+        $codeResolver = $this->createMock(SymbolAtPositionInterface::class);
+        $codeResolver->expects($this->never())->method('symbolAt');
 
         $handler = new DefinitionHandler($documents, $codeResolver);
         $result = $handler->handle($this->positionRequest(self::METHOD, self::URI));
@@ -76,11 +76,11 @@ class DefinitionHandlerTest extends TestCase
         $document = new TextDocument(self::URI, 'php', 1, '<?php ');
         $documents = self::createStub(DocumentSourceInterface::class);
         $documents->method('read')->willReturn($document);
-        $codeResolver = $this->createMock(CodeResolverInterface::class);
+        $codeResolver = $this->createMock(SymbolAtPositionInterface::class);
         $codeResolver
             ->expects($this->once())
-            ->method('resolveAtPosition')
-            ->with($document, 4, 2)
+            ->method('symbolAt')
+            ->with($document, $document->offsetAt(4, 2))
             ->willReturn(null);
 
         $handler = new DefinitionHandler($documents, $codeResolver);

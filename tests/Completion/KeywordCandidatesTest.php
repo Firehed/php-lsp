@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\CompletionItemFactory;
-use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
-use Firehed\PhpLsp\Completion\KeywordGroup;
-use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\KeywordGroup;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -34,24 +32,24 @@ final class KeywordCandidatesTest extends TestCase
             'global', 'unset', 'isset', 'empty', 'list', 'fn',
         ]];
         yield 'statement with a prefix' => [KeywordGroup::All, 'fore', ['foreach']];
-        yield 'class body' => [KeywordGroup::ClassBody, 'class Foo { ', [
+        yield 'class body' => [KeywordGroup::ClassBody, '', [
             'public', 'private', 'protected', 'static', 'final', 'abstract', 'readonly', 'const', 'function', 'use',
         ]];
         yield 'class body with a prefix' => [
             KeywordGroup::ClassBody,
-            'class Foo { p',
+            'p',
             ['public', 'private', 'protected'],
         ];
         yield 'after visibility' => [
             KeywordGroup::AfterVisibility,
-            'public ',
+            '',
             ['function', 'static', 'readonly', 'const'],
         ];
-        yield 'after visibility with a prefix' => [KeywordGroup::AfterVisibility, 'public f', ['function']];
-        yield 'expression' => [KeywordGroup::Expression, 'foo(', [
+        yield 'after visibility with a prefix' => [KeywordGroup::AfterVisibility, 'f', ['function']];
+        yield 'expression' => [KeywordGroup::Expression, '', [
             'new', 'clone', 'yield', 'match', 'fn', 'isset', 'empty', 'list', 'true', 'false', 'null',
         ]];
-        yield 'expression with a prefix' => [KeywordGroup::Expression, 'foo(cl', ['clone']];
+        yield 'expression with a prefix' => [KeywordGroup::Expression, 'cl', ['clone']];
     }
 
     /**
@@ -60,34 +58,13 @@ final class KeywordCandidatesTest extends TestCase
     #[DataProvider('groupCases')]
     public function testGroupOffersItsKeywordsMatchingThePrefix(
         KeywordGroup $group,
-        string $line,
+        string $prefix,
         array $expected,
     ): void {
-        $doc = new TextDocument('file:///t.php', 'php', 0, "<?php\n{$line}");
-        $request = new CompletionRequest($doc, 1, strlen($line));
-
-        $items = self::candidates()->find($request, $group);
-
-        self::assertNotNull($items, 'a keyword position offers keywords');
         self::assertSame(
             $expected,
-            array_column($items, 'label'),
+            array_column(self::candidates()->find($group, $prefix), 'label'),
             'exactly the keywords valid in the position that start with what was typed',
-        );
-    }
-
-    public function testExpressionGroupReturnsNullWhenPrefixIsVariable(): void
-    {
-        // The Expression group reads its prefix from callExpressionPrefix, which
-        // returns null when the cursor sits on a variable. The composite guards
-        // against this before dispatching, but the class's own contract still
-        // promises null-when-not-applicable so a direct caller can rely on it.
-        $doc = new TextDocument('file:///t.php', 'php', 0, "<?php\nfoo(\$va");
-        $request = new CompletionRequest($doc, 1, 6);
-
-        self::assertNull(
-            self::candidates()->find($request, KeywordGroup::Expression),
-            'a variable prefix inside a call does not offer expression keywords',
         );
     }
 

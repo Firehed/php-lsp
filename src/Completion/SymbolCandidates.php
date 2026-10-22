@@ -6,6 +6,7 @@ namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilitiesProviderInterface;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
+use Firehed\PhpLsp\Domain\ClassCandidateFilter;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -13,10 +14,11 @@ use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Protocol\Range;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
 use Firehed\PhpLsp\Resolution\NameContext;
+use Firehed\PhpLsp\Resolution\NameQuery;
 use Firehed\PhpLsp\Resolution\Reference;
 use Firehed\PhpLsp\Resolution\ReferenceResolver;
+use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
 
 /**
  * The one source of symbol completions. For an unqualified prefix it does flat
@@ -29,10 +31,8 @@ use Firehed\PhpLsp\Resolution\ReferenceResolver;
  * position no longer picks up a function or constant through navigation
  * (#317, #383).
  *
- * The kinds and the class filter are per-call parameters: the composite passes
- * the intent for the position, and one instance serves every position. The
- * class does not implement {@see CompletionSourceInterface} because its
- * behaviour is chosen by the caller, not by inspection of the request.
+ * A name that resolves from the global namespace whatever the context, as an
+ * import's does, is always navigated.
  *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
@@ -44,27 +44,25 @@ final class SymbolCandidates
 
     public function __construct(
         private readonly SymbolSourceInterface $symbolSource,
-        private readonly CodeResolverInterface $codeResolver,
+        private readonly SymbolCapabilitiesInterface $symbolCapabilities,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
         private readonly CompletionItemFactory $itemFactory,
     ) {
     }
 
     /**
-     * @param list<NameKind> $kinds
      * @return list<CompletionItem>
      */
-    public function find(CompletionRequest $request, array $kinds, ClassCandidateFilter $filter): array
+    public function find(CompletionRequest $request, NameQuery $query, string $prefix): array
     {
-        $prefix = $request->classification()->prefix;
-        $line = $request->line;
-        $character = $request->character;
-        $context = $this->codeResolver->getNameContext($request->document, $line);
-        $range = $this->replaceRange($line, $character, $prefix);
+        $kinds = $query->kinds;
+        $filter = $query->filter;
+        $context = $query->context;
+        $range = $this->replaceRange($request->line, $request->character, $prefix);
         $snippets = $this->capabilities->getSessionCapabilities()->snippetSupport;
 
-        if (str_starts_with($prefix, '\\')) {
-            return $this->navigateAbsolute(substr($prefix, 1), $kinds, $filter, $range, $snippets);
+        if ($query->absolute || str_starts_with($prefix, '\\')) {
+            return $this->navigateAbsolute(ltrim($prefix, '\\'), $kinds, $filter, $range, $snippets);
         }
         if (str_contains($prefix, '\\')) {
             return $this->navigateQualified($prefix, $context, $kinds, $filter, $range, $snippets);
@@ -86,31 +84,6 @@ final class SymbolCandidates
         );
 
         return $items;
-    }
-
-    /**
-     * Navigate a `use` import: always absolute (a `use` name resolves from the
-     * global namespace regardless of the file's own namespace or imports), and
-     * always class-like. The classifier deliberately does not match `use function`
-     * or `use const` — those are separate scopes (#239, #317).
-     *
-     * @return list<CompletionItem>
-     */
-    public function forUseStatement(
-        string $prefix,
-        int $line,
-        int $character,
-    ): array {
-        $range = $this->replaceRange($line, $character, $prefix);
-        $snippets = $this->capabilities->getSessionCapabilities()->snippetSupport;
-
-        return $this->navigateAbsolute(
-            ltrim($prefix, '\\'),
-            [NameKind::ClassLike],
-            ClassCandidateFilter::Any,
-            $range,
-            $snippets,
-        );
     }
 
     /**
@@ -428,10 +401,10 @@ final class SymbolCandidates
         if ($symbol->kind->isClassLike()) {
             /** @var class-string $fqn */
             $className = ClasslikeName::fromFullyQualified($fqn);
-            if (!$this->codeResolver->isClassLike($className)) {
+            if (!$this->symbolCapabilities->isClassLike($className)) {
                 return null;
             }
-            if (!$classFilter->accepts($className, $this->codeResolver)) {
+            if (!$this->accepts($classFilter, $className)) {
                 return null;
             }
         }
@@ -471,7 +444,7 @@ final class SymbolCandidates
     {
         /** @var class-string $fqn */
         $className = ClasslikeName::fromFullyQualified($fqn);
-        return $filter->accepts($className, $this->codeResolver);
+        return $this->accepts($filter, $className);
     }
 
     /**
@@ -502,5 +475,22 @@ final class SymbolCandidates
             $prefix,
             $this->capabilities->getSessionCapabilities()->positionEncoding,
         );
+    }
+
+    /**
+     * Whether a class-like is one the position admits.
+     */
+    private function accepts(ClassCandidateFilter $filter, ClasslikeName $className): bool
+    {
+        return match ($filter) {
+            ClassCandidateFilter::Any => true,
+            ClassCandidateFilter::Instantiable => $this->symbolCapabilities->isInstantiable($className),
+            ClassCandidateFilter::TypeHint => $this->symbolCapabilities->isValidTypeHint($className),
+            ClassCandidateFilter::Interface_ => $this->symbolCapabilities->isInterface($className),
+            ClassCandidateFilter::ExtendableClass => $this->symbolCapabilities->isExtendableClass($className),
+            ClassCandidateFilter::Throwable => $this->symbolCapabilities->isThrowable($className),
+            ClassCandidateFilter::Attribute => $this->symbolCapabilities->isAttribute($className),
+            ClassCandidateFilter::Trait_ => $this->symbolCapabilities->isTrait($className),
+        };
     }
 }

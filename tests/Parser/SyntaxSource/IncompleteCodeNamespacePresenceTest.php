@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Parser\SyntaxSource;
 
 use Firehed\PhpLsp\Document\TextDocument;
-use Firehed\PhpLsp\Parser\SyntaxSource\CompositeSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\PhpParserSyntaxSource;
-use Firehed\PhpLsp\Parser\SyntaxSource\SkeletonSyntaxSource;
-use Firehed\PhpLsp\Parser\TreeAnnotator;
+use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversNothing;
@@ -29,14 +27,11 @@ use PHPUnit\Framework\TestCase;
 #[CoversNothing]
 final class IncompleteCodeNamespacePresenceTest extends TestCase
 {
-    private CompositeSyntaxSource $composite;
+    private SyntaxSourceInterface $composite;
 
     protected function setUp(): void
     {
-        $this->composite = new CompositeSyntaxSource(
-            new PhpParserSyntaxSource(new TreeAnnotator()),
-            new SkeletonSyntaxSource(),
-        );
+        $this->composite = ProductionSyntaxSource::unmemoized();
     }
 
     /**

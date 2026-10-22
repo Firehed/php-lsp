@@ -61,13 +61,21 @@ class TextDocumentTest extends TestCase
         $doc = new TextDocument('file:///test.php', 'php', 1, $content);
 
         // Line 0, char 0 = offset 0
-        self::assertSame(0, $doc->offsetAt(line: 0, character: 0));
+        self::assertSame(0, $doc->offsetAt(line: 0, character: 0)->value);
         // Line 0, char 5 = offset 5 (the newline)
-        self::assertSame(5, $doc->offsetAt(line: 0, character: 5));
+        self::assertSame(5, $doc->offsetAt(line: 0, character: 5)->value);
         // Line 1, char 0 = offset 6 (after newline)
-        self::assertSame(6, $doc->offsetAt(line: 1, character: 0));
+        self::assertSame(6, $doc->offsetAt(line: 1, character: 0)->value);
         // Line 1, char 4 = offset 10 (the space in "echo ")
-        self::assertSame(10, $doc->offsetAt(line: 1, character: 4));
+        self::assertSame(10, $doc->offsetAt(line: 1, character: 4)->value);
+    }
+
+    public function testALineThatIsNotInTheDocumentIsAtItsStart(): void
+    {
+        $doc = new TextDocument('file:///test.php', 'php', 1, "<?php\necho 'test';");
+
+        self::assertSame(0, $doc->offsetAt(line: 5, character: 2)->value, 'past the last line');
+        self::assertSame(0, $doc->offsetAt(line: -1, character: 2)->value, 'before the first line');
     }
 
     public function testPositionAtOffset(): void
@@ -101,41 +109,13 @@ class TextDocumentTest extends TestCase
 
         self::assertSame(
             $byteOffset,
-            $doc->offsetAt(line: 1, character: $character),
+            $doc->offsetAt(line: 1, character: $character)->value,
             'a UTF-16 column must resolve to the byte offset the AST uses, past any multibyte characters',
         );
         self::assertSame(
             ['line' => 1, 'character' => $character],
             $doc->positionAt($byteOffset),
             'a byte offset must resolve back to the UTF-16 column the client sent',
-        );
-    }
-
-    public function testTextBeforeCursorReadsAsciiToTheColumn(): void
-    {
-        $doc = new TextDocument('file:///test.php', 'php', 1, "<?php\n\$user->getName();");
-
-        self::assertSame(
-            '$user->',
-            $doc->textBeforeCursor(line: 1, character: 7),
-            'the interior reads text up to the cursor, sliced at the byte column',
-        );
-    }
-
-    /**
-     * A multibyte character before the cursor makes the wire column smaller than
-     * the byte column: `é` is one UTF-16 unit but two bytes, so column 7 in
-     * `$café->` lands at byte 8. Slicing the raw wire column as a byte length
-     * would drop the `>`.
-     */
-    public function testTextBeforeCursorConvertsMultibyteColumnToBytes(): void
-    {
-        $doc = new TextDocument('file:///test.php', 'php', 1, "<?php\n\$café->x");
-
-        self::assertSame(
-            '$café->',
-            $doc->textBeforeCursor(line: 1, character: 7),
-            'a wire column past a multibyte char must slice at the byte column, not the raw column',
         );
     }
 

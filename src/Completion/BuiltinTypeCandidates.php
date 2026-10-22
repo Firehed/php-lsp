@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\PrefixMatcher;
+use Firehed\PhpLsp\Domain\TypeHintContext;
 
 /**
  * Produces built-in type completion items valid in a type-hint position.
@@ -32,9 +33,8 @@ final class BuiltinTypeCandidates
     /**
      * @return list<CompletionItem>
      */
-    public function find(CompletionRequest $request, TypeHintContext $context): array
+    public function find(TypeHintContext $context, string $prefix): array
     {
-        $prefix = $request->classification()->prefix;
         $items = [];
         foreach ($this->typesFor($context) as $type) {
             if (PrefixMatcher::matches($type, $prefix)) {

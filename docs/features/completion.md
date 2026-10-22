@@ -118,31 +118,22 @@ text is aligned to that word boundary rather than spanning the whole qualified n
 
 ## Architecture
 
-`CompletionHandler` is a coordinator: it detects the position, delegates to a
-completion source, then merges and deduplicates. It never parses documents itself.
+`CompletionHandler` converts the position, asks `CompositeCompletionSource`, and caps the response.
 
 ```
-CompletionHandler (coordinator)
-├── MemberCandidates                  → -> ?-> :: (member/static/parent access)
-│     via CodeResolverInterface (AST-first, text fallback for mid-edit code)
-├── call context (CodeResolverInterface::getCallContext)
-│     ├── NamedArgumentCandidates     → name: arguments
-│     ├── VariableCandidates          → $var in argument position
-│     └── after name: (value position) → KeywordCandidates (expression)
-│                                         + ClassCandidates (any)
-└── CompletionClassifier (text-based) → typed CompletionKind, dispatched to:
-      ├── VariableCandidates          → $var
-      ├── ClassCandidates             → new X / expression / type hints / implements + extends / catch / attributes (by ClassCandidateFilter)
-      ├── FunctionCandidates          → user-defined + built-in functions
-      ├── KeywordCandidates           → keywords (by KeywordGroup)
-      └── BuiltinTypeCandidates       → built-in type hints
+CompositeCompletionSource
+├── ExpectedAtPositionInterface → Expected: what may be written at the position
+├── MemberCandidates            → Expected::$members (after -> ?-> ::)
+├── NamedArgumentCandidates     → Expected::$argumentNames
+├── VariableCandidates          → Expected::$variables
+├── KeywordCandidates           → Expected::$keywords (a KeywordGroup)
+├── BuiltinTypeCandidates       → Expected::$builtinTypes (a TypeHintContext)
+└── SymbolCandidates            → Expected::$names (kinds, ClassCandidateFilter, name context)
 ```
 
-Sources live in `src/Completion/*Candidates`; each owns lookup + prefix filter +
-item construction (`CompletionItemFactory`). Parser-derived data (imports, file
-functions, members, variables, types) flows through `CodeResolverInterface`, so sources are
-agnostic to the parsing strategy. Detection reads text and tokens (`ContextDetector`,
-`CompletionClassifier`), so completion keeps working on temporarily-broken code.
+`ExpectedAtPosition` decides what a position admits from the structure `PositionLocator` reads there, the same structure hover, definition, and signature help read.
+Each field of `Expected` has one source; the composite forwards each field and merges what the sources offer, without inspecting the position itself.
+Code being edited usually does not parse; parse recovery gives it the structure it will have once completed, so completion reads no text beyond the word being typed.
 
 ## Testing
 

@@ -19,20 +19,20 @@ use PhpParser\Node\UseItem;
 final class NameContextFactory
 {
     /**
-     * @param array<Stmt> $ast
-     * @param int $line Zero-based, as LSP positions are
+     * The name context of a namespace block, or of a file's own statements
+     * when there is none.
+     *
+     * @param array<Stmt> $tree
      */
-    public static function fromAst(array $ast, int $line): NameContext
+    public static function in(?Stmt\Namespace_ $namespace, array $tree): NameContext
     {
-        $namespace = ScopeFinder::findNamespaceNodeAtLine($ast, $line);
-
         $imports = [
             Stmt\Use_::TYPE_NORMAL => [],
             Stmt\Use_::TYPE_FUNCTION => [],
             Stmt\Use_::TYPE_CONSTANT => [],
         ];
 
-        foreach (self::statementsIn($ast, $namespace) as $stmt) {
+        foreach (self::statementsIn($tree, $namespace) as $stmt) {
             if ($stmt instanceof Stmt\Use_) {
                 foreach ($stmt->uses as $use) {
                     $imports[self::typeOf($use, $stmt->type)][self::aliasOf($use)] = $use->name->toString();

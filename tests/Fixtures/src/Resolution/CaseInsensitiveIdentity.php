@@ -6,9 +6,9 @@ namespace Fixtures\Resolution;
 
 /**
  * The target class name is written in lowercase, so the vantage and target
- * ClasslikeName instances that MemberAccessDetector::visibilityBetween sees
- * disagree on letter case even though they name the same class. PHP treats
- * them as one class; the visibility check must too.
+ * ClasslikeName instances the visibility check compares disagree on letter
+ * case even though they name the same class. PHP treats them as one class;
+ * the visibility check must too.
  */
 class CaseInsensitiveIdentity
 {

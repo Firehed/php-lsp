@@ -99,16 +99,6 @@ final class ScopeFinder
     }
 
     /**
-     * Get the fully qualified name of a class-like node.
-     *
-     * @return ?class-string
-     */
-    public static function getClassLikeName(Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_ $node): ?string
-    {
-        return LateBindingKeyword::Self->resolveIn($node);
-    }
-
-    /**
      * Find the fully qualified name of the enclosing class-like node.
      *
      * Returns the FQN if available, otherwise the short name, or null if not
@@ -119,54 +109,5 @@ final class ScopeFinder
     public static function findEnclosingClasslikeName(Node $node): ?string
     {
         return LateBindingKeyword::Self->resolveIn(self::findEnclosingClassNode($node));
-    }
-
-    /**
-     * Find the namespace declaration containing a given zero-based line.
-     *
-     * Returns null when the line is outside any namespace block or the enclosing
-     * namespace is the global namespace.
-     *
-     * @param array<Stmt> $ast
-     */
-    public static function findNamespaceAtLine(array $ast, int $line): ?string
-    {
-        return self::findNamespaceNodeAtLine($ast, $line)?->name?->toString();
-    }
-
-    /**
-     * The namespace declaration enclosing a given zero-based line.
-     *
-     * A braced namespace ends at its closing brace. A semicolon-style one has no
-     * closing token: it runs until the next namespace declaration, or to the end
-     * of the file. Its node cannot say so — the parser moves the following
-     * statements into the node and extends its end line only to the last of them
-     * — so everything after that last statement, where a cursor routinely sits,
-     * would otherwise look like it were outside the namespace entirely.
-     *
-     * @param array<Stmt> $ast
-     */
-    public static function findNamespaceNodeAtLine(array $ast, int $line): ?Stmt\Namespace_
-    {
-        // AST line numbers are one-based.
-        $target = $line + 1;
-        $enclosing = null;
-
-        foreach ($ast as $stmt) {
-            if (!$stmt instanceof Stmt\Namespace_ || $stmt->getStartLine() > $target) {
-                continue;
-            }
-
-            if ($stmt->getAttribute('kind') === Stmt\Namespace_::KIND_BRACED) {
-                if ($target <= $stmt->getEndLine()) {
-                    return $stmt;
-                }
-                continue;
-            }
-
-            $enclosing = $stmt;
-        }
-
-        return $enclosing;
     }
 }

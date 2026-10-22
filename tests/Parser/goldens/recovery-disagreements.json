@@ -1,0 +1,87 @@
+{
+    "src/DiskChange/Consumer.php#helper_added (line cut short)": {
+        "class": "Consumer",
+        "function": "useHelper",
+        "node": "PhpParser\\Node\\Name",
+        "text": "helperAdded"
+    },
+    "src/DiskChange/Consumer.php#helper_added (word cut short)": {
+        "class": "Consumer",
+        "function": "useHelper",
+        "node": "PhpParser\\Node\\Name",
+        "text": "helperAdded"
+    },
+    "src/Domain/User.php#method_name (word not typed)": {
+        "class": "User",
+        "function": "_",
+        "slot": "PhpParser\\Node\\Stmt\\ClassMethod"
+    },
+    "src/Services/ApiController.php#attr_class (line cut short)": {
+        "class": "ApiController",
+        "function": "_",
+        "node": "PhpParser\\Node\\Name\\FullyQualified",
+        "text": "Fixtures\\Attributes\\Route"
+    },
+    "src/Services/ApiController.php#attr_class (word cut short)": {
+        "class": "ApiController",
+        "function": "_",
+        "node": "PhpParser\\Node\\Name\\FullyQualified",
+        "text": "Fixtures\\Attributes\\Route"
+    },
+    "src/Services/ApiController.php#attr_class (word not typed)": {
+        "class": "ApiController",
+        "function": "_",
+        "slot": "PhpParser\\Node\\AttributeGroup"
+    },
+    "src/Services/ApiController.php#attr_named_arg (line cut short)": {
+        "class": "ApiController",
+        "function": "_",
+        "node": "PhpParser\\Node\\Name",
+        "text": "path"
+    },
+    "src/Services/ApiController.php#attr_named_arg (word cut short)": {
+        "class": "ApiController",
+        "function": "_",
+        "node": "PhpParser\\Node\\Name",
+        "text": "path"
+    },
+    "src/Services/ApiController.php#attr_named_arg (word not typed)": {
+        "class": "ApiController",
+        "function": "_",
+        "slot": "attribute"
+    },
+    "src/Services/ApiController.php#attr_no_constructor (line cut short)": {
+        "class": "ApiController",
+        "function": "_",
+        "node": "PhpParser\\Node\\Name",
+        "text": "someParam"
+    },
+    "src/Services/ApiController.php#attr_no_constructor (word cut short)": {
+        "class": "ApiController",
+        "function": "_",
+        "node": "PhpParser\\Node\\Name",
+        "text": "someParam"
+    },
+    "src/Services/ApiController.php#attr_no_constructor (word not typed)": {
+        "class": "ApiController",
+        "function": "_",
+        "slot": "attribute"
+    },
+    "src/Services/ApiController.php#attr_wrong_param (line cut short)": {
+        "class": "ApiController",
+        "function": "_",
+        "node": "PhpParser\\Node\\Name",
+        "text": "wrongParam"
+    },
+    "src/Services/ApiController.php#attr_wrong_param (word cut short)": {
+        "class": "ApiController",
+        "function": "_",
+        "node": "PhpParser\\Node\\Name",
+        "text": "wrongParam"
+    },
+    "src/Services/ApiController.php#attr_wrong_param (word not typed)": {
+        "class": "ApiController",
+        "function": "_",
+        "slot": "attribute"
+    }
+}

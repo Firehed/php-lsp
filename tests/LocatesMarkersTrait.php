@@ -114,7 +114,9 @@ trait LocatesMarkersTrait
             // Check for standalone variables
             $varMatch = [];
             preg_match_all('/\$([a-zA-Z_][a-zA-Z0-9_]*)/', $line, $varMatch, PREG_OFFSET_CAPTURE);
-            assert(count($varMatch[0]) > 0, "No symbol found on line with marker '$markerName'");
+            if ($varMatch[0] === []) {
+                throw new \RuntimeException("No symbol found on line with marker '$markerName'");
+            }
 
             $lastMatch = end($varMatch[0]);
             return [

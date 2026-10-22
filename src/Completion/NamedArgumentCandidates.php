@@ -5,40 +5,26 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Completion;
 
 use Firehed\PhpLsp\Domain\PrefixMatcher;
-use Firehed\PhpLsp\Resolution\CodeResolverInterface;
+use Firehed\PhpLsp\Resolution\CallContext;
 
 /**
  * Produces named-argument completion items (`name:`) for a call, skipping
  * parameters already supplied positionally or by name and variadics.
  *
- * Returns null when the position is not inside a call, and nothing while an
- * argument's value is being typed, where no name fits.
- *
  * @phpstan-import-type CompletionItem from CompletionItemFactory
  */
-final class NamedArgumentCandidates implements CompletionSourceInterface
+final class NamedArgumentCandidates
 {
     public function __construct(
-        private readonly CodeResolverInterface $codeResolver,
         private readonly CompletionItemFactory $itemFactory,
     ) {
     }
 
-    public function find(CompletionRequest $request): ?array
+    /**
+     * @return list<CompletionItem>
+     */
+    public function find(CallContext $callContext, string $prefix): array
     {
-        $callContext = $this->codeResolver->getCallContext(
-            $request->document,
-            $request->line,
-            $request->character,
-        );
-        if ($callContext === null) {
-            return null;
-        }
-        if ($callContext->inArgumentValue) {
-            return [];
-        }
-
-        $prefix = CompletionClassifier::argumentNamePrefix($request->textBeforeCursor());
         $usedNames = $callContext->usedParameterNames;
         $positionallyFilledCount = $callContext->positionallyFilledCount;
 

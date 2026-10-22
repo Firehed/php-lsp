@@ -32,29 +32,41 @@ return [
     Document\SourceFileReader::class,
 
     Parser\TreeAnnotator::class => fn () => new Parser\TreeAnnotator(),
-    Parser\SyntaxSource\PhpParserSyntaxSource::class,
-    Parser\SyntaxSource\SkeletonSyntaxSource::class,
-    Parser\SyntaxSource\CompositeSyntaxSource::class,
-    // The memo decorates the composite and is the one instance both the
+    Parser\SyntaxSource\PhpParserCodeParser::class,
+    Parser\SyntaxSource\CodeParserInterface::class => Parser\SyntaxSource\PhpParserCodeParser::class,
+    Parser\Recovery\EndOfFileRecovery::class,
+    Parser\Recovery\SkeletonRecovery::class,
+    Parser\Recovery\GapGraftingRecovery::class,
+    Parser\Recovery\CompositeRecovery::class,
+    Parser\Recovery\RecoveryInterface::class => Parser\Recovery\CompositeRecovery::class,
+    Parser\SyntaxSource\ParsingSyntaxSource::class,
+    // The memo decorates the parsing source and is the one instance both the
     // resolvers parse through and the message loop clears.
     Parser\SyntaxSource\MemoizingSyntaxSource::class => fn (TC $c) => new Parser\SyntaxSource\MemoizingSyntaxSource(
-        $c->get(Parser\SyntaxSource\CompositeSyntaxSource::class),
+        $c->get(Parser\SyntaxSource\ParsingSyntaxSource::class),
     ),
     Parser\SyntaxSource\SyntaxSourceInterface::class => Parser\SyntaxSource\MemoizingSyntaxSource::class,
     Parser\SyntaxSource\MessageScopedInterface::class => Parser\SyntaxSource\MemoizingSyntaxSource::class,
-
-    Parser\NodeLocator\TreeNodeLocator::class,
-    Parser\NodeLocator\CursorTextNodeLocator::class,
-    Parser\NodeLocator\CompositeNodeLocator::class,
-    Parser\NodeLocator\NodeLocatorInterface::class => Parser\NodeLocator\CompositeNodeLocator::class,
 
     Repository\MemberResolver::class,
     Repository\MemberResolverInterface::class => Repository\MemberResolver::class,
 
     Resolution\ResolvedSymbolPresenter::class,
     Resolution\ResolvedSymbolPresenterInterface::class => Resolution\ResolvedSymbolPresenter::class,
-    Resolution\SymbolResolver::class,
-    Resolution\CodeResolverInterface::class => Resolution\SymbolResolver::class,
+    Resolution\ExpressionResolver::class,
+    Resolution\ExpressionResolverInterface::class => Resolution\ExpressionResolver::class,
+    Resolution\Position\PositionLocator::class,
+    Resolution\Position\PositionLocatorInterface::class => Resolution\Position\PositionLocator::class,
+    Resolution\Position\CallAtPosition::class,
+    Resolution\Position\CallAtPositionInterface::class => Resolution\Position\CallAtPosition::class,
+    Resolution\Position\ExpectedAtPosition::class,
+    Resolution\Position\ExpectedAtPositionInterface::class => Resolution\Position\ExpectedAtPosition::class,
+    Resolution\Position\ScopeAtPosition::class,
+    Resolution\Position\ScopeAtPositionInterface::class => Resolution\Position\ScopeAtPosition::class,
+    Resolution\Position\SymbolAtPosition::class,
+    Resolution\Position\SymbolAtPositionInterface::class => Resolution\Position\SymbolAtPosition::class,
+    Resolution\SymbolCapabilities::class,
+    Resolution\SymbolCapabilitiesInterface::class => Resolution\SymbolCapabilities::class,
     Resolution\TypeSource\NativeTypeSource::class,
     Resolution\TypeSource\TypeSourceInterface::class => Resolution\TypeSource\NativeTypeSource::class,
 ];
