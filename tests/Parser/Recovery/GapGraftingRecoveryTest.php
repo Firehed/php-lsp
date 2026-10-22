@@ -208,7 +208,7 @@ final class GapGraftingRecoveryTest extends TestCase
         self::assertLessThan(
             substr_count($code, "\n"),
             $counting->parses,
-            'a string left open swallows the rest of the file; reading it again line by line would cost a read per line',
+            'a string left open swallows the rest of the file; rereading it line by line costs a read per line',
         );
     }
 
