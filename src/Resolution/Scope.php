@@ -10,6 +10,7 @@ use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Name;
+use PhpParser\Node\PropertyHook;
 use PhpParser\Node\Stmt;
 
 /**
@@ -31,7 +32,7 @@ final class Scope
     private function __construct(
         private readonly ?Stmt\Namespace_ $namespace,
         private readonly Stmt\Class_|Stmt\Interface_|Stmt\Trait_|Stmt\Enum_|null $classLike,
-        private readonly Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null $sourceNode,
+        private readonly Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|PropertyHook|null $sourceNode,
         private readonly array $tree,
     ) {
     }
@@ -59,7 +60,7 @@ final class Scope
             }
             if (
                 $n instanceof Stmt\Function_ || $n instanceof Stmt\ClassMethod
-                || $n instanceof Closure || $n instanceof ArrowFunction
+                || $n instanceof Closure || $n instanceof ArrowFunction || $n instanceof PropertyHook
             ) {
                 $function ??= $n;
             }
@@ -99,6 +100,10 @@ final class Scope
             // Arrow functions have an expression body, not a statement list; their
             // captured variables come from the enclosing scope, not local assignments.
             $this->sourceNode instanceof ArrowFunction => [],
+            // A hook's body is a statement list, or a single expression (`get => …`).
+            $this->sourceNode instanceof PropertyHook => is_array($this->sourceNode->body)
+                ? $this->sourceNode->body
+                : [],
             default => $this->sourceNode->stmts ?? [],
         };
     }
@@ -130,8 +135,9 @@ final class Scope
 
     /**
      * The type of `$this` in this scope, or null where PHP does not bind it.
-     * An instance method binds it; a closure or arrow function inherits it
-     * unless declared `static` (PHP manual, Anonymous functions).
+     * An instance method or a property hook binds it (hooks exist only on
+     * instance properties); a closure or arrow function inherits it unless
+     * declared `static` (PHP manual, Anonymous functions; Property hooks).
      */
     public function getThisType(): ?ClasslikeName
     {
@@ -139,7 +145,9 @@ final class Scope
         if ($function instanceof Closure || $function instanceof ArrowFunction) {
             return $function->static ? null : $this->outer()?->getThisType();
         }
-        return $function instanceof Stmt\ClassMethod && !$function->isStatic() ? $this->getSelfName() : null;
+        $bindsThis = $function instanceof PropertyHook
+            || $function instanceof Stmt\ClassMethod && !$function->isStatic();
+        return $bindsThis ? $this->getSelfName() : null;
     }
 
     /**
@@ -192,7 +200,7 @@ final class Scope
      * The function-like node this scope was built from, or null for global
      * scope.
      */
-    public function getSourceNode(): Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|null
+    public function getSourceNode(): Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|PropertyHook|null
     {
         return $this->sourceNode;
     }

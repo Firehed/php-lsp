@@ -29,6 +29,23 @@ class ThisBinding
             $inClosureInStaticMethod = 1;
         };
     }
+
+    public int $count = 0;
+
+    // A property hook runs on the object (PHP manual, Property hooks).
+    public int $doubled {
+        get {
+            $inPropertyHook = $this->count;
+            return $inPropertyHook * 2;
+        }
+        set(int $value) {
+            $this->count = $value; //jtd:hook_parameter value
+        }
+    }
+
+    public int $tripled {
+        get => $this->count * 3;
+    }
 }
 
 function freeFunction(): void

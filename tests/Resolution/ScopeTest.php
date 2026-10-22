@@ -96,6 +96,7 @@ class ScopeTest extends TestCase
             'a static method' => ['inStaticMethod', null],
             'a closure in a static method' => ['inClosureInStaticMethod', null],
             'a closure in a free function' => ['inClosureInFunction', null],
+            'a property hook' => ['inPropertyHook', $class],
         ];
     }
 
@@ -118,6 +119,14 @@ class ScopeTest extends TestCase
         $scope = Scope::at(self::arrowFunction($ast), $ast);
 
         self::assertSame([], $scope->getStatements(), 'Arrow function body is an expression, not statements');
+    }
+
+    public function testAPropertyHookWithAnExpressionBodyHasNoStatements(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
+        $hook = self::findFirst(Node\PropertyHook::class, $ast, fn ($n) => !is_array($n->body));
+
+        self::assertSame([], Scope::at($hook, $ast)->getStatements(), '`get => …` is an expression, not statements');
     }
 
     public function testOnlyAnArrowFunctionCapturesImplicitly(): void

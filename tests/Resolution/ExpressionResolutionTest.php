@@ -268,6 +268,15 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testAPropertyHooksParameterIsABindingInTheHook(): void
+    {
+        self::assertEquals(
+            new PrimitiveType('int'),
+            $this->resolveVariableAt('TopLevel/this_binding.php', 'hook_parameter')?->getType(),
+            'a set hook\'s parameter binds in the hook, typed as declared',
+        );
+    }
+
     public function testAStaticMethodsParameterIsTypedByItsMethod(): void
     {
         $this->typeEveryParameterAs(new PrimitiveType('int'));

@@ -13,6 +13,7 @@ use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Param;
+use PhpParser\Node\PropertyHook;
 use PhpParser\Node\Stmt;
 
 /**
@@ -22,7 +23,7 @@ use PhpParser\Node\Stmt;
  * variable that traces back to a parameter), so the same variable never gets
  * two different answers.
  *
- * Named scopes route through {@see TypeSourceInterface}. Closure and arrow parameters
+ * Named scopes route through {@see TypeSourceInterface}. Closure, arrow, and hook parameters
  * have no source-blind identity; they fall through to {@see TypeFactory::fromNode}
  * as the explicit deferral to the future variable-typing seam (issue #517
  * "variable type-following. Not scope here").
@@ -33,7 +34,7 @@ final class ParameterTyping
         TypeSourceInterface $typeSource,
         Param $param,
         string $name,
-        Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction $enclosingScope,
+        Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|PropertyHook $enclosingScope,
         ?string $selfContext,
         ?string $parentContext,
     ): ?TypeInterface {
