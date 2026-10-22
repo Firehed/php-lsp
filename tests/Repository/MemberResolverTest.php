@@ -1894,6 +1894,12 @@ final class MemberResolverTest extends TestCase
             'helperPrivate',
             'App\\Helper',
         ];
+        yield 'private from a trait a parent uses, from the subclass' => [
+            'App\\UsesChild',
+            'App\\UsesChild',
+            'helperPrivate',
+            null,
+        ];
     }
 
     /**
@@ -1956,7 +1962,7 @@ final class MemberResolverTest extends TestCase
 
     /**
      * Base declares members of each visibility; Child and Sibling extend it;
-     * Uses takes a private method from the trait Helper.
+     * Uses takes a private method from the trait Helper, and UsesChild extends Uses.
      */
     private function resolverOverAccessGraph(): MemberResolver
     {
@@ -1981,6 +1987,10 @@ final class MemberResolverTest extends TestCase
                 'helperPrivate' => Visibility::Private,
             ])),
             $this->createClassInfo(ClasslikeName::fromFullyQualified('App\\Uses'), traits: [$helper]),
+            $this->createClassInfo(
+                ClasslikeName::fromFullyQualified('App\\UsesChild'),
+                parent: ClasslikeName::fromFullyQualified('App\\Uses'),
+            ),
         );
     }
 
