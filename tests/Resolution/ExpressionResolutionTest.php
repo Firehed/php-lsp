@@ -29,15 +29,21 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\MemberAccess;
+use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
+use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PhpParser\Node;
+use PhpParser\Node\Expr;
+use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -305,6 +311,72 @@ final class ExpressionResolutionTest extends TestCase
             'Fixtures\LateBinding\Sub',
             $symbol?->getType()?->format(),
             'parent::makeInstance() returns static, which a parent:: call binds to the calling class',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string, ?MemberAccess}>
+     */
+    public static function memberAccesses(): iterable
+    {
+        $keywords = 'src/TypeInference/NewKeywords.php';
+        $outside = 'src/TypeInference/StaticCallOutsideClass.php';
+        $written = self::className('Fixtures\TypeInference\NewKeywords');
+        $parent = self::className('Fixtures\Inheritance\ParentClass');
+        $patterns = self::className('Fixtures\Utility\ScopePatterns');
+        yield 'parent:: passes on the class it is written in as static' => [
+            $keywords,
+            'parent',
+            new MemberAccess(new ClasslikeType($parent), $written, $written, MemberAccessKind::Parent),
+        ];
+        yield 'self:: is a static access on the class written in' => [
+            $keywords,
+            'self',
+            new MemberAccess(new ClasslikeType($written), $written, null, MemberAccessKind::Static),
+        ];
+        yield 'a named class' => [
+            $keywords,
+            'Fixtures\Inheritance\ParentClass',
+            new MemberAccess(new ClasslikeType($parent), $written, null, MemberAccessKind::Static),
+        ];
+        yield 'an instance' => [
+            'src/Utility/ScopePatterns.php',
+            '$this',
+            new MemberAccess(new ClasslikeType($patterns), $patterns, null, MemberAccessKind::Instance),
+        ];
+        yield 'self outside any class' => [$outside, 'self', null];
+        yield 'an instance whose type is not known' => [$outside, '$unknown', null];
+    }
+
+    /**
+     * @param string $receiver The first class name, or `$`-prefixed variable,
+     *        written in the fixture
+     */
+    #[DataProvider('memberAccesses')]
+    public function testAMemberAccessIsOnWhatItsReceiverNames(
+        string $fixture,
+        string $receiver,
+        ?MemberAccess $expected,
+    ): void {
+        $document = new TextDocument(self::uri($fixture), 'php', 1, $this->loadFixture($fixture));
+        $parsed = ProductionSyntaxSource::create()->source->parse($document);
+        $node = (new NodeFinder())->findFirst(
+            $parsed->tree,
+            static fn (Node $node): bool => str_starts_with($receiver, '$')
+                ? $node instanceof Expr\Variable && '$' . $node->name === $receiver
+                : $node instanceof Node\Name && $node->toString() === $receiver,
+        );
+        self::assertTrue($node instanceof Expr || $node instanceof Node\Name, "{$receiver} is written in {$fixture}");
+        $expressions = new ExpressionResolver(
+            self::createStub(MemberResolverInterface::class),
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+        );
+
+        self::assertEquals(
+            $expected,
+            $expressions->resolveMemberAccess($node, Scope::at($node, $parsed->tree), $parsed),
+            'the class the access is on, the class it is written in, and what static names',
         );
     }
 
