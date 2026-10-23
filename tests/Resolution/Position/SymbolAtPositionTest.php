@@ -47,6 +47,9 @@ final class SymbolAtPositionTest extends TestCase
         yield 'a called function' => ['called', Expr\FuncCall::class];
         yield 'an argument\'s name' => ['argument_name', 'argument'];
         yield 'a constant' => ['constant', Expr\ConstFetch::class];
+        yield 'self as a return type' => ['self_type', 'self'];
+        yield 'static as a static receiver' => ['static_receiver_keyword', 'self'];
+        yield 'self after new' => ['new_self', 'self'];
         yield 'a comment' => ['comment', null];
         yield 'a member with nothing written' => ['unwritten_member', null];
     }
@@ -58,6 +61,7 @@ final class SymbolAtPositionTest extends TestCase
     public function testAWordResolvesAsWhereItIsWrittenSays(string $marker, ?string $expected): void
     {
         $user = self::classInfo('Fixtures\Domain\User');
+        $self = self::classInfo('Fixtures\Position\Symbols');
         $parameter = new ParameterInfo('user', null, null, 0, false, false);
         $argument = new ParameterInfo('user', null, null, 0, false, false);
         $resolved = [
@@ -67,7 +71,8 @@ final class SymbolAtPositionTest extends TestCase
             Expr\FuncCall::class => new ResolvedVariable('function call', null),
             Expr\ConstFetch::class => new ResolvedVariable('constant', null),
         ];
-        $answers = ['class' => $user, 'parameter' => $parameter, 'argument' => $argument] + $resolved;
+        $answers = ['class' => $user, 'self' => $self, 'parameter' => $parameter, 'argument' => $argument]
+            + $resolved;
 
         $callable = self::createStub(ResolvedCallableInterface::class);
         $callable->method('getParameterByName')->willReturnCallback(
@@ -81,7 +86,10 @@ final class SymbolAtPositionTest extends TestCase
         $expressions->method('resolveCallable')->willReturn($callable);
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('lookupClassLike')->willReturnCallback(
-            static fn (ClasslikeName $name) => $name->equals($user->name) ? $user : null,
+            static fn (ClasslikeName $name) => array_find(
+                [$user, $self],
+                static fn ($info): bool => $info->name->equals($name),
+            ),
         );
 
         self::assertSame(
