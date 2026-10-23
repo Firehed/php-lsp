@@ -311,7 +311,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
     private function resolveStaticCall(StaticCall $expr, ParsedDocument $parsed): ?MethodInfo
     {
-        if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
+        if (!$expr->name instanceof Identifier) {
             return null;
         }
         return $this->resolveMember(
@@ -362,7 +362,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
     private function resolveStaticPropertyFetch(StaticPropertyFetch $expr, ParsedDocument $parsed): ?PropertyInfo
     {
-        if (!$expr->name instanceof VarLikeIdentifier || !$expr->class instanceof Name) {
+        if (!$expr->name instanceof VarLikeIdentifier) {
             return null;
         }
         return $this->resolveMember(
@@ -390,11 +390,25 @@ final class ExpressionResolver implements ExpressionResolverInterface
                     : MemberAccessKind::Static,
             );
         }
+        if (self::isWrittenBeforeDoubleColon($receiver)) {
+            return null;
+        }
         $type = $this->resolve($receiver, $parsed)?->getType();
         if ($type === null || $type->getResolvableClasslikeNames() === []) {
             return null;
         }
         return new MemberAccess($type, $from, MemberAccessKind::Instance);
+    }
+
+    /**
+     * `$object::` is not resolved: only a class name written before `::` is.
+     */
+    private static function isWrittenBeforeDoubleColon(Expr $receiver): bool
+    {
+        $access = $receiver->getAttribute('parent');
+        return ($access instanceof StaticCall || $access instanceof StaticPropertyFetch
+                || $access instanceof ClassConstFetch)
+            && $access->class === $receiver;
     }
 
     /**
@@ -427,7 +441,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
     private function resolveClassConstFetch(ClassConstFetch $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
     {
-        if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
+        if (!$expr->name instanceof Identifier) {
             return null;
         }
         return $this->resolveMember(
