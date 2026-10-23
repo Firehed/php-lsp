@@ -42,16 +42,6 @@ parameters:
 
 		-
 			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 1
-			path: tests/Domain/TypeFactoryTest.php
-
-		-
-			message: '''
 				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
 				TypeSourceInterface, construction primitives will migrate elsewhere$#

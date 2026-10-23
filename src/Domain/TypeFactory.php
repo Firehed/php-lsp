@@ -81,16 +81,6 @@ final class TypeFactory
         // @codeCoverageIgnoreEnd
     }
 
-    public static function className(string $fqn): ClasslikeName
-    {
-        return ClasslikeName::fromFullyQualified($fqn);
-    }
-
-    public static function primitive(string $name): PrimitiveType
-    {
-        return new PrimitiveType($name);
-    }
-
     public static function fromReflection(?ReflectionType $type): ?TypeInterface
     {
         if ($type === null) {

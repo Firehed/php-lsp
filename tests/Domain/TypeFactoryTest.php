@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Domain;
 
-use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
@@ -272,14 +271,6 @@ class TypeFactoryTest extends TestCase
         self::assertInstanceOf(UnionType::class, $type);
         self::assertSame('(Iterator&Countable)|null', $type->format());
         self::assertTrue($type->isNullable());
-    }
-
-    public function testClasslikeNameCreatesClasslikeNameFromFqn(): void
-    {
-        $type = TypeFactory::className(\stdClass::class);
-
-        self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame(\stdClass::class, $type->qualifiedName->fullyQualifiedName());
     }
 
     public function testPreservingLateBindingNeedsNoClassContext(): void
