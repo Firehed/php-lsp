@@ -134,21 +134,53 @@ final class SymbolAtPositionTest extends TestCase
         string $lineText,
         string $target,
     ): void {
+        // Any name a lookup is asked for exists, so only the position decides.
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupClassLike')->willReturnCallback(
+            static fn (ClasslikeName $name) => self::classInfo($name->qualifiedName->fullyQualifiedName()),
+        );
+
+        self::assertNull(
+            $this->symbolAtText($fixture, $lineText, $target, $symbols),
+            'nothing at the position names a symbol',
+        );
+    }
+
+    public function testParentNamesTheExtendedClass(): void
+    {
+        $base = self::classInfo('Fixtures\LateBinding\Base');
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupClassLike')->willReturnCallback(
+            static fn (ClasslikeName $name) => $name->equals($base->name) ? $base : null,
+        );
+
+        self::assertSame(
+            $base,
+            $this->symbolAtText('src/LateBinding/Sub.php', '): parent', 'parent', $symbols),
+            'parent names the class the enclosing class extends',
+        );
+    }
+
+    /**
+     * The symbol at the first $target at or after where $lineText is written in $fixture.
+     */
+    private function symbolAtText(
+        string $fixture,
+        string $lineText,
+        string $target,
+        SymbolSourceInterface $symbols,
+    ): ?ResolvedSymbolInterface {
         $code = $this->loadFixture($fixture);
         $line = strpos($code, $lineText);
         assert($line !== false);
         $offset = strpos($code, $target, $line);
         assert($offset !== false);
-        $symbols = new SymbolAtPosition(
+        $symbolAt = new SymbolAtPosition(
             new PositionLocator(ProductionSyntaxSource::create()->source),
             self::createStub(ExpressionResolverInterface::class),
-            self::createStub(SymbolSourceInterface::class),
+            $symbols,
         );
-
-        self::assertNull(
-            $symbols->symbolAt(new TextDocument('file:///User.php', 'php', 1, $code), new ByteOffset($offset)),
-            'nothing at the position names a symbol',
-        );
+        return $symbolAt->symbolAt(new TextDocument('file:///' . $fixture, 'php', 1, $code), new ByteOffset($offset));
     }
 
     private function symbolAt(
