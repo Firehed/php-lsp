@@ -505,7 +505,7 @@ class ScopeTest extends TestCase
 
     private static function parentName(Scope $scope): ?string
     {
-        return $scope->lateBinding()?->parent?->qualifiedName->fullyQualifiedName();
+        return $scope->lateBinding()->parent?->qualifiedName->fullyQualifiedName();
     }
 
     /**

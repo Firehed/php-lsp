@@ -122,16 +122,13 @@ final class Scope
     }
 
     /**
-     * What `static`, `self`, and `parent` name in code written here; null
-     * outside a named class-like. `static` names the class written in: which
-     * subclass the code runs on is not known from where it is written.
+     * What `static`, `self`, and `parent` name in code written here. `static`
+     * names the class written in: which subclass the code runs on is not
+     * known from where it is written.
      */
-    public function lateBinding(): ?LateBinding
+    public function lateBinding(): LateBinding
     {
         $self = $this->getSelfName();
-        if ($self === null) {
-            return null;
-        }
         $parent = LateBindingKeyword::Parent->resolveIn($this->classLike);
         return new LateBinding($self, $self, $parent === null ? null : ClasslikeName::fromFullyQualified($parent));
     }
@@ -164,7 +161,7 @@ final class Scope
         $keyword = LateBindingKeyword::tryFromName($name->toString());
         if ($keyword !== null) {
             /** @var ?class-string */
-            return $this->lateBinding()?->classFor($keyword)?->qualifiedName->fullyQualifiedName();
+            return $this->lateBinding()->classFor($keyword)?->qualifiedName->fullyQualifiedName();
         }
         /** @var class-string */
         return $name->toString();
