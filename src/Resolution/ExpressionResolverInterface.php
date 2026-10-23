@@ -36,7 +36,7 @@ interface ExpressionResolverInterface
 
     /**
      * What a member access written in $scope is on: an expression before `->`,
-     * or a class name before `::`. Null when it is on no known class-like.
+     * or a class name before `::`. Null when the receiver names no class-like.
      */
     public function resolveMemberAccess(Expr|Name $receiver, Scope $scope, ParsedDocument $parsed): ?MemberAccess;
 
