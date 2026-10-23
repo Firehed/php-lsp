@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\LateBinding;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -32,8 +34,8 @@ class ScopeTest extends TestCase
         $scope = Scope::at($function, $ast);
 
         self::assertSame([], $scope->getParams(), 'Free function fixture declares no parameters');
-        self::assertNull($scope->getSelfContext(), 'Free function has no enclosing class');
-        self::assertNull($scope->getParentContext());
+        self::assertNull($scope->getSelfName(), 'Free function has no enclosing class');
+        self::assertNull($scope->lateBinding()->parent);
         self::assertNull($scope->getThisType(), '$this is not bound in a free function');
         self::assertNotEmpty($scope->getStatements(), 'Function body statements should be exposed');
     }
@@ -44,8 +46,8 @@ class ScopeTest extends TestCase
 
         $scope = Scope::at(self::method('methodWithThis', $ast), $ast);
 
-        self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getSelfContext());
-        self::assertNull($scope->getParentContext(), 'ScopePatterns has no parent class');
+        self::assertEquals(self::className('Fixtures\Utility\ScopePatterns'), $scope->getSelfName());
+        self::assertNull($scope->lateBinding()->parent, 'ScopePatterns has no parent class');
         self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getThisType()?->qualifiedName->fullyQualifiedName());
     }
 
@@ -55,8 +57,8 @@ class ScopeTest extends TestCase
 
         $scope = Scope::at(self::method('parentMethod', $ast), $ast);
 
-        self::assertSame('Fixtures\Inheritance\ParentClass', $scope->getSelfContext());
-        self::assertSame('Fixtures\Inheritance\Grandparent', $scope->getParentContext());
+        self::assertEquals(self::className('Fixtures\Inheritance\ParentClass'), $scope->getSelfName());
+        self::assertEquals(self::className('Fixtures\Inheritance\Grandparent'), $scope->lateBinding()->parent);
     }
 
     public function testATraitMethodHasNoParentContext(): void
@@ -65,8 +67,8 @@ class ScopeTest extends TestCase
 
         $scope = Scope::at(self::method('getCreatedAt', $ast), $ast);
 
-        self::assertSame('Fixtures\Traits\HasTimestamps', $scope->getSelfContext());
-        self::assertNull($scope->getParentContext(), 'A trait has no extends clause');
+        self::assertEquals(self::className('Fixtures\Traits\HasTimestamps'), $scope->getSelfName());
+        self::assertNull($scope->lateBinding()->parent, 'A trait has no extends clause');
         self::assertSame('Fixtures\Traits\HasTimestamps', $scope->getThisType()?->qualifiedName->fullyQualifiedName());
     }
 
@@ -112,7 +114,11 @@ class ScopeTest extends TestCase
         $captured = self::useNames($scope);
         self::assertContains('captured', $captured, 'use($captured) should be exposed as a capture');
         self::assertNotContains('notCaptured', $captured);
-        self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getSelfContext(), 'Closure inherits class context');
+        self::assertEquals(
+            self::className('Fixtures\Utility\ScopePatterns'),
+            $scope->getSelfName(),
+            'Closure inherits class context',
+        );
     }
 
     public function testAnArrowFunctionHasNoStatements(): void
@@ -201,7 +207,11 @@ class ScopeTest extends TestCase
         $ast = self::parseWithParents($this->loadFixture($fixture));
         $classLike = self::findFirst($kind, $ast);
 
-        self::assertSame($expected, Scope::at($classLike, $ast)->getSelfContext(), "a $kind is a class context");
+        self::assertEquals(
+            self::className($expected),
+            Scope::at($classLike, $ast)->getSelfName(),
+            "a $kind is a class context",
+        );
     }
 
     /**
@@ -224,7 +234,11 @@ class ScopeTest extends TestCase
         $scope = Scope::at(self::findFirst(Stmt\Class_::class, $ast), $ast);
 
         self::assertNull($scope->getSourceNode(), 'no function-like holds the class body');
-        self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getSelfContext(), 'self names the class');
+        self::assertEquals(
+            self::className('Fixtures\Utility\ScopePatterns'),
+            $scope->getSelfName(),
+            'self names the class',
+        );
     }
 
     public function testAnAnonymousClassHasNoClassName(): void
@@ -233,7 +247,7 @@ class ScopeTest extends TestCase
         $this_ = self::findVariableNode('this', $ast);
         self::assertNotNull($this_);
 
-        self::assertNull(Scope::at($this_, $ast)->getSelfContext(), 'an anonymous class has no name to resolve');
+        self::assertNull(Scope::at($this_, $ast)->getSelfName(), 'an anonymous class has no name to resolve');
     }
 
     public function testAClassOutsideANamespaceIsNamedByItsShortName(): void
@@ -242,7 +256,7 @@ class ScopeTest extends TestCase
         $this_ = self::findVariableNode('this', $ast);
         self::assertNotNull($this_);
 
-        self::assertSame('GlobalConfig', Scope::at($this_, $ast)->getSelfContext());
+        self::assertEquals(self::className('GlobalConfig'), Scope::at($this_, $ast)->getSelfName());
     }
 
     public function testANodeAtNamespaceLevelIsInItsNamespacesStatements(): void
@@ -254,7 +268,7 @@ class ScopeTest extends TestCase
         $scope = Scope::at($globalVar, $ast);
 
         self::assertNull($scope->getSourceNode(), 'outside any function-like the scope is global');
-        self::assertNull($scope->getSelfContext(), 'no class holds it');
+        self::assertNull($scope->getSelfName(), 'no class holds it');
         $namespace = self::findFirst(Stmt\Namespace_::class, $ast);
         self::assertSame($namespace->stmts, $scope->getStatements(), 'the namespace\'s statements, not the file\'s');
     }
@@ -386,7 +400,11 @@ class ScopeTest extends TestCase
         $ast = self::parseWithParents($this->loadFixture($fixture));
         $node = self::findFirst(Node\Name::class, $ast, fn ($n) => $n->toString() === $name);
 
-        self::assertSame($expected, Scope::at($node, $ast)->resolveClasslikeName($node), "$name in $fixture");
+        self::assertEquals(
+            $expected === null ? null : ClasslikeName::fromFullyQualified($expected),
+            Scope::at($node, $ast)->resolveClasslikeName($node),
+            "$name in $fixture",
+        );
     }
 
     /**
@@ -405,7 +423,66 @@ class ScopeTest extends TestCase
             ],
             'self outside a class' => ['src/TypeInference/StaticCallOutsideClass.php', 'self', null],
             'parent with no extends' => ['src/TypeInference/ParentWithoutExtends.php', 'parent', null],
+            'parent in an anonymous class' => [
+                'src/Resolution/AnonymousParent.php',
+                'parent',
+                'Fixtures\Inheritance\ParentClass',
+            ],
         ];
+    }
+
+    /**
+     * @return iterable<string, array{string, class-string<Stmt\ClassMethod|Stmt\Function_>, string, LateBinding}>
+     */
+    public static function lateBindings(): iterable
+    {
+        $parentClass = ClasslikeName::fromFullyQualified('Fixtures\Inheritance\ParentClass');
+        $grandparent = ClasslikeName::fromFullyQualified('Fixtures\Inheritance\Grandparent');
+        $trait = ClasslikeName::fromFullyQualified('Fixtures\Traits\HasTimestamps');
+        yield 'a class with a parent' => [
+            'src/Inheritance/ParentClass.php',
+            Stmt\ClassMethod::class,
+            'parentMethod',
+            new LateBinding($parentClass, $parentClass, $grandparent),
+        ];
+        yield 'a trait, which extends nothing' => [
+            'src/Traits/HasTimestamps.php',
+            Stmt\ClassMethod::class,
+            'getCreatedAt',
+            new LateBinding($trait, $trait, null),
+        ];
+        yield 'an anonymous class, which has a parent but no name' => [
+            'src/Resolution/AnonymousParent.php',
+            Stmt\ClassMethod::class,
+            'call',
+            new LateBinding(null, null, $parentClass),
+        ];
+        yield 'a free function' => [
+            'src/Utility/GlobalScope.php',
+            Stmt\Function_::class,
+            'utilityFunction',
+            new LateBinding(null, null, null),
+        ];
+    }
+
+    /**
+     * @param class-string<Stmt\ClassMethod|Stmt\Function_> $kind
+     */
+    #[DataProvider('lateBindings')]
+    public function testTheLateBindingNamesTheEnclosingClass(
+        string $fixture,
+        string $kind,
+        string $function,
+        LateBinding $expected,
+    ): void {
+        $ast = self::parseWithParents($this->loadFixture($fixture));
+        $node = self::findFirst($kind, $ast, fn ($n) => $n->name->toString() === $function);
+
+        self::assertEquals(
+            $expected,
+            Scope::at($node, $ast)->lateBinding(),
+            'static and self name the class written in, parent what it extends',
+        );
     }
 
     /**
@@ -435,6 +512,11 @@ class ScopeTest extends TestCase
             Scope::at($node, $ast)->staticFor($node)?->qualifiedName->fullyQualifiedName(),
             "static for a member on {$receiver}",
         );
+    }
+
+    private static function className(string $fullyQualifiedName): ClasslikeName
+    {
+        return ClasslikeName::fromFullyQualified($fullyQualifiedName);
     }
 
     /**

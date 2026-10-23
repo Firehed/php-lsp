@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\LateBinding;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use LogicException;
@@ -112,28 +113,24 @@ final class Scope
     }
 
     /**
-     * @return ?class-string
-     */
-    public function getSelfContext(): ?string
-    {
-        return LateBindingKeyword::Self->resolveIn($this->classLike);
-    }
-
-    /**
      * The class-like code here is written in, which `self` names.
      */
     public function getSelfName(): ?ClasslikeName
     {
-        $self = $this->getSelfContext();
+        $self = LateBindingKeyword::Self->resolveIn($this->classLike);
         return $self === null ? null : ClasslikeName::fromFullyQualified($self);
     }
 
     /**
-     * @return ?class-string
+     * What `static`, `self`, and `parent` name in code written here. `static`
+     * names the class written in: which subclass the code runs on is not
+     * known from where it is written.
      */
-    public function getParentContext(): ?string
+    public function lateBinding(): LateBinding
     {
-        return LateBindingKeyword::Parent->resolveIn($this->classLike);
+        $self = $this->getSelfName();
+        $parent = LateBindingKeyword::Parent->resolveIn($this->classLike);
+        return new LateBinding($self, $self, $parent === null ? null : ClasslikeName::fromFullyQualified($parent));
     }
 
     /**
@@ -156,17 +153,14 @@ final class Scope
     /**
      * A class name as written here: `self`, `static`, and `parent` resolve
      * against the enclosing class-like, null where it gives them none.
-     *
-     * @return ?class-string
      */
-    public function resolveClasslikeName(Name $name): ?string
+    public function resolveClasslikeName(Name $name): ?ClasslikeName
     {
         $keyword = LateBindingKeyword::tryFromName($name->toString());
         if ($keyword !== null) {
-            return $keyword->resolveIn($this->classLike);
+            return $this->lateBinding()->classFor($keyword);
         }
-        /** @var class-string */
-        return $name->toString();
+        return ClasslikeName::fromFullyQualified($name->toString());
     }
 
     /**

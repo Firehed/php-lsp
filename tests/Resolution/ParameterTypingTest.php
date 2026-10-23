@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Resolution;
 
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\PrimitiveType;
+use Firehed\PhpLsp\Domain\TypeInterface;
+use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Resolution\ParameterTyping;
+use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
-use PhpParser\Node\Expr\ArrowFunction;
-use PhpParser\Node\Expr\Closure;
+use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Param;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
@@ -17,15 +22,17 @@ use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\ParserFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ParameterTyping::class)]
 final class ParameterTypingTest extends TestCase
 {
+    use LoadsFixturesTrait;
+
     public function testClassMethodRoutesThroughForMethodParameter(): void
     {
         $ast = self::parseWithParents('<?php class C { public function m(string $x): void {} }');
-        $method = self::findNode($ast, Stmt\ClassMethod::class);
         $param = self::findNode($ast, Param::class);
         $expected = new PrimitiveType('string');
 
@@ -34,14 +41,7 @@ final class ParameterTypingTest extends TestCase
             ->method('forMethodParameter')
             ->willReturn($expected);
 
-        $type = ParameterTyping::resolve(
-            $typeSource,
-            $param,
-            'x',
-            $method,
-            'C',
-            null,
-        );
+        $type = ParameterTyping::resolve($typeSource, $param, 'x', Scope::at($param, $ast));
 
         self::assertSame($expected, $type, 'ClassMethod scope routes through TypeSourceInterface::forMethodParameter');
     }
@@ -49,7 +49,6 @@ final class ParameterTypingTest extends TestCase
     public function testFunctionRoutesThroughForFunctionParameter(): void
     {
         $ast = self::parseWithParents('<?php function fn1(string $x): void {}');
-        $fn = self::findNode($ast, Stmt\Function_::class);
         $param = self::findNode($ast, Param::class);
         $expected = new PrimitiveType('string');
 
@@ -58,14 +57,7 @@ final class ParameterTypingTest extends TestCase
             ->method('forFunctionParameter')
             ->willReturn($expected);
 
-        $type = ParameterTyping::resolve(
-            $typeSource,
-            $param,
-            'x',
-            $fn,
-            null,
-            null,
-        );
+        $type = ParameterTyping::resolve($typeSource, $param, 'x', Scope::at($param, $ast));
 
         self::assertSame($expected, $type, 'Function_ scope routes through TypeSourceInterface::forFunctionParameter');
     }
@@ -73,18 +65,13 @@ final class ParameterTypingTest extends TestCase
     public function testClosureFallsThroughToTypeFactory(): void
     {
         $ast = self::parseWithParents('<?php $c = function (string $x) {};');
-        $closure = self::findNode($ast, Closure::class);
         $param = self::findNode($ast, Param::class);
 
-        $typeSource = self::createStub(TypeSourceInterface::class);
-
         $type = ParameterTyping::resolve(
-            $typeSource,
+            self::createStub(TypeSourceInterface::class),
             $param,
             'x',
-            $closure,
-            null,
-            null,
+            Scope::at($param, $ast),
         );
 
         self::assertInstanceOf(
@@ -98,18 +85,13 @@ final class ParameterTypingTest extends TestCase
     public function testArrowFunctionFallsThroughToTypeFactory(): void
     {
         $ast = self::parseWithParents('<?php $c = fn (int $x): int => $x;');
-        $arrow = self::findNode($ast, ArrowFunction::class);
         $param = self::findNode($ast, Param::class);
 
-        $typeSource = self::createStub(TypeSourceInterface::class);
-
         $type = ParameterTyping::resolve(
-            $typeSource,
+            self::createStub(TypeSourceInterface::class),
             $param,
             'x',
-            $arrow,
-            null,
-            null,
+            Scope::at($param, $ast),
         );
 
         self::assertInstanceOf(
@@ -122,19 +104,14 @@ final class ParameterTypingTest extends TestCase
 
     public function testClassMethodWithoutEnclosingClassFallsThrough(): void
     {
-        $ast = self::parseWithParents('<?php class C { public function m(string $x): void {} }');
-        $method = self::findNode($ast, Stmt\ClassMethod::class);
-        $param = self::findNode($ast, Param::class);
-
-        $typeSource = self::createStub(TypeSourceInterface::class);
+        $ast = self::parseWithParents($this->loadFixture('src/Resolution/AnonymousParent.php'));
+        $param = self::parameterNamed($ast, 'anonymousTyped');
 
         $type = ParameterTyping::resolve(
-            $typeSource,
+            self::createStub(TypeSourceInterface::class),
             $param,
-            'x',
-            $method,
-            null,
-            null,
+            'anonymousTyped',
+            Scope::at($param, $ast),
         );
 
         self::assertInstanceOf(
@@ -143,6 +120,51 @@ final class ParameterTypingTest extends TestCase
             'ClassMethod without a resolved enclosing class falls through rather than passing null identity',
         );
         self::assertSame('string', $type->format());
+    }
+
+    /**
+     * @return iterable<string, array{string, string, TypeInterface}>
+     */
+    public static function lateBoundParameters(): iterable
+    {
+        $closures = 'src/Resolution/ClosureLateBound.php';
+        $parentClass = new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Inheritance\ParentClass'));
+        yield 'self in a closure' => [
+            $closures,
+            'own',
+            new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Resolution\ClosureLateBound')),
+        ];
+        yield 'nullable parent in an arrow function' => [
+            $closures,
+            'inherited',
+            new UnionType([$parentClass, new PrimitiveType('null')]),
+        ];
+        yield 'parent in an anonymous class' => [
+            'src/Resolution/AnonymousParent.php',
+            'anonymousInherited',
+            $parentClass,
+        ];
+    }
+
+    #[DataProvider('lateBoundParameters')]
+    public function testAKeywordInAClosureParameterNamesWhatTheScopeBindsItTo(
+        string $fixture,
+        string $name,
+        TypeInterface $expected,
+    ): void {
+        $ast = self::parseWithParents($this->loadFixture($fixture));
+        $param = self::parameterNamed($ast, $name);
+
+        self::assertEquals(
+            $expected,
+            ParameterTyping::resolve(
+                self::createStub(TypeSourceInterface::class),
+                $param,
+                $name,
+                Scope::at($param, $ast),
+            ),
+            'the keyword names the class the scope binds it to',
+        );
     }
 
     /**
@@ -159,6 +181,21 @@ final class ParameterTypingTest extends TestCase
         $traverser->traverse($ast);
 
         return $ast;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function parameterNamed(array $ast, string $name): Param
+    {
+        $param = (new NodeFinder())->findFirst(
+            $ast,
+            static fn ($node): bool => $node instanceof Param
+                && $node->var instanceof Variable
+                && $node->var->name === $name,
+        );
+        self::assertInstanceOf(Param::class, $param, "the fixture declares \${$name}");
+        return $param;
     }
 
     /**

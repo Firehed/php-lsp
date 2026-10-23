@@ -160,7 +160,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
         return new ParameterInfo(
             name: $param->var->name,
-            type: $this->typeOfParameterBinding($param, $param->var->name, $scope),
+            type: ParameterTyping::resolve($this->typeSource, $param, $param->var->name, $scope),
             defaultValue: $param->default === null ? null : (new PrettyPrinter())->prettyPrintExpr($param->default),
             position: $position,
             isVariadic: $param->variadic,
@@ -197,27 +197,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
             return $this->resolveVariable($node->name, $outer, $closure->getStartFilePos(), $parsed)?->getType();
         }
         assert($parent instanceof Param, 'VariableBindings parent kinds are exhausted above');
-        return $this->typeOfParameterBinding($parent, $node->name, $scope);
-    }
-
-    private function typeOfParameterBinding(Param $param, string $name, Scope $scope): ?TypeInterface
-    {
-        $source = $scope->getSourceNode();
-        // @codeCoverageIgnoreStart
-        // A Param can only live inside a function-like, so the scope built at
-        // its offset always has a source node.
-        if ($source === null) {
-            return null;
-        }
-        // @codeCoverageIgnoreEnd
-        return ParameterTyping::resolve(
-            $this->typeSource,
-            $param,
-            $name,
-            $source,
-            $scope->getSelfContext(),
-            $scope->getParentContext(),
-        );
+        return ParameterTyping::resolve($this->typeSource, $parent, $node->name, $scope);
     }
 
     private function foreachElementType(
@@ -264,11 +244,10 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if (!$expr->class instanceof Name) {
             return null;
         }
-        $className = Scope::at($expr, $parsed->tree)->resolveClasslikeName($expr->class);
-        if ($className === null) {
+        $name = Scope::at($expr, $parsed->tree)->resolveClasslikeName($expr->class);
+        if ($name === null) {
             return null;
         }
-        $name = ClasslikeName::fromFullyQualified($className);
         $classInfo = $this->symbolSource->lookupClassLike($name);
         if ($classInfo === null) {
             return new ResolvedTypeOnly(new ClasslikeType($name));
@@ -415,12 +394,12 @@ final class ExpressionResolver implements ExpressionResolverInterface
     ): ?MemberInfoInterface {
         $scope = Scope::at($context, $parsed->tree);
         if ($receiver instanceof Name) {
-            $classNameStr = $scope->resolveClasslikeName($receiver);
-            if ($classNameStr === null) {
+            $className = $scope->resolveClasslikeName($receiver);
+            if ($className === null) {
                 return null;
             }
             return $find(
-                ClasslikeName::fromFullyQualified($classNameStr),
+                $className,
                 $memberName,
                 $scope->getSelfName(),
                 $scope->staticFor($receiver),
@@ -450,11 +429,10 @@ final class ExpressionResolver implements ExpressionResolverInterface
             return null;
         }
         $scope = Scope::at($expr, $parsed->tree);
-        $classNameStr = $scope->resolveClasslikeName($expr->class);
-        if ($classNameStr === null) {
+        $className = $scope->resolveClasslikeName($expr->class);
+        if ($className === null) {
             return null;
         }
-        $className = ClasslikeName::fromFullyQualified($classNameStr);
         $enumCase = $this->memberResolver->findEnumCase($className, $expr->name->toString());
         if ($enumCase !== null) {
             return $enumCase;

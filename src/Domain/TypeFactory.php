@@ -16,14 +16,11 @@ use PhpParser\Node\Name;
 final class TypeFactory
 {
     /**
-     * @param bool $preserveLateBinding If true, returns LateStaticType for static/self/parent
+     * `static`, `self`, and `parent` are kept as {@see LateStaticType}, bound
+     * where the type is used.
      */
-    public static function fromNode(
-        ?Node $node,
-        ?string $selfContext = null,
-        ?string $parentContext = null,
-        bool $preserveLateBinding = false,
-    ): ?TypeInterface {
+    public static function fromNode(?Node $node): ?TypeInterface
+    {
         if ($node === null) {
             return null;
         }
@@ -31,14 +28,9 @@ final class TypeFactory
         if ($node instanceof Name || $node instanceof Identifier) {
             $name = $node->toString();
 
-            $lateBindingType = self::tryLateBindingType(
-                $name,
-                $selfContext,
-                $parentContext,
-                $preserveLateBinding,
-            );
-            if ($lateBindingType !== null) {
-                return $lateBindingType;
+            $keyword = LateBindingKeyword::tryFromName($name);
+            if ($keyword !== null) {
+                return new LateStaticType($keyword);
             }
 
             if ($node instanceof Name) {
@@ -55,7 +47,7 @@ final class TypeFactory
         }
 
         if ($node instanceof Node\NullableType) {
-            $inner = self::fromNode($node->type, $selfContext, $parentContext, $preserveLateBinding);
+            $inner = self::fromNode($node->type);
             // @codeCoverageIgnoreStart
             if ($inner === null) {
                 throw new LogicException('NullableType inner type resolved to null');
@@ -65,8 +57,7 @@ final class TypeFactory
         }
 
         if ($node instanceof Node\UnionType || $node instanceof Node\IntersectionType) {
-            $mapper = fn (Node $n) => self::fromNode($n, $selfContext, $parentContext, $preserveLateBinding);
-            $members = array_values(array_filter(array_map($mapper, $node->types)));
+            $members = array_values(array_filter(array_map(self::fromNode(...), $node->types)));
             return $node instanceof Node\UnionType
                 ? new UnionType($members)
                 : new IntersectionType($members);
@@ -75,31 +66,5 @@ final class TypeFactory
         // @codeCoverageIgnoreStart
         throw new LogicException('Unexpected node type in type context');
         // @codeCoverageIgnoreEnd
-    }
-
-    private static function tryLateBindingType(
-        string $name,
-        ?string $selfContext,
-        ?string $parentContext,
-        bool $preserveLateBinding,
-    ): ?TypeInterface {
-        $keyword = LateBindingKeyword::tryFromName($name);
-        if ($keyword === null) {
-            return null;
-        }
-        if ($preserveLateBinding) {
-            return new LateStaticType($keyword);
-        }
-
-        $context = match ($keyword) {
-            LateBindingKeyword::Self, LateBindingKeyword::Static => $selfContext,
-            LateBindingKeyword::Parent => $parentContext,
-        };
-
-        if ($context === null) {
-            return new PrimitiveType($name);
-        }
-
-        return new ClasslikeType(ClasslikeName::fromFullyQualified($context));
     }
 }

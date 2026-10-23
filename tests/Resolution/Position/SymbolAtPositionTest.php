@@ -47,6 +47,9 @@ final class SymbolAtPositionTest extends TestCase
         yield 'a called function' => ['called', Expr\FuncCall::class];
         yield 'an argument\'s name' => ['argument_name', 'argument'];
         yield 'a constant' => ['constant', Expr\ConstFetch::class];
+        yield 'self as a return type' => ['self_type', 'self'];
+        yield 'static as a static receiver' => ['static_receiver_keyword', 'self'];
+        yield 'self after new' => ['new_self', 'self'];
         yield 'a comment' => ['comment', null];
         yield 'a member with nothing written' => ['unwritten_member', null];
     }
@@ -58,6 +61,7 @@ final class SymbolAtPositionTest extends TestCase
     public function testAWordResolvesAsWhereItIsWrittenSays(string $marker, ?string $expected): void
     {
         $user = self::classInfo('Fixtures\Domain\User');
+        $self = self::classInfo('Fixtures\Position\Symbols');
         $parameter = new ParameterInfo('user', null, null, 0, false, false);
         $argument = new ParameterInfo('user', null, null, 0, false, false);
         $resolved = [
@@ -67,7 +71,8 @@ final class SymbolAtPositionTest extends TestCase
             Expr\FuncCall::class => new ResolvedVariable('function call', null),
             Expr\ConstFetch::class => new ResolvedVariable('constant', null),
         ];
-        $answers = ['class' => $user, 'parameter' => $parameter, 'argument' => $argument] + $resolved;
+        $answers = ['class' => $user, 'self' => $self, 'parameter' => $parameter, 'argument' => $argument]
+            + $resolved;
 
         $callable = self::createStub(ResolvedCallableInterface::class);
         $callable->method('getParameterByName')->willReturnCallback(
@@ -81,7 +86,10 @@ final class SymbolAtPositionTest extends TestCase
         $expressions->method('resolveCallable')->willReturn($callable);
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('lookupClassLike')->willReturnCallback(
-            static fn (ClasslikeName $name) => $name->equals($user->name) ? $user : null,
+            static fn (ClasslikeName $name) => array_find(
+                [$user, $self],
+                static fn ($info): bool => $info->name->equals($name),
+            ),
         );
 
         self::assertSame(
@@ -105,33 +113,74 @@ final class SymbolAtPositionTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{string, string}>
+     * @return iterable<string, array{string, string, string}>
      */
     public static function positionsWithNothingToResolve(): iterable
     {
-        yield 'a literal' => ['return 42; //hover:literal_number', '42'];
+        $user = 'src/Domain/User.php';
+        yield 'a literal' => [$user, 'return 42; //hover:literal_number', '42'];
         // The inner `$name` resolves; the outer variable's name is an expression.
-        yield 'the outer $ of a variable variable' => ['echo /*|outer_var_var*/$$name;', '$$name'];
+        yield 'the outer $ of a variable variable' => [$user, 'echo /*|outer_var_var*/$$name;', '$$name'];
+        yield 'self outside any class' => [
+            'src/Hover/ResolveNewFallbacks.php',
+            '(new self())->foo(); //hover:global_self_new',
+            'self',
+        ];
     }
 
     #[DataProvider('positionsWithNothingToResolve')]
-    public function testNothingResolvesAtAPositionWithoutASymbol(string $lineText, string $target): void
+    public function testNothingResolvesAtAPositionWithoutASymbol(
+        string $fixture,
+        string $lineText,
+        string $target,
+    ): void {
+        // Any name a lookup is asked for exists, so only the position decides.
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupClassLike')->willReturnCallback(
+            static fn (ClasslikeName $name) => self::classInfo($name->qualifiedName->fullyQualifiedName()),
+        );
+
+        self::assertNull(
+            $this->symbolAtText($fixture, $lineText, $target, $symbols),
+            'nothing at the position names a symbol',
+        );
+    }
+
+    public function testParentNamesTheExtendedClass(): void
     {
-        $code = $this->loadFixture('src/Domain/User.php');
+        $base = self::classInfo('Fixtures\LateBinding\Base');
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupClassLike')->willReturnCallback(
+            static fn (ClasslikeName $name) => $name->equals($base->name) ? $base : null,
+        );
+
+        self::assertSame(
+            $base,
+            $this->symbolAtText('src/LateBinding/Sub.php', '): parent', 'parent', $symbols),
+            'parent names the class the enclosing class extends',
+        );
+    }
+
+    /**
+     * The symbol at the first $target at or after where $lineText is written in $fixture.
+     */
+    private function symbolAtText(
+        string $fixture,
+        string $lineText,
+        string $target,
+        SymbolSourceInterface $symbols,
+    ): ?ResolvedSymbolInterface {
+        $code = $this->loadFixture($fixture);
         $line = strpos($code, $lineText);
         assert($line !== false);
         $offset = strpos($code, $target, $line);
         assert($offset !== false);
-        $symbols = new SymbolAtPosition(
+        $symbolAt = new SymbolAtPosition(
             new PositionLocator(ProductionSyntaxSource::create()->source),
             self::createStub(ExpressionResolverInterface::class),
-            self::createStub(SymbolSourceInterface::class),
+            $symbols,
         );
-
-        self::assertNull(
-            $symbols->symbolAt(new TextDocument('file:///User.php', 'php', 1, $code), new ByteOffset($offset)),
-            'nothing at the position names a symbol',
-        );
+        return $symbolAt->symbolAt(new TextDocument('file:///' . $fixture, 'php', 1, $code), new ByteOffset($offset));
     }
 
     private function symbolAt(

@@ -20,6 +20,12 @@ class Symbols
         // a comment/*|comment*/
     }
 
+    public static function lateBound(): self/*|self_type*/
+    {
+        static/*|static_receiver_keyword*/::lateBound();
+        return new self/*|new_self*/();
+    }
+
     public function unwrittenMember(User $user): void
     {
         $user->/*|unwritten_member*/

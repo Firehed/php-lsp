@@ -69,157 +69,27 @@ class TypeFactoryTest extends TestCase
         self::assertSame($name, $type->format());
     }
 
-    public function testFromNodeWithSelfAndContextCreatesClasslikeType(): void
+    /**
+     * @return iterable<string, array{Identifier|Name, LateBindingKeyword}>
+     */
+    public static function lateBindingKeywords(): iterable
     {
-        $node = new Identifier('self');
-        $type = TypeFactory::fromNode($node, selfContext: \stdClass::class);
-
-        self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\stdClass::class, $type->name->qualifiedName->fullyQualifiedName());
+        foreach (LateBindingKeyword::cases() as $keyword) {
+            yield "{$keyword->value} as an identifier" => [new Identifier($keyword->value), $keyword];
+            yield "{$keyword->value} as a name" => [new Name($keyword->value), $keyword];
+        }
     }
 
-    public function testFromNodeWithStaticAndContextCreatesClasslikeType(): void
-    {
-        $node = new Identifier('static');
-        $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class);
-
-        self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\ArrayObject::class, $type->name->qualifiedName->fullyQualifiedName());
-    }
-
-    public function testFromNodeWithParentAndContextCreatesClasslikeType(): void
-    {
-        $node = new Identifier('parent');
-        $type = TypeFactory::fromNode($node, parentContext: \Throwable::class);
-
-        self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\Throwable::class, $type->name->qualifiedName->fullyQualifiedName());
-    }
-
-    public function testFromNodeWithSelfWithoutContextCreatesPrimitiveType(): void
-    {
-        $node = new Identifier('self');
-        $type = TypeFactory::fromNode($node);
-
-        self::assertInstanceOf(PrimitiveType::class, $type);
-        self::assertSame('self', $type->format());
-    }
-
-    public function testFromNodeWithIdentifierSelfAndPreserveLateBindingCreatesLateStaticType(): void
-    {
-        $node = new Identifier('self');
-        $type = TypeFactory::fromNode($node, selfContext: \stdClass::class, preserveLateBinding: true);
-
-        self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame(LateBindingKeyword::Self, $type->keyword);
-    }
-
-    public function testFromNodeWithIdentifierStaticAndPreserveLateBindingCreatesLateStaticType(): void
-    {
-        $node = new Identifier('static');
-        $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class, preserveLateBinding: true);
-
-        self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame(LateBindingKeyword::Static, $type->keyword);
-    }
-
-    public function testFromNodeWithIdentifierParentAndPreserveLateBindingCreatesLateStaticType(): void
-    {
-        $node = new Identifier('parent');
-        $type = TypeFactory::fromNode($node, parentContext: \Throwable::class, preserveLateBinding: true);
-
-        self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame(LateBindingKeyword::Parent, $type->keyword);
-    }
-
-    public function testFromNodeWithParentWithoutContextCreatesPrimitiveType(): void
-    {
-        $node = new Identifier('parent');
-        $type = TypeFactory::fromNode($node);
-
-        self::assertInstanceOf(PrimitiveType::class, $type);
-        self::assertSame('parent', $type->format());
-    }
-
-    public function testFromNodeWithNameSelfAndContextCreatesClasslikeType(): void
-    {
-        $node = new Name('self');
-        $type = TypeFactory::fromNode($node, selfContext: \stdClass::class);
-
-        self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\stdClass::class, $type->name->qualifiedName->fullyQualifiedName());
-    }
-
-    public function testFromNodeWithNameStaticAndContextCreatesClasslikeType(): void
-    {
-        $node = new Name('static');
-        $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class);
-
-        self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\ArrayObject::class, $type->name->qualifiedName->fullyQualifiedName());
-    }
-
-    public function testFromNodeWithNameParentAndContextCreatesClasslikeType(): void
-    {
-        $node = new Name('parent');
-        $type = TypeFactory::fromNode($node, parentContext: \Throwable::class);
-
-        self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\Throwable::class, $type->name->qualifiedName->fullyQualifiedName());
-    }
-
-    public function testFromNodeWithNameSelfWithoutContextCreatesPrimitiveType(): void
-    {
-        $node = new Name('self');
-        $type = TypeFactory::fromNode($node);
-
-        self::assertInstanceOf(PrimitiveType::class, $type);
-        self::assertSame('self', $type->format());
-    }
-
-    public function testFromNodeWithNameSelfAndPreserveLateBindingCreatesLateStaticType(): void
-    {
-        $node = new Name('self');
-        $type = TypeFactory::fromNode($node, selfContext: \stdClass::class, preserveLateBinding: true);
-
-        self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame(LateBindingKeyword::Self, $type->keyword);
-    }
-
-    public function testFromNodeWithNameStaticAndPreserveLateBindingCreatesLateStaticType(): void
-    {
-        $node = new Name('static');
-        $type = TypeFactory::fromNode($node, selfContext: \ArrayObject::class, preserveLateBinding: true);
-
-        self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame(LateBindingKeyword::Static, $type->keyword);
-    }
-
-    public function testFromNodeWithNameParentAndPreserveLateBindingCreatesLateStaticType(): void
-    {
-        $node = new Name('parent');
-        $type = TypeFactory::fromNode($node, parentContext: \Throwable::class, preserveLateBinding: true);
-
-        self::assertInstanceOf(LateStaticType::class, $type);
-        self::assertSame(LateBindingKeyword::Parent, $type->keyword);
-    }
-
-    public function testFromNodeWithNameParentWithoutContextCreatesPrimitiveType(): void
-    {
-        $node = new Name('parent');
-        $type = TypeFactory::fromNode($node);
-
-        self::assertInstanceOf(PrimitiveType::class, $type);
-        self::assertSame('parent', $type->format());
-    }
-
-    public function testFromNodeWithNameStaticWithoutContextCreatesPrimitiveType(): void
-    {
-        $node = new Name('static');
-        $type = TypeFactory::fromNode($node);
-
-        self::assertInstanceOf(PrimitiveType::class, $type);
-        self::assertSame('static', $type->format());
+    #[DataProvider('lateBindingKeywords')]
+    public function testALateBindingKeywordIsKeptForWhereItIsUsedToBind(
+        Identifier|Name $node,
+        LateBindingKeyword $keyword,
+    ): void {
+        self::assertEquals(
+            new LateStaticType($keyword),
+            TypeFactory::fromNode($node),
+            'the class the keyword names is bound where the type is used',
+        );
     }
 
     public function testFromNodeWithNullableTypeCreatesUnionType(): void
@@ -270,13 +140,5 @@ class TypeFactoryTest extends TestCase
         self::assertInstanceOf(UnionType::class, $type);
         self::assertSame('(Iterator&Countable)|null', $type->format());
         self::assertTrue($type->isNullable());
-    }
-
-    public function testPreservingLateBindingNeedsNoClassContext(): void
-    {
-        $type = TypeFactory::fromNode(new Name('self'), preserveLateBinding: true);
-
-        self::assertInstanceOf(LateStaticType::class, $type, 'the keyword is bound where the member is used');
-        self::assertSame(LateBindingKeyword::Self, $type->keyword);
     }
 }

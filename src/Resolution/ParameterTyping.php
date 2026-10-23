@@ -4,16 +4,12 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
-use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\TypeInterface;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
-use PhpParser\Node\Expr\ArrowFunction;
-use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Param;
-use PhpParser\Node\PropertyHook;
 use PhpParser\Node\Stmt;
 
 /**
@@ -26,7 +22,8 @@ use PhpParser\Node\Stmt;
  * Named scopes route through {@see TypeSourceInterface}. Closure, arrow, and hook parameters
  * have no source-blind identity; they fall through to {@see TypeFactory::fromNode}
  * as the explicit deferral to the future variable-typing seam (issue #517
- * "variable type-following. Not scope here").
+ * "variable type-following. Not scope here"), with `self` and `parent` bound
+ * by the scope.
  */
 final class ParameterTyping
 {
@@ -34,13 +31,14 @@ final class ParameterTyping
         TypeSourceInterface $typeSource,
         Param $param,
         string $name,
-        Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|PropertyHook $enclosingScope,
-        ?string $selfContext,
-        ?string $parentContext,
+        Scope $scope,
     ): ?TypeInterface {
-        if ($enclosingScope instanceof Stmt\ClassMethod && $selfContext !== null) {
+        $enclosingScope = $scope->getSourceNode();
+        assert($enclosingScope !== null, 'a parameter is declared by a function-like');
+        $self = $scope->getSelfName();
+        if ($enclosingScope instanceof Stmt\ClassMethod && $self !== null) {
             return $typeSource->forMethodParameter(
-                new MethodName(ClasslikeName::fromFullyQualified($selfContext), $enclosingScope->name->toString()),
+                new MethodName($self, $enclosingScope->name->toString()),
                 $name,
             );
         }
@@ -51,6 +49,6 @@ final class ParameterTyping
                 $name,
             );
         }
-        return TypeFactory::fromNode($param->type, $selfContext, $parentContext);
+        return TypeFactory::fromNode($param->type)?->resolveLateBound($scope->lateBinding());
     }
 }
