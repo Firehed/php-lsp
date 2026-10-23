@@ -45,7 +45,7 @@ final class MemberCandidatesTest extends TestCase
             [],
         ];
         yield 'parent, methods only' => [
-            MemberAccessContext::forParent($type, self::owner(), ''),
+            MemberAccessContext::forParent($type, self::owner(), self::owner(), ''),
             ['getName', 'getCount'],
         ];
         yield 'static adds ::class' => [

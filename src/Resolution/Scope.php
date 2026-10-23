@@ -167,6 +167,18 @@ final class Scope
     }
 
     /**
+     * The class `static` names in a member accessed on $receiver here, when it
+     * is not the class accessed: a `parent::` access passes on the class it is
+     * written in (PHP manual, Late Static Bindings). Null otherwise.
+     */
+    public function staticFor(Name $receiver): ?ClasslikeName
+    {
+        return LateBindingKeyword::tryFromName($receiver->toString()) === LateBindingKeyword::Parent
+            ? $this->getSelfName()
+            : null;
+    }
+
+    /**
      * How a name written here resolves: the enclosing namespace and its imports.
      */
     public function nameContext(): NameContext

@@ -481,12 +481,12 @@ final class ExpectedAtPositionTest extends TestCase
         yield 'parent::' => [
             $inheritance,
             'parent_access',
-            MemberAccessContext::forParent($childClass, self::className($inheritanceClass), ''),
+            self::parent($childClass, $inheritanceClass),
         ];
         yield 'parent:: with a prefix' => [
             $inheritance,
             'parent_prefix',
-            MemberAccessContext::forParent($childClass, self::className($inheritanceClass), 'p'),
+            self::parent($childClass, $inheritanceClass, 'p'),
         ];
         yield 'parent:: without a parent' => ['src/Completion/NoParent.php', 'parent_no_parent', null];
         yield 'an ancestor by name' => [
@@ -764,6 +764,14 @@ final class ExpectedAtPositionTest extends TestCase
     private static function static(TypeInterface $type, ?string $from, string $prefix = ''): MemberAccessContext
     {
         return MemberAccessContext::forStatic($type, $from === null ? null : self::className($from), $prefix);
+    }
+
+    /**
+     * A `parent::` access written in $from, which `static` names.
+     */
+    private static function parent(TypeInterface $type, string $from, string $prefix = ''): MemberAccessContext
+    {
+        return MemberAccessContext::forParent($type, self::className($from), self::className($from), $prefix);
     }
 
     private static function className(string $fqn): ClasslikeName

@@ -46,18 +46,19 @@ class MemberAccessContextTest extends TestCase
         self::assertSame('pre', $ctx->prefix, 'prefix');
     }
 
-    public function testOnlyAParentAccessPassesOnTheClassItIsWrittenIn(): void
+    public function testOnlyAParentAccessCarriesAStatic(): void
     {
         $from = ClasslikeName::fromFullyQualified('App\\Caller');
+        $static = ClasslikeName::fromFullyQualified('App\\Late');
 
-        self::assertSame($from, MemberAccessContext::forParent(self::type(), $from, '')->static, 'parent::');
+        self::assertSame($static, MemberAccessContext::forParent(self::type(), $from, $static, '')->static, 'parent::');
         self::assertNull(MemberAccessContext::forStatic(self::type(), $from, '')->static, 'a named class');
         self::assertNull(MemberAccessContext::forInstance(self::type(), $from, '')->static, 'an instance');
     }
 
     public function testForParentSetsExpectedValues(): void
     {
-        $ctx = MemberAccessContext::forParent(self::type(), null, '');
+        $ctx = MemberAccessContext::forParent(self::type(), null, null, '');
 
         self::assertSame(MemberAccessKind::Parent, $ctx->kind, 'kind');
         self::assertSame(MemberFilter::All, $ctx->memberFilter, 'memberFilter');
@@ -88,7 +89,7 @@ class MemberAccessContextTest extends TestCase
     #[DataProvider('parentAcceptsCases')]
     public function testParentAcceptsOnlyMethods(MemberKind $memberKind, bool $expected): void
     {
-        $ctx = MemberAccessContext::forParent(self::type(), null, '');
+        $ctx = MemberAccessContext::forParent(self::type(), null, null, '');
         $member = self::createStub(ResolvedMemberInterface::class);
         $member->method('getMemberKind')->willReturn($memberKind);
 

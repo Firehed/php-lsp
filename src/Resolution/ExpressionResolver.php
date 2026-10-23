@@ -12,7 +12,6 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
-use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
@@ -401,8 +400,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
      * resolves through `resolve()`, versus a class-name `Name` that resolves
      * through the {@see Scope} — is here, so a new member-access node kind adds
      * one call site rather than another copy of this dance. Only a member
-     * visible from where the access is written is found. A `parent::` access
-     * passes on the class it is written in as `static`, as PHP does.
+     * visible from where the access is written is found.
      *
      * @template T of MemberInfoInterface
      * @param callable(ClasslikeName, string, ?ClasslikeName, ?ClasslikeName): ?T $find
@@ -421,10 +419,12 @@ final class ExpressionResolver implements ExpressionResolverInterface
             if ($classNameStr === null) {
                 return null;
             }
-            $static = LateBindingKeyword::tryFromName($receiver->toString()) === LateBindingKeyword::Parent
-                ? $scope->getSelfName()
-                : null;
-            return $find(ClasslikeName::fromFullyQualified($classNameStr), $memberName, $scope->getSelfName(), $static);
+            return $find(
+                ClasslikeName::fromFullyQualified($classNameStr),
+                $memberName,
+                $scope->getSelfName(),
+                $scope->staticFor($receiver),
+            );
         }
         $receiverType = $this->resolve($receiver, $parsed)?->getType();
         foreach (self::receiverClasslikeNames($receiverType) as $className) {
