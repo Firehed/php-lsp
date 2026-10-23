@@ -96,9 +96,8 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
     private function memberAccess(Located $located): ?MemberAccessContext
     {
         $receiver = $located->receiver;
-        if ($located->slot === Slot::Member) {
-            assert($receiver !== null && !$receiver instanceof Name, 'an instance member is accessed on an expression');
-        } elseif (!$receiver instanceof Name) {
+        assert($receiver !== null, 'a member is accessed on something');
+        if ($located->slot === Slot::StaticMember && !$receiver instanceof Name) {
             // `$object::` is not resolved: only a written class name is.
             return null;
         }
