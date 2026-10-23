@@ -6,6 +6,8 @@ namespace Firehed\PhpLsp\Domain;
 
 final readonly class UnionType implements TypeInterface
 {
+    use ComposedOfTypesTrait;
+
     /**
      * @param list<TypeInterface> $members
      */
@@ -53,14 +55,6 @@ final readonly class UnionType implements TypeInterface
         return false;
     }
 
-    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): TypeInterface
-    {
-        $resolved = array_map(
-            fn (TypeInterface $member) => $member->resolveLateBound($callingClass, $declaringClassIsTrait),
-            $this->members,
-        );
-        return new self($resolved);
-    }
 
     public function equals(TypeInterface $other): bool
     {

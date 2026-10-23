@@ -77,13 +77,26 @@ class IntersectionTypeTest extends TestCase
     public function testResolveLateBoundResolvesMembers(): void
     {
         $type = new IntersectionType([
-            new LateStaticType(LateBindingKeyword::Static, ClasslikeName::fromFullyQualified(\Traversable::class)),
+            new LateStaticType(LateBindingKeyword::Static),
             self::classlike(\Countable::class),
         ]);
 
-        $resolved = $type->resolveLateBound(\ArrayIterator::class);
+        $resolved = $type->resolveLateBound(self::bindingCalledOn(\ArrayIterator::class));
 
         self::assertInstanceOf(IntersectionType::class, $resolved);
         self::assertSame('ArrayIterator&Countable', $resolved->format());
+    }
+
+    public function testResolveLateBoundKeepsAnIntersectionWithNothingToBind(): void
+    {
+        $type = new IntersectionType([self::classlike(\Iterator::class), self::classlike(\Countable::class)]);
+
+        self::assertSame($type, $type->resolveLateBound(self::bindingCalledOn(\ArrayIterator::class)));
+    }
+
+    private static function bindingCalledOn(string $class): LateBinding
+    {
+        $name = ClasslikeName::fromFullyQualified($class);
+        return new LateBinding($name, $name, null);
     }
 }

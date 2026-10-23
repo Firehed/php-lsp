@@ -152,7 +152,6 @@ final readonly class DeclarationSymbolInfoFactory
     private function extractConstants(Stmt\ClassLike $node, ClasslikeName $className, string $filePath): array
     {
         $constants = [];
-        $parentClass = $this->resolveParent($node);
 
         foreach ($node->stmts as $stmt) {
             if (!$stmt instanceof Stmt\ClassConst) {
@@ -165,11 +164,7 @@ final readonly class DeclarationSymbolInfoFactory
                     name: new ClasslikeConstantName($className, $name),
                     visibility: $this->visibilityFromFlags($stmt->flags),
                     isFinal: $stmt->isFinal(),
-                    type: TypeFactory::fromNode(
-                        $stmt->type,
-                        $className->qualifiedName->fullyQualifiedName(),
-                        $parentClass?->qualifiedName->fullyQualifiedName(),
-                    ),
+                    type: TypeFactory::fromNode($stmt->type, preserveLateBinding: true),
                     docblock: $stmt->getDocComment()?->getText(),
                     file: $filePath,
                     line: $stmt->getStartLine(),
@@ -253,7 +248,6 @@ final readonly class DeclarationSymbolInfoFactory
     private function extractMethods(Stmt\ClassLike $node, ClasslikeName $className, string $filePath): array
     {
         $methods = [];
-        $parentClass = $this->resolveParent($node);
 
         foreach ($node->stmts as $stmt) {
             if (!$stmt instanceof Stmt\ClassMethod || !ParsedDocument::isWritten($stmt->name)) {
@@ -267,13 +261,8 @@ final readonly class DeclarationSymbolInfoFactory
                 isStatic: $stmt->isStatic(),
                 isAbstract: $stmt->isAbstract(),
                 isFinal: $stmt->isFinal(),
-                parameters: $this->extractParameters($stmt->params, $className, $parentClass),
-                returnType: TypeFactory::fromNode(
-                    $stmt->returnType,
-                    $className->qualifiedName->fullyQualifiedName(),
-                    $parentClass?->qualifiedName->fullyQualifiedName(),
-                    preserveLateBinding: true,
-                ),
+                parameters: $this->extractParameters($stmt->params),
+                returnType: TypeFactory::fromNode($stmt->returnType, preserveLateBinding: true),
                 docblock: $stmt->getDocComment()?->getText(),
                 file: $filePath,
                 line: $stmt->getStartLine(),
@@ -291,19 +280,11 @@ final readonly class DeclarationSymbolInfoFactory
      * @param array<Param> $params
      * @return list<ParameterInfo>
      */
-    private function extractParameters(
-        array $params,
-        ?ClasslikeName $className = null,
-        ?ClasslikeName $parentClass = null,
-    ): array {
+    private function extractParameters(array $params): array
+    {
         $result = [];
         foreach ($params as $position => $param) {
-            $info = $this->parameterFromNode(
-                $param,
-                $position,
-                $className?->qualifiedName->fullyQualifiedName(),
-                $parentClass?->qualifiedName->fullyQualifiedName(),
-            );
+            $info = $this->parameterFromNode($param, $position);
             if ($info !== null) {
                 $result[] = $info;
             }
@@ -321,7 +302,6 @@ final readonly class DeclarationSymbolInfoFactory
         if ($node instanceof Stmt\Enum_) {
             $properties = EnumImplicits::properties($className, $this->enumScalarType($node));
         }
-        $parentClass = $this->resolveParent($node);
 
         foreach ($node->stmts as $stmt) {
             if ($stmt instanceof Stmt\Property) {
@@ -336,11 +316,7 @@ final readonly class DeclarationSymbolInfoFactory
                         isStatic: $stmt->isStatic(),
                         isReadonly: $stmt->isReadonly(),
                         isPromoted: false,
-                        type: TypeFactory::fromNode(
-                            $stmt->type,
-                            $className->qualifiedName->fullyQualifiedName(),
-                            $parentClass?->qualifiedName->fullyQualifiedName(),
-                        ),
+                        type: TypeFactory::fromNode($stmt->type, preserveLateBinding: true),
                         docblock: $stmt->getDocComment()?->getText(),
                         file: $filePath,
                         line: $stmt->getStartLine(),
@@ -364,11 +340,7 @@ final readonly class DeclarationSymbolInfoFactory
                         isStatic: false,
                         isReadonly: $param->isReadonly(),
                         isPromoted: true,
-                        type: TypeFactory::fromNode(
-                            $param->type,
-                            $className->qualifiedName->fullyQualifiedName(),
-                            $parentClass?->qualifiedName->fullyQualifiedName(),
-                        ),
+                        type: TypeFactory::fromNode($param->type, preserveLateBinding: true),
                         docblock: $param->getDocComment()?->getText(),
                         file: $filePath,
                         line: $param->getStartLine(),
@@ -471,12 +443,8 @@ final readonly class DeclarationSymbolInfoFactory
         return false;
     }
 
-    private function parameterFromNode(
-        Param $param,
-        int $position,
-        ?string $selfContext,
-        ?string $parentContext,
-    ): ?ParameterInfo {
+    private function parameterFromNode(Param $param, int $position): ?ParameterInfo
+    {
         if (!$param->var instanceof Variable || !is_string($param->var->name)) {
             return null;
         }
@@ -489,7 +457,7 @@ final readonly class DeclarationSymbolInfoFactory
 
         return new ParameterInfo(
             name: $param->var->name,
-            type: TypeFactory::fromNode($param->type, $selfContext, $parentContext),
+            type: TypeFactory::fromNode($param->type, preserveLateBinding: true),
             defaultValue: $defaultValue,
             position: $position,
             isVariadic: $param->variadic,

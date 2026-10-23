@@ -35,7 +35,7 @@ final readonly class ClasslikeType implements TypeInterface
             && $this->name->equals($other->name);
     }
 
-    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): TypeInterface
+    public function resolveLateBound(LateBinding $binding): TypeInterface
     {
         return $this;
     }

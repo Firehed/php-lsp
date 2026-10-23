@@ -37,7 +37,8 @@ class PrimitiveTypeTest extends TestCase
     public function testResolveLateBoundReturnsSelf(): void
     {
         $type = new PrimitiveType('string');
-        self::assertSame($type, $type->resolveLateBound(\ArrayIterator::class));
+        $called = ClasslikeName::fromFullyQualified(\ArrayIterator::class);
+        self::assertSame($type, $type->resolveLateBound(new LateBinding($called, $called, null)));
     }
 
     public function testEqualsSameName(): void

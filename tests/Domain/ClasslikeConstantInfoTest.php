@@ -13,6 +13,41 @@ class ClasslikeConstantInfoTest extends TestCase
 {
     use HasSymbolLocationTestTrait;
 
+    public function testLateBindingBindsTheType(): void
+    {
+        $declaring = ClasslikeName::fromFullyQualified('App\\Declaring');
+        $constant = new ClasslikeConstantInfo(
+            name: new ClasslikeConstantName($declaring, 'DEFAULT'),
+            visibility: Visibility::Public,
+            isFinal: true,
+            type: new LateStaticType(LateBindingKeyword::Self),
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        $bound = $constant->resolveLateBound(new LateBinding($declaring, $declaring, null));
+
+        self::assertSame('App\\Declaring', $bound->type?->format(), 'the type is bound');
+        self::assertTrue($bound->isFinal, 'the rest is kept');
+    }
+
+    public function testLateBindingKeepsAConstantWithNothingToBind(): void
+    {
+        $declaring = ClasslikeName::fromFullyQualified('App\\Declaring');
+        $constant = new ClasslikeConstantInfo(
+            name: new ClasslikeConstantName($declaring, 'MAX'),
+            visibility: Visibility::Public,
+            isFinal: false,
+            type: new PrimitiveType('int'),
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertSame($constant, $constant->resolveLateBound(new LateBinding($declaring, $declaring, null)));
+    }
+
     public function testConstruction(): void
     {
         $owner = ClasslikeName::fromFullyQualified(ClasslikeConstantInfo::class);

@@ -40,6 +40,26 @@ final readonly class ParameterInfo implements ResolvedSymbolInterface
     }
 
     /**
+     * This parameter with `static`, `self`, and `parent` in its type replaced
+     * by the classes the binding names, or this same instance when it has none.
+     */
+    public function resolveLateBound(LateBinding $binding): self
+    {
+        $type = $this->type?->resolveLateBound($binding);
+        if ($type === $this->type) {
+            return $this;
+        }
+        return new self(
+            name: $this->name,
+            type: $type,
+            defaultValue: $this->defaultValue,
+            position: $this->position,
+            isVariadic: $this->isVariadic,
+            isPassedByReference: $this->isPassedByReference,
+        );
+    }
+
+    /**
      * The parameter as declared, e.g. `int $count = 0` or `string ...$tail`.
      */
     public function format(): string

@@ -45,6 +45,25 @@ final readonly class PropertyInfo implements MemberInfoInterface
         return MemberKind::Property;
     }
 
+    public function resolveLateBound(LateBinding $binding): static
+    {
+        $type = $this->type?->resolveLateBound($binding);
+        if ($type === $this->type) {
+            return $this;
+        }
+        return new static(
+            name: $this->name,
+            visibility: $this->visibility,
+            isStatic: $this->isStatic,
+            isReadonly: $this->isReadonly,
+            isPromoted: $this->isPromoted,
+            type: $type,
+            docblock: $this->docblock,
+            file: $this->file,
+            line: $this->line,
+        );
+    }
+
     public function getName(): ClasslikeOwnedNameInterface
     {
         return $this->name;

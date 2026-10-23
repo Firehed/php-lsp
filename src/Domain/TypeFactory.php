@@ -114,6 +114,13 @@ final class TypeFactory
         if ($type instanceof ReflectionNamedType) {
             $name = $type->getName();
 
+            // Reflection reports `static` and `self` as class names.
+            $keyword = LateBindingKeyword::tryFromName($name);
+            if ($keyword !== null) {
+                $late = new LateStaticType($keyword);
+                return $type->allowsNull() ? new UnionType([$late, new PrimitiveType('null')]) : $late;
+            }
+
             if ($type->isBuiltin()) {
                 $primitive = new PrimitiveType($name);
                 if ($type->allowsNull() && $name !== 'null' && $name !== 'mixed') {
@@ -158,6 +165,9 @@ final class TypeFactory
         if ($keyword === null) {
             return null;
         }
+        if ($preserveLateBinding) {
+            return new LateStaticType($keyword);
+        }
 
         $context = match ($keyword) {
             LateBindingKeyword::Self, LateBindingKeyword::Static => $selfContext,
@@ -166,10 +176,6 @@ final class TypeFactory
 
         if ($context === null) {
             return new PrimitiveType($name);
-        }
-
-        if ($preserveLateBinding) {
-            return new LateStaticType($keyword, ClasslikeName::fromFullyQualified($context));
         }
 
         return new ClasslikeType(ClasslikeName::fromFullyQualified($context));

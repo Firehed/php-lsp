@@ -13,6 +13,14 @@ class EnumCaseInfoTest extends TestCase
 {
     use HasSymbolLocationTestTrait;
 
+    public function testLateBindingKeepsAnEnumCase(): void
+    {
+        $enum = ClasslikeName::fromFullyQualified('App\\Status');
+        $case = new EnumCaseInfo(new EnumCaseName($enum, 'Draft'), null, null, null, null);
+
+        self::assertSame($case, $case->resolveLateBound(new LateBinding($enum, $enum, null)), 'a case has no type');
+    }
+
     public function testConstruction(): void
     {
         $owner = ClasslikeName::fromFullyQualified(ClassKind::class);
