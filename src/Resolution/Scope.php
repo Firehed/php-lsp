@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\LateBinding;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use LogicException;
@@ -137,6 +138,21 @@ final class Scope
     }
 
     /**
+     * What `static`, `self`, and `parent` name in code written here; null
+     * outside a named class-like. `static` names the class written in: which
+     * subclass the code runs on is not known from where it is written.
+     */
+    public function lateBinding(): ?LateBinding
+    {
+        $self = $this->getSelfName();
+        if ($self === null) {
+            return null;
+        }
+        $parent = $this->getParentContext();
+        return new LateBinding($self, $self, $parent === null ? null : ClasslikeName::fromFullyQualified($parent));
+    }
+
+    /**
      * The type of `$this` in this scope, or null where PHP does not bind it.
      * An instance method or a property hook binds it (hooks exist only on
      * instance properties); a closure or arrow function inherits it unless
@@ -163,7 +179,8 @@ final class Scope
     {
         $keyword = LateBindingKeyword::tryFromName($name->toString());
         if ($keyword !== null) {
-            return $keyword->resolveIn($this->classLike);
+            /** @var ?class-string */
+            return $this->lateBinding()?->classFor($keyword)?->qualifiedName->fullyQualifiedName();
         }
         /** @var class-string */
         return $name->toString();
