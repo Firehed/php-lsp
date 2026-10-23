@@ -60,15 +60,9 @@ final class MemberResolver implements MemberResolverInterface
         ?ClasslikeName $static = null,
     ): ?MethodInfo {
         $origin = $this->source->lookupClassLike($class);
-        if ($origin === null) {
-            return null;
-        }
-        $aliased = $this->findAliasedMethod($origin, $name, $from);
-        if ($aliased !== null) {
-            return $this->bind($aliased, $origin, $static ?? $class);
-        }
+        $found = $origin === null ? null : $this->declaredMethod($origin, $name, $from);
 
-        return $this->findMember($class, MemberKind::Method, $name, $from, $static ?? $class, $origin);
+        return $found === null ? null : $this->bind($found[0], $found[1], $static ?? $class);
     }
 
     public function findProperty(
@@ -194,9 +188,8 @@ final class MemberResolver implements MemberResolverInterface
         string $name,
         ?ClasslikeName $from,
         ClasslikeName $static,
-        ?ClassInfo $origin = null,
     ): ?MemberInfoInterface {
-        $origin ??= $this->source->lookupClassLike($class);
+        $origin = $this->source->lookupClassLike($class);
         if ($origin === null) {
             return null;
         }
@@ -536,10 +529,21 @@ final class MemberResolver implements MemberResolverInterface
     private function traitMethod(ClasslikeName $trait, string $name): ?MethodInfo
     {
         $origin = $this->source->lookupClassLike($trait);
-        if ($origin === null) {
-            return null;
-        }
-        return $this->findAliasedMethod($origin, $name, $trait)
-            ?? $this->findDeclared($origin, MemberKind::Method, $name, $trait)[0] ?? null;
+        return $origin === null ? null : ($this->declaredMethod($origin, $name, $trait)[0] ?? null);
+    }
+
+    /**
+     * The method a name resolves to on $origin for code in $from, as declared:
+     * one of $origin's trait aliases, else the method the walk finds, with the
+     * class declaring it.
+     *
+     * @return ?array{MethodInfo, ClassInfo}
+     */
+    private function declaredMethod(ClassInfo $origin, string $name, ?ClasslikeName $from): ?array
+    {
+        $aliased = $this->findAliasedMethod($origin, $name, $from);
+        return $aliased === null
+            ? $this->findDeclared($origin, MemberKind::Method, $name, $from)
+            : [$aliased, $origin];
     }
 }
