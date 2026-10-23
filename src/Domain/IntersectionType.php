@@ -39,7 +39,6 @@ final readonly class IntersectionType implements TypeInterface
         return false;
     }
 
-
     public function equals(TypeInterface $other): bool
     {
         if (!$other instanceof self) {

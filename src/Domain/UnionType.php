@@ -55,7 +55,6 @@ final readonly class UnionType implements TypeInterface
         return false;
     }
 
-
     public function equals(TypeInterface $other): bool
     {
         if (!$other instanceof self) {
