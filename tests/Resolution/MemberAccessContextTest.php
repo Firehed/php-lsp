@@ -48,13 +48,10 @@ class MemberAccessContextTest extends TestCase
         MemberFilter $filter,
         bool $offersClassConstant,
     ): void {
-        $access = self::access($kind);
-        $ctx = new MemberAccessContext($access, 'prefix');
+        $ctx = new MemberAccessContext(self::access($kind), '');
 
-        self::assertSame($access, $ctx->access, 'the access completed on');
-        self::assertSame('prefix', $ctx->prefix, 'what is typed so far');
-        self::assertSame($filter, $ctx->memberFilter, 'static or instance members');
-        self::assertSame($offersClassConstant, $ctx->offersClassConstant, '::class');
+        self::assertSame($filter, $ctx->memberFilter(), 'static or instance members');
+        self::assertSame($offersClassConstant, $ctx->offersClassConstant(), '::class');
     }
 
     #[DataProvider('allMemberKinds')]

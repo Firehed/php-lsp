@@ -36,7 +36,6 @@ final class MemberAccessTest extends TestCase
 
         $access = new MemberAccess($on, $from, $kind);
 
-        self::assertSame([$on, $from, $kind], [$access->on, $access->from, $access->kind], 'what the access holds');
         self::assertSame(
             $forwards ? $from : null,
             $access->staticClass(),

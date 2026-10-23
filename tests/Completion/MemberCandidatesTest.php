@@ -86,7 +86,7 @@ final class MemberCandidatesTest extends TestCase
             ->with(
                 $context->access->on,
                 $context->access->from,
-                $context->memberFilter,
+                $context->memberFilter(),
                 $context->access->staticClass(),
             )
             ->willReturn([
