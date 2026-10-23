@@ -139,7 +139,11 @@ final class ParameterTypingTest extends TestCase
             'inherited',
             new UnionType([$parentClass, new PrimitiveType('null')]),
         ];
-        yield 'parent in an anonymous class' => ['src/Resolution/AnonymousParent.php', 'anonymousInherited', $parentClass];
+        yield 'parent in an anonymous class' => [
+            'src/Resolution/AnonymousParent.php',
+            'anonymousInherited',
+            $parentClass,
+        ];
     }
 
     #[DataProvider('lateBoundParameters')]
