@@ -49,7 +49,7 @@ final class ParameterTyping
                 $name,
             );
         }
-        $type = TypeFactory::fromNode($param->type, preserveLateBinding: true);
+        $type = TypeFactory::fromNode($param->type);
         $binding = $scope->lateBinding();
         return $binding === null ? $type : $type?->resolveLateBound($binding);
     }
