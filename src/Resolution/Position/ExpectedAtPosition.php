@@ -7,17 +7,13 @@ namespace Firehed\PhpLsp\Resolution\Position;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Domain\ClassCandidateFilter;
-use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\KeywordGroup;
-use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\TypeHintContext;
 use Firehed\PhpLsp\Resolution\Expected;
-use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\NameQuery;
-use PhpParser\Node\Name;
 
 final class ExpectedAtPosition implements ExpectedAtPositionInterface
 {
@@ -98,32 +94,11 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
      */
     private function memberAccess(Located $located): ?MemberAccessContext
     {
-        // A static property's name is written with its `$`; a member's name is not.
-        $prefix = ltrim($located->prefix, '$');
-        $from = $located->scope->getSelfName();
         $receiver = $located->receiver;
-
-        if ($located->slot === Slot::Member) {
-            assert($receiver !== null && !$receiver instanceof Name, 'an instance member is accessed on an expression');
-            $type = $this->expressions->resolve($receiver, $located->parsed)?->getType();
-            if ($type === null || ExpressionResolver::receiverClasslikeNames($type) === []) {
-                return null;
-            }
-            return MemberAccessContext::forInstance($type, $from, $prefix);
-        }
-
-        if (!$receiver instanceof Name) {
-            return null;
-        }
-        $keyword = LateBindingKeyword::tryFromName($receiver->toString());
-        $targetName = $located->scope->resolveClasslikeName($receiver);
-        if ($targetName === null) {
-            return null;
-        }
-        $target = new ClasslikeType($targetName);
-        return $keyword === LateBindingKeyword::Parent
-            ? MemberAccessContext::forParent($target, $from, $located->scope->staticFor($receiver), $prefix)
-            : MemberAccessContext::forStatic($target, $from, $prefix);
+        assert($receiver !== null, 'a member is accessed on something');
+        $access = $this->expressions->resolveMemberAccess($receiver, $located->parsed);
+        // A static property's name is written with its `$`; a member's name is not.
+        return $access === null ? null : new MemberAccessContext($access, ltrim($located->prefix, '$'));
     }
 
     private static function type(Located $located, TypeHintContext $context): Expected

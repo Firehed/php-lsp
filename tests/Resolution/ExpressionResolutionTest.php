@@ -26,9 +26,12 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\MemberAccess;
+use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
@@ -38,6 +41,8 @@ use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PhpParser\Node;
+use PhpParser\Node\Expr;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -305,6 +310,105 @@ final class ExpressionResolutionTest extends TestCase
             'Fixtures\LateBinding\Sub',
             $symbol?->getType()?->format(),
             'parent::makeInstance() returns static, which a parent:: call binds to the calling class',
+        );
+    }
+
+    /**
+     * PHP checks `static` in a constant's type against the class declaring
+     * the constant (`zend_check_class_constant_type` in php-src), not the
+     * class a `parent::` access passes on.
+     */
+    public function testStaticInAParentConstantsTypeIsTheDeclaringClass(): void
+    {
+        $this->resolveOverTheFixtures();
+
+        self::assertSame(
+            '?Fixtures\LateBinding\Base',
+            $this->resolveSymbolAt('src/LateBinding/Sub.php', 'parent_constant_static')?->getType()?->format(),
+            'Base declares NONE, so its static is Base',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, string, ?MemberAccess}>
+     */
+    public static function memberAccesses(): iterable
+    {
+        $receivers = 'src/Resolution/MemberAccessReceivers.php';
+        $written = self::className('Fixtures\Resolution\MemberAccessReceivers');
+        $parent = self::className('Fixtures\Inheritance\ParentClass');
+        yield 'parent:: passes on the class it is written in as static' => [
+            $receivers,
+            'parent',
+            new MemberAccess(new ClasslikeType($parent), $written, MemberAccessKind::Parent),
+        ];
+        yield 'self:: is a static access on the class written in' => [
+            $receivers,
+            'self',
+            new MemberAccess(new ClasslikeType($written), $written, MemberAccessKind::Static),
+        ];
+        yield 'a named class' => [
+            $receivers,
+            'named',
+            new MemberAccess(new ClasslikeType($parent), $written, MemberAccessKind::Static),
+        ];
+        yield 'a class name nothing declares, taken as written' => [
+            $receivers,
+            'undeclared',
+            new MemberAccess(
+                new ClasslikeType(self::className('Fixtures\Resolution\Undeclared')),
+                $written,
+                MemberAccessKind::Static,
+            ),
+        ];
+        yield 'an instance' => [
+            $receivers,
+            'instance',
+            new MemberAccess(new ClasslikeType($written), $written, MemberAccessKind::Instance),
+        ];
+        yield 'an expression before ::, which only a class name is resolved before' => [
+            $receivers,
+            'expression_before_double_colon',
+            null,
+        ];
+        yield 'an instance whose type is not known' => [$receivers, 'unknown', null];
+        yield 'an instance of a type that names no class' => [$receivers, 'no_class', null];
+        yield 'self outside any class' => ['src/TypeInference/StaticCallOutsideClass.php', 'outside_self', null];
+    }
+
+    /**
+     * @param string $marker Written right after the receiver
+     */
+    #[DataProvider('memberAccesses')]
+    public function testAMemberAccessIsOnWhatItsReceiverNames(
+        string $fixture,
+        string $marker,
+        ?MemberAccess $expected,
+    ): void {
+        $content = $this->loadFixture($fixture);
+        $parsed = ProductionSyntaxSource::create()->source->parse(
+            new TextDocument(self::uri($fixture), 'php', 1, $content),
+        );
+        $node = (new NodeAtPosition())->find($parsed->tree, $this->markerOffset($content, $marker) - 1);
+        self::assertTrue($node instanceof Expr || $node instanceof Node\Name, "a receiver is before {$marker}");
+        $expressions = new ExpressionResolver(
+            self::createStub(MemberResolverInterface::class),
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+        );
+
+        self::assertEquals(
+            $expected,
+            $expressions->resolveMemberAccess($node, $parsed),
+            'the class the access is on, the class it is written in, and what static names',
+        );
+    }
+
+    public function testAMemberOnAReceiverOfUnknownTypeIsUnresolved(): void
+    {
+        self::assertNull(
+            $this->resolveSymbolAt('src/TypeInference/StaticCallOutsideClass.php', 'unknown_receiver_call'),
+            'nothing says which class $unknown is',
         );
     }
 

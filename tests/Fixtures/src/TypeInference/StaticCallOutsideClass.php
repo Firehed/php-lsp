@@ -6,7 +6,7 @@ namespace Fixtures\TypeInference;
 
 function callSelfOutsideClass(): void
 {
-    $x = self::method();
+    $x = self/*|outside_self*/::method();
 }
 
 function callParentOutsideClass(): void
@@ -26,5 +26,5 @@ function unknownClassParameter(UnknownClass $obj): void
 
 function methodCallOnUnresolvedType(): void
 {
-    $result = $unknown->someMethod();
+    $result = $unknown->someMethod(); //hover:unknown_receiver_call
 }

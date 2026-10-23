@@ -19,57 +19,45 @@ class MemberAccessContextTest extends TestCase
 {
     use ProvidesMemberKindsTrait;
 
-    private static function type(): ClasslikeType
+    private static function access(MemberAccessKind $kind): MemberAccess
     {
-        return new ClasslikeType(ClasslikeName::fromFullyQualified(self::class));
+        return new MemberAccess(
+            new ClasslikeType(ClasslikeName::fromFullyQualified(self::class)),
+            null,
+            $kind,
+        );
     }
 
-    public function testForInstanceSetsExpectedValues(): void
+    /**
+     * @return iterable<string, array{MemberAccessKind, MemberFilter, bool}>
+     */
+    public static function rulesByKind(): iterable
     {
-        $ctx = MemberAccessContext::forInstance(self::type(), null, 'prefix');
-
-        self::assertSame(MemberAccessKind::Instance, $ctx->kind, 'kind');
-        self::assertSame(MemberFilter::Instance, $ctx->memberFilter, 'memberFilter');
-        self::assertFalse($ctx->offersClassConstant, 'offersClassConstant');
-        self::assertSame('prefix', $ctx->prefix, 'prefix');
+        yield 'an instance offers instance members' => [MemberAccessKind::Instance, MemberFilter::Instance, false];
+        yield 'a static access offers static members and ::class' => [
+            MemberAccessKind::Static,
+            MemberFilter::Static,
+            true,
+        ];
+        yield 'parent:: offers members of either kind' => [MemberAccessKind::Parent, MemberFilter::All, false];
     }
 
-    public function testForStaticSetsExpectedValues(): void
-    {
-        $from = ClasslikeName::fromFullyQualified('App\\Caller');
-        $ctx = MemberAccessContext::forStatic(self::type(), $from, 'pre');
+    #[DataProvider('rulesByKind')]
+    public function testTheKindOfAccessDecidesWhatIsOffered(
+        MemberAccessKind $kind,
+        MemberFilter $filter,
+        bool $offersClassConstant,
+    ): void {
+        $ctx = new MemberAccessContext(self::access($kind), '');
 
-        self::assertSame($from, $ctx->from, 'from');
-        self::assertSame(MemberAccessKind::Static, $ctx->kind, 'kind');
-        self::assertSame(MemberFilter::Static, $ctx->memberFilter, 'memberFilter');
-        self::assertTrue($ctx->offersClassConstant, 'offersClassConstant');
-        self::assertSame('pre', $ctx->prefix, 'prefix');
-    }
-
-    public function testOnlyAParentAccessCarriesAStatic(): void
-    {
-        $from = ClasslikeName::fromFullyQualified('App\\Caller');
-        $static = ClasslikeName::fromFullyQualified('App\\Late');
-
-        self::assertSame($static, MemberAccessContext::forParent(self::type(), $from, $static, '')->static, 'parent::');
-        self::assertNull(MemberAccessContext::forStatic(self::type(), $from, '')->static, 'a named class');
-        self::assertNull(MemberAccessContext::forInstance(self::type(), $from, '')->static, 'an instance');
-    }
-
-    public function testForParentSetsExpectedValues(): void
-    {
-        $ctx = MemberAccessContext::forParent(self::type(), null, null, '');
-
-        self::assertSame(MemberAccessKind::Parent, $ctx->kind, 'kind');
-        self::assertSame(MemberFilter::All, $ctx->memberFilter, 'memberFilter');
-        self::assertFalse($ctx->offersClassConstant, 'offersClassConstant');
-        self::assertSame('', $ctx->prefix, 'prefix');
+        self::assertSame($filter, $ctx->memberFilter(), 'static or instance members');
+        self::assertSame($offersClassConstant, $ctx->offersClassConstant(), '::class');
     }
 
     #[DataProvider('allMemberKinds')]
     public function testInstanceAcceptsAllKinds(MemberKind $memberKind): void
     {
-        $ctx = MemberAccessContext::forInstance(self::type(), null, '');
+        $ctx = new MemberAccessContext(self::access(MemberAccessKind::Instance), '');
         $member = self::createStub(ResolvedMemberInterface::class);
         $member->method('getMemberKind')->willReturn($memberKind);
 
@@ -79,7 +67,7 @@ class MemberAccessContextTest extends TestCase
     #[DataProvider('allMemberKinds')]
     public function testStaticAcceptsAllKinds(MemberKind $memberKind): void
     {
-        $ctx = MemberAccessContext::forStatic(self::type(), null, '');
+        $ctx = new MemberAccessContext(self::access(MemberAccessKind::Static), '');
         $member = self::createStub(ResolvedMemberInterface::class);
         $member->method('getMemberKind')->willReturn($memberKind);
 
@@ -89,7 +77,7 @@ class MemberAccessContextTest extends TestCase
     #[DataProvider('parentAcceptsCases')]
     public function testParentAcceptsOnlyMethods(MemberKind $memberKind, bool $expected): void
     {
-        $ctx = MemberAccessContext::forParent(self::type(), null, null, '');
+        $ctx = new MemberAccessContext(self::access(MemberAccessKind::Parent), '');
         $member = self::createStub(ResolvedMemberInterface::class);
         $member->method('getMemberKind')->willReturn($memberKind);
 
