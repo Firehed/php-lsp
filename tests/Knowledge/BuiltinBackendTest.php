@@ -442,6 +442,10 @@ final class BuiltinBackendTest extends TestCase
             $function('ini_get'),
             new UnionType([new PrimitiveType('string'), new PrimitiveType('false')]),
         ];
+        yield 'a union holding null, which is not wrapped again' => [
+            $function('array_key_first'),
+            new UnionType([new PrimitiveType('string'), new PrimitiveType('int'), $null]),
+        ];
         yield 'static, which reflection names as a class' => [
             $method(\DateTimeImmutable::class, 'setMicrosecond'),
             $static,
