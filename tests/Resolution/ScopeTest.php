@@ -34,8 +34,8 @@ class ScopeTest extends TestCase
         $scope = Scope::at($function, $ast);
 
         self::assertSame([], $scope->getParams(), 'Free function fixture declares no parameters');
-        self::assertNull(self::selfName($scope), 'Free function has no enclosing class');
-        self::assertNull(self::parentName($scope));
+        self::assertNull($scope->getSelfName(), 'Free function has no enclosing class');
+        self::assertNull($scope->lateBinding()->parent);
         self::assertNull($scope->getThisType(), '$this is not bound in a free function');
         self::assertNotEmpty($scope->getStatements(), 'Function body statements should be exposed');
     }
@@ -46,8 +46,8 @@ class ScopeTest extends TestCase
 
         $scope = Scope::at(self::method('methodWithThis', $ast), $ast);
 
-        self::assertSame('Fixtures\Utility\ScopePatterns', self::selfName($scope));
-        self::assertNull(self::parentName($scope), 'ScopePatterns has no parent class');
+        self::assertEquals(self::className('Fixtures\Utility\ScopePatterns'), $scope->getSelfName());
+        self::assertNull($scope->lateBinding()->parent, 'ScopePatterns has no parent class');
         self::assertSame('Fixtures\Utility\ScopePatterns', $scope->getThisType()?->qualifiedName->fullyQualifiedName());
     }
 
@@ -57,8 +57,8 @@ class ScopeTest extends TestCase
 
         $scope = Scope::at(self::method('parentMethod', $ast), $ast);
 
-        self::assertSame('Fixtures\Inheritance\ParentClass', self::selfName($scope));
-        self::assertSame('Fixtures\Inheritance\Grandparent', self::parentName($scope));
+        self::assertEquals(self::className('Fixtures\Inheritance\ParentClass'), $scope->getSelfName());
+        self::assertEquals(self::className('Fixtures\Inheritance\Grandparent'), $scope->lateBinding()->parent);
     }
 
     public function testATraitMethodHasNoParentContext(): void
@@ -67,8 +67,8 @@ class ScopeTest extends TestCase
 
         $scope = Scope::at(self::method('getCreatedAt', $ast), $ast);
 
-        self::assertSame('Fixtures\Traits\HasTimestamps', self::selfName($scope));
-        self::assertNull(self::parentName($scope), 'A trait has no extends clause');
+        self::assertEquals(self::className('Fixtures\Traits\HasTimestamps'), $scope->getSelfName());
+        self::assertNull($scope->lateBinding()->parent, 'A trait has no extends clause');
         self::assertSame('Fixtures\Traits\HasTimestamps', $scope->getThisType()?->qualifiedName->fullyQualifiedName());
     }
 
@@ -114,7 +114,11 @@ class ScopeTest extends TestCase
         $captured = self::useNames($scope);
         self::assertContains('captured', $captured, 'use($captured) should be exposed as a capture');
         self::assertNotContains('notCaptured', $captured);
-        self::assertSame('Fixtures\Utility\ScopePatterns', self::selfName($scope), 'Closure inherits class context');
+        self::assertEquals(
+            self::className('Fixtures\Utility\ScopePatterns'),
+            $scope->getSelfName(),
+            'Closure inherits class context',
+        );
     }
 
     public function testAnArrowFunctionHasNoStatements(): void
@@ -203,7 +207,11 @@ class ScopeTest extends TestCase
         $ast = self::parseWithParents($this->loadFixture($fixture));
         $classLike = self::findFirst($kind, $ast);
 
-        self::assertSame($expected, self::selfName(Scope::at($classLike, $ast)), "a $kind is a class context");
+        self::assertEquals(
+            self::className($expected),
+            Scope::at($classLike, $ast)->getSelfName(),
+            "a $kind is a class context",
+        );
     }
 
     /**
@@ -226,7 +234,11 @@ class ScopeTest extends TestCase
         $scope = Scope::at(self::findFirst(Stmt\Class_::class, $ast), $ast);
 
         self::assertNull($scope->getSourceNode(), 'no function-like holds the class body');
-        self::assertSame('Fixtures\Utility\ScopePatterns', self::selfName($scope), 'self names the class');
+        self::assertEquals(
+            self::className('Fixtures\Utility\ScopePatterns'),
+            $scope->getSelfName(),
+            'self names the class',
+        );
     }
 
     public function testAnAnonymousClassHasNoClassName(): void
@@ -235,7 +247,7 @@ class ScopeTest extends TestCase
         $this_ = self::findVariableNode('this', $ast);
         self::assertNotNull($this_);
 
-        self::assertNull(self::selfName(Scope::at($this_, $ast)), 'an anonymous class has no name to resolve');
+        self::assertNull(Scope::at($this_, $ast)->getSelfName(), 'an anonymous class has no name to resolve');
     }
 
     public function testAClassOutsideANamespaceIsNamedByItsShortName(): void
@@ -244,7 +256,7 @@ class ScopeTest extends TestCase
         $this_ = self::findVariableNode('this', $ast);
         self::assertNotNull($this_);
 
-        self::assertSame('GlobalConfig', self::selfName(Scope::at($this_, $ast)));
+        self::assertEquals(self::className('GlobalConfig'), Scope::at($this_, $ast)->getSelfName());
     }
 
     public function testANodeAtNamespaceLevelIsInItsNamespacesStatements(): void
@@ -256,7 +268,7 @@ class ScopeTest extends TestCase
         $scope = Scope::at($globalVar, $ast);
 
         self::assertNull($scope->getSourceNode(), 'outside any function-like the scope is global');
-        self::assertNull(self::selfName($scope), 'no class holds it');
+        self::assertNull($scope->getSelfName(), 'no class holds it');
         $namespace = self::findFirst(Stmt\Namespace_::class, $ast);
         self::assertSame($namespace->stmts, $scope->getStatements(), 'the namespace\'s statements, not the file\'s');
     }
@@ -502,14 +514,9 @@ class ScopeTest extends TestCase
         );
     }
 
-    private static function selfName(Scope $scope): ?string
+    private static function className(string $fullyQualifiedName): ClasslikeName
     {
-        return $scope->getSelfName()?->qualifiedName->fullyQualifiedName();
-    }
-
-    private static function parentName(Scope $scope): ?string
-    {
-        return $scope->lateBinding()->parent?->qualifiedName->fullyQualifiedName();
+        return ClasslikeName::fromFullyQualified($fullyQualifiedName);
     }
 
     /**
