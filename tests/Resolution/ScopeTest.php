@@ -388,7 +388,11 @@ class ScopeTest extends TestCase
         $ast = self::parseWithParents($this->loadFixture($fixture));
         $node = self::findFirst(Node\Name::class, $ast, fn ($n) => $n->toString() === $name);
 
-        self::assertSame($expected, Scope::at($node, $ast)->resolveClasslikeName($node), "$name in $fixture");
+        self::assertEquals(
+            $expected === null ? null : ClasslikeName::fromFullyQualified($expected),
+            Scope::at($node, $ast)->resolveClasslikeName($node),
+            "$name in $fixture",
+        );
     }
 
     /**
