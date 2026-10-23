@@ -429,14 +429,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         return null;
     }
 
-    /**
-     * @return list<ClasslikeName>
-     */
-    public static function receiverClasslikeNames(?TypeInterface $type): array
-    {
-        return $type?->getResolvableClasslikeNames() ?? [];
-    }
-
     private function resolveClassConstFetch(ClassConstFetch $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
     {
         if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
