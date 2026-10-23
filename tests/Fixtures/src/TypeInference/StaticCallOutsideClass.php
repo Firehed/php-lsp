@@ -6,7 +6,7 @@ namespace Fixtures\TypeInference;
 
 function callSelfOutsideClass(): void
 {
-    $x = self::method();
+    $x = self/*|outside_self*/::method();
 }
 
 function callParentOutsideClass(): void

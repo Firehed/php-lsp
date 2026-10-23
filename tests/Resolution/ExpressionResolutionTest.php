@@ -41,9 +41,9 @@ use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use Firehed\PhpLsp\Parser\NodeAtPosition;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
-use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -335,56 +335,54 @@ final class ExpressionResolutionTest extends TestCase
      */
     public static function memberAccesses(): iterable
     {
-        $keywords = 'src/TypeInference/NewKeywords.php';
-        $outside = 'src/TypeInference/StaticCallOutsideClass.php';
-        $written = self::className('Fixtures\TypeInference\NewKeywords');
+        $receivers = 'src/Resolution/MemberAccessReceivers.php';
+        $written = self::className('Fixtures\Resolution\MemberAccessReceivers');
         $parent = self::className('Fixtures\Inheritance\ParentClass');
-        $patterns = self::className('Fixtures\Utility\ScopePatterns');
         yield 'parent:: passes on the class it is written in as static' => [
-            $keywords,
+            $receivers,
             'parent',
             new MemberAccess(new ClasslikeType($parent), $written, MemberAccessKind::Parent),
         ];
         yield 'self:: is a static access on the class written in' => [
-            $keywords,
+            $receivers,
             'self',
             new MemberAccess(new ClasslikeType($written), $written, MemberAccessKind::Static),
         ];
         yield 'a named class' => [
-            $keywords,
-            'Fixtures\Inheritance\ParentClass',
+            $receivers,
+            'named',
             new MemberAccess(new ClasslikeType($parent), $written, MemberAccessKind::Static),
         ];
         yield 'an instance' => [
-            'src/Utility/ScopePatterns.php',
-            '$this',
-            new MemberAccess(new ClasslikeType($patterns), $patterns, MemberAccessKind::Instance),
+            $receivers,
+            'instance',
+            new MemberAccess(new ClasslikeType($written), $written, MemberAccessKind::Instance),
         ];
-        yield 'self outside any class' => [$outside, 'self', null];
-        yield 'an instance whose type is not known' => [$outside, '$unknown', null];
-        yield 'an instance of a type that names no class' => ['src/Resolution/ClosureParameter.php', '$captured', null];
+        yield 'an expression before ::, which only a class name is resolved before' => [
+            $receivers,
+            'expression_before_double_colon',
+            null,
+        ];
+        yield 'an instance whose type is not known' => [$receivers, 'unknown', null];
+        yield 'an instance of a type that names no class' => [$receivers, 'no_class', null];
+        yield 'self outside any class' => ['src/TypeInference/StaticCallOutsideClass.php', 'outside_self', null];
     }
 
     /**
-     * @param string $receiver The class name, or `$`-prefixed variable, whose
-     *        last occurrence in the fixture is the receiver
+     * @param string $marker Written right after the receiver
      */
     #[DataProvider('memberAccesses')]
     public function testAMemberAccessIsOnWhatItsReceiverNames(
         string $fixture,
-        string $receiver,
+        string $marker,
         ?MemberAccess $expected,
     ): void {
-        $document = new TextDocument(self::uri($fixture), 'php', 1, $this->loadFixture($fixture));
-        $parsed = ProductionSyntaxSource::create()->source->parse($document);
-        $found = (new NodeFinder())->find(
-            $parsed->tree,
-            static fn (Node $node): bool => str_starts_with($receiver, '$')
-                ? $node instanceof Expr\Variable && is_string($node->name) && '$' . $node->name === $receiver
-                : $node instanceof Node\Name && $node->toString() === $receiver,
+        $content = $this->loadFixture($fixture);
+        $parsed = ProductionSyntaxSource::create()->source->parse(
+            new TextDocument(self::uri($fixture), 'php', 1, $content),
         );
-        $node = end($found);
-        self::assertTrue($node instanceof Expr || $node instanceof Node\Name, "{$receiver} is written in {$fixture}");
+        $node = (new NodeAtPosition())->find($parsed->tree, $this->markerOffset($content, $marker) - 1);
+        self::assertTrue($node instanceof Expr || $node instanceof Node\Name, "a receiver is before {$marker}");
         $expressions = new ExpressionResolver(
             self::createStub(MemberResolverInterface::class),
             self::createStub(SymbolSourceInterface::class),
