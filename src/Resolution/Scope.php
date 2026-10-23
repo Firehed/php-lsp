@@ -153,18 +153,14 @@ final class Scope
     /**
      * A class name as written here: `self`, `static`, and `parent` resolve
      * against the enclosing class-like, null where it gives them none.
-     *
-     * @return ?class-string
      */
-    public function resolveClasslikeName(Name $name): ?string
+    public function resolveClasslikeName(Name $name): ?ClasslikeName
     {
         $keyword = LateBindingKeyword::tryFromName($name->toString());
         if ($keyword !== null) {
-            /** @var ?class-string */
-            return $this->lateBinding()->classFor($keyword)?->qualifiedName->fullyQualifiedName();
+            return $this->lateBinding()->classFor($keyword);
         }
-        /** @var class-string */
-        return $name->toString();
+        return ClasslikeName::fromFullyQualified($name->toString());
     }
 
     /**

@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Resolution\Position;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
-use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
@@ -93,6 +92,6 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
             return null;
         }
         $name = $scope->resolveClasslikeName($written);
-        return $name === null ? null : $this->symbols->lookupClassLike(ClasslikeName::fromFullyQualified($name));
+        return $name === null ? null : $this->symbols->lookupClassLike($name);
     }
 }

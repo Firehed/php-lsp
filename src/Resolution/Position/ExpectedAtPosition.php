@@ -7,7 +7,6 @@ namespace Firehed\PhpLsp\Resolution\Position;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Domain\ClassCandidateFilter;
-use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\KeywordGroup;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
@@ -121,7 +120,7 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
         if ($targetName === null) {
             return null;
         }
-        $target = new ClasslikeType(ClasslikeName::fromFullyQualified($targetName));
+        $target = new ClasslikeType($targetName);
         return $keyword === LateBindingKeyword::Parent
             ? MemberAccessContext::forParent($target, $from, $located->scope->staticFor($receiver), $prefix)
             : MemberAccessContext::forStatic($target, $from, $prefix);
