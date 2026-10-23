@@ -176,12 +176,18 @@ final class SymbolCapabilitiesTest extends TestCase
             }
         }
         $from = ClasslikeName::fromFullyQualified('Caller');
+        $static = ClasslikeName::fromFullyQualified('CalledOn');
         $members = self::createStub(MemberResolverInterface::class);
         $members->method('getMembersOfKind')->willReturnCallback(
-            static fn (ClasslikeName $class, MemberKind $kind, ?ClasslikeName $passedFrom, MemberFilter $passed): array
-                => $passedFrom === $from && $passed === $filter
-                    ? [$byClassAndKind[$class->qualifiedName->fullyQualifiedName()][$kind->name]]
-                    : [],
+            static fn (
+                ClasslikeName $class,
+                MemberKind $kind,
+                ?ClasslikeName $passedFrom,
+                MemberFilter $passed,
+                ?ClasslikeName $passedStatic,
+            ): array => $passedFrom === $from && $passed === $filter && $passedStatic === $static
+                ? [$byClassAndKind[$class->qualifiedName->fullyQualifiedName()][$kind->name]]
+                : [],
         );
         $expected = [];
         foreach ($classes as $class) {
@@ -199,6 +205,7 @@ final class SymbolCapabilitiesTest extends TestCase
                 )),
                 $from,
                 $filter,
+                $static,
             ),
             'every class the type may be, each with the kinds of member its access reaches, from the given class',
         );

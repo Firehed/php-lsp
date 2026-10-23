@@ -46,6 +46,15 @@ class MemberAccessContextTest extends TestCase
         self::assertSame('pre', $ctx->prefix, 'prefix');
     }
 
+    public function testOnlyAParentAccessPassesOnTheClassItIsWrittenIn(): void
+    {
+        $from = ClasslikeName::fromFullyQualified('App\\Caller');
+
+        self::assertSame($from, MemberAccessContext::forParent(self::type(), $from, '')->static, 'parent::');
+        self::assertNull(MemberAccessContext::forStatic(self::type(), $from, '')->static, 'a named class');
+        self::assertNull(MemberAccessContext::forInstance(self::type(), $from, '')->static, 'an instance');
+    }
+
     public function testForParentSetsExpectedValues(): void
     {
         $ctx = MemberAccessContext::forParent(self::type(), null, '');

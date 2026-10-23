@@ -25,6 +25,7 @@ final class SymbolCapabilities implements SymbolCapabilitiesInterface
         TypeInterface $type,
         ?ClasslikeName $from,
         MemberFilter $filter = MemberFilter::Instance,
+        ?ClasslikeName $static = null,
     ): array {
         $classNames = $type->getResolvableClasslikeNames();
         $members = [];
@@ -34,7 +35,7 @@ final class SymbolCapabilities implements SymbolCapabilitiesInterface
         $includeStatic = $includesStatic[$filter->name];
 
         foreach ($classNames as $className) {
-            foreach ($this->getMembersForClass($className, $from, $filter, $includeStatic) as $member) {
+            foreach ($this->getMembersForClass($className, $from, $filter, $includeStatic, $static) as $member) {
                 $members[] = $member;
             }
         }
@@ -56,6 +57,7 @@ final class SymbolCapabilities implements SymbolCapabilitiesInterface
         ?ClasslikeName $from,
         MemberFilter $filter,
         bool $includeStatic,
+        ?ClasslikeName $static,
     ): array {
         $kinds = $includeStatic
             ? [MemberKind::Method, MemberKind::Property, MemberKind::Constant, MemberKind::EnumCase]
@@ -63,7 +65,7 @@ final class SymbolCapabilities implements SymbolCapabilitiesInterface
 
         $members = [];
         foreach ($kinds as $kind) {
-            foreach ($this->memberResolver->getMembersOfKind($className, $kind, $from, $filter) as $member) {
+            foreach ($this->memberResolver->getMembersOfKind($className, $kind, $from, $filter, $static) as $member) {
                 $members[] = $member;
             }
         }

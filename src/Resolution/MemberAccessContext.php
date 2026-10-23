@@ -12,13 +12,15 @@ use Firehed\PhpLsp\Domain\TypeInterface;
 /**
  * A member access being written: what it is on, and the class-like the access
  * is written in ($from; null outside any class), which decides the members it
- * may use.
+ * may use. $static is the class `static` names when it is not what the access
+ * is on: a `parent::` access passes on the class it is written in.
  */
 final readonly class MemberAccessContext
 {
     private function __construct(
         public TypeInterface $type,
         public ?ClasslikeName $from,
+        public ?ClasslikeName $static,
         public MemberAccessKind $kind,
         public string $prefix,
         public MemberFilter $memberFilter,
@@ -35,6 +37,7 @@ final readonly class MemberAccessContext
         return new self(
             $type,
             $from,
+            null,
             MemberAccessKind::Instance,
             $prefix,
             MemberFilter::Instance,
@@ -51,6 +54,7 @@ final readonly class MemberAccessContext
         return new self(
             $type,
             $from,
+            null,
             MemberAccessKind::Static,
             $prefix,
             MemberFilter::Static,
@@ -66,6 +70,7 @@ final readonly class MemberAccessContext
     ): self {
         return new self(
             $type,
+            $from,
             $from,
             MemberAccessKind::Parent,
             $prefix,

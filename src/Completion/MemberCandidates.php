@@ -32,6 +32,7 @@ final class MemberCandidates
             $context->type,
             $context->from,
             $context->memberFilter,
+            $context->static,
         );
 
         $snippetSupport = $this->capabilities->getSessionCapabilities()->snippetSupport;
