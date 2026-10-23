@@ -407,11 +407,16 @@ class ScopeTest extends TestCase
             ],
             'self outside a class' => ['src/TypeInference/StaticCallOutsideClass.php', 'self', null],
             'parent with no extends' => ['src/TypeInference/ParentWithoutExtends.php', 'parent', null],
+            'parent in an anonymous class' => [
+                'src/Resolution/AnonymousParent.php',
+                'parent',
+                'Fixtures\Inheritance\ParentClass',
+            ],
         ];
     }
 
     /**
-     * @return iterable<string, array{string, class-string<Stmt\ClassMethod|Stmt\Function_>, string, ?LateBinding}>
+     * @return iterable<string, array{string, class-string<Stmt\ClassMethod|Stmt\Function_>, string, LateBinding}>
      */
     public static function lateBindings(): iterable
     {
@@ -430,7 +435,18 @@ class ScopeTest extends TestCase
             'getCreatedAt',
             new LateBinding($trait, $trait, null),
         ];
-        yield 'a free function' => ['src/Utility/GlobalScope.php', Stmt\Function_::class, 'utilityFunction', null];
+        yield 'an anonymous class, which has a parent but no name' => [
+            'src/Resolution/AnonymousParent.php',
+            Stmt\ClassMethod::class,
+            'call',
+            new LateBinding(null, null, $parentClass),
+        ];
+        yield 'a free function' => [
+            'src/Utility/GlobalScope.php',
+            Stmt\Function_::class,
+            'utilityFunction',
+            new LateBinding(null, null, null),
+        ];
     }
 
     /**
@@ -441,7 +457,7 @@ class ScopeTest extends TestCase
         string $fixture,
         string $kind,
         string $function,
-        ?LateBinding $expected,
+        LateBinding $expected,
     ): void {
         $ast = self::parseWithParents($this->loadFixture($fixture));
         $node = self::findFirst($kind, $ast, fn ($n) => $n->name->toString() === $function);

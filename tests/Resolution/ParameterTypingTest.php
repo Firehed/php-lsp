@@ -123,29 +123,32 @@ final class ParameterTypingTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{string, TypeInterface}>
+     * @return iterable<string, array{string, string, TypeInterface}>
      */
     public static function lateBoundParameters(): iterable
     {
+        $closures = 'src/Resolution/ClosureLateBound.php';
+        $parentClass = new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Inheritance\ParentClass'));
         yield 'self in a closure' => [
+            $closures,
             'own',
             new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Resolution\ClosureLateBound')),
         ];
         yield 'nullable parent in an arrow function' => [
+            $closures,
             'inherited',
-            new UnionType([
-                new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\Inheritance\ParentClass')),
-                new PrimitiveType('null'),
-            ]),
+            new UnionType([$parentClass, new PrimitiveType('null')]),
         ];
+        yield 'parent in an anonymous class' => ['src/Resolution/AnonymousParent.php', 'anonymousInherited', $parentClass];
     }
 
     #[DataProvider('lateBoundParameters')]
     public function testAKeywordInAClosureParameterNamesWhatTheScopeBindsItTo(
+        string $fixture,
         string $name,
         TypeInterface $expected,
     ): void {
-        $ast = self::parseWithParents($this->loadFixture('src/Resolution/ClosureLateBound.php'));
+        $ast = self::parseWithParents($this->loadFixture($fixture));
         $param = (new NodeFinder())->findFirst(
             $ast,
             static fn ($node): bool => $node instanceof Param
