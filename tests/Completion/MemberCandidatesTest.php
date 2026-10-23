@@ -41,6 +41,10 @@ final class MemberCandidatesTest extends TestCase
             self::context(MemberAccessKind::Instance, 'get'),
             ['getName', 'getCount'],
         ];
+        yield 'instance written in a class, which static is not' => [
+            self::context(MemberAccessKind::Instance, '', self::owner()),
+            ['getName', 'getCount', 'name'],
+        ];
         yield 'instance, prefix that matches nothing' => [
             self::context(MemberAccessKind::Instance, 'zzz'),
             [],
