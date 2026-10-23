@@ -45,11 +45,6 @@ use PhpParser\Node\Scalar;
 use PhpParser\Node\Stmt;
 use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
 
-/**
- * Lookup is a filter over {@see declarationsIn()} rather than its own scan: a
- * second scan is how the on-disk read path and the open-document write path
- * came to disagree about which declarations count.
- */
 final readonly class ParsedDeclarationSource implements DeclarationSourceInterface
 {
     public function __construct(
