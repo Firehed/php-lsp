@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Completion\CompletionItemFactory;
+use Firehed\PhpLsp\Completion\CompletionItemFormatter;
 use Firehed\PhpLsp\Completion\InsertTextFormat;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Domain\ClasslikeName;
@@ -111,7 +111,7 @@ final class MemberCandidatesTest extends TestCase
         return new MemberCandidates(
             $symbols,
             self::capabilitiesProvider(new SessionCapabilities(snippetSupport: $snippetSupport)),
-            new CompletionItemFactory(new ResolvedSymbolPresenter()),
+            new CompletionItemFormatter(new ResolvedSymbolPresenter()),
         );
     }
 

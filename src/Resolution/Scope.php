@@ -6,12 +6,15 @@ namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
+use Firehed\PhpLsp\Domain\NamespaceName;
+use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Name;
 use PhpParser\Node\PropertyHook;
 use PhpParser\Node\Stmt;
+use PhpParser\Node\UseItem;
 
 /**
  * The lexical scope at a point in a document: the one answer to what encloses
@@ -180,10 +183,37 @@ final class Scope
 
     /**
      * How a name written here resolves: the enclosing namespace and its imports.
+     * A `use` is in effect only inside its own namespace block, so a file
+     * declaring several namespaces does not share imports between them.
      */
     public function nameContext(): NameContext
     {
-        return NameContextFactory::in($this->namespace, $this->tree);
+        $imports = [
+            Stmt\Use_::TYPE_NORMAL => [],
+            Stmt\Use_::TYPE_FUNCTION => [],
+            Stmt\Use_::TYPE_CONSTANT => [],
+        ];
+
+        foreach ($this->namespace->stmts ?? $this->tree as $stmt) {
+            if ($stmt instanceof Stmt\Use_) {
+                foreach ($stmt->uses as $use) {
+                    $imports[$this->importType($use, $stmt->type)][$this->importAlias($use)] = $use->name->toString();
+                }
+            } elseif ($stmt instanceof Stmt\GroupUse) {
+                $prefix = $stmt->prefix->toString();
+                foreach ($stmt->uses as $use) {
+                    $imports[$this->importType($use, $stmt->type)][$this->importAlias($use)]
+                        = NamespaceName::join($prefix, $use->name->toString());
+                }
+            }
+        }
+
+        return new NameContext(
+            namespace: $this->namespace?->name?->toString() ?? '',
+            classImports: $imports[Stmt\Use_::TYPE_NORMAL],
+            functionImports: $imports[Stmt\Use_::TYPE_FUNCTION],
+            constantImports: $imports[Stmt\Use_::TYPE_CONSTANT],
+        );
     }
 
     /**
@@ -215,5 +245,30 @@ final class Scope
     public function getSourceNode(): Stmt\Function_|Stmt\ClassMethod|Closure|ArrowFunction|PropertyHook|null
     {
         return $this->sourceNode;
+    }
+
+    private function importAlias(UseItem $use): string
+    {
+        return $use->alias?->toString() ?? $use->name->getLast();
+    }
+
+    /**
+     * A group use may mix kinds (`use Foo\{function bar, const BAZ, Qux}`), in
+     * which case the item carries the type; otherwise the statement does.
+     *
+     * @param Stmt\Use_::TYPE_* $statementType
+     * @return Stmt\Use_::TYPE_NORMAL|Stmt\Use_::TYPE_FUNCTION|Stmt\Use_::TYPE_CONSTANT
+     */
+    private function importType(UseItem $use, int $statementType): int
+    {
+        $type = $use->type === Stmt\Use_::TYPE_UNKNOWN ? $statementType : $use->type;
+
+        if ($type === Stmt\Use_::TYPE_UNKNOWN) {
+            // @codeCoverageIgnoreStart
+            throw new LogicException('A use statement and its items cannot both be untyped');
+            // @codeCoverageIgnoreEnd
+        }
+
+        return $type;
     }
 }

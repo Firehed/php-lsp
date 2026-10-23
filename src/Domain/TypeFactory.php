@@ -8,10 +8,6 @@ use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
-use ReflectionIntersectionType;
-use ReflectionNamedType;
-use ReflectionType;
-use ReflectionUnionType;
 
 /**
  * @deprecated sweep: source-context factory; resolution should go through
@@ -78,80 +74,6 @@ final class TypeFactory
 
         // @codeCoverageIgnoreStart
         throw new LogicException('Unexpected node type in type context');
-        // @codeCoverageIgnoreEnd
-    }
-
-    public static function className(string $fqn): ClasslikeName
-    {
-        return ClasslikeName::fromFullyQualified($fqn);
-    }
-
-    public static function primitive(string $name): PrimitiveType
-    {
-        return new PrimitiveType($name);
-    }
-
-    /**
-     * Build a union from resolved parts. A single-member "union" collapses to
-     * that member, matching how PHP's type system treats it.
-     *
-     * @param non-empty-list<TypeInterface> $members
-     */
-    public static function union(array $members): TypeInterface
-    {
-        if (count($members) === 1) {
-            return $members[0];
-        }
-        return new UnionType($members);
-    }
-
-    public static function fromReflection(?ReflectionType $type): ?TypeInterface
-    {
-        if ($type === null) {
-            return null;
-        }
-
-        if ($type instanceof ReflectionNamedType) {
-            $name = $type->getName();
-
-            // Reflection reports `static` and `self` as class names.
-            $keyword = LateBindingKeyword::tryFromName($name);
-            if ($keyword !== null) {
-                $late = new LateStaticType($keyword);
-                return $type->allowsNull() ? new UnionType([$late, new PrimitiveType('null')]) : $late;
-            }
-
-            if ($type->isBuiltin()) {
-                $primitive = new PrimitiveType($name);
-                if ($type->allowsNull() && $name !== 'null' && $name !== 'mixed') {
-                    return new UnionType([$primitive, new PrimitiveType('null')]);
-                }
-                return $primitive;
-            }
-
-            $classType = new ClasslikeType(ClasslikeName::fromFullyQualified($name));
-            if ($type->allowsNull()) {
-                return new UnionType([$classType, new PrimitiveType('null')]);
-            }
-            return $classType;
-        }
-
-        if ($type instanceof ReflectionUnionType) {
-            $members = array_values(array_filter(
-                array_map(self::fromReflection(...), $type->getTypes()),
-            ));
-            return new UnionType($members);
-        }
-
-        if ($type instanceof ReflectionIntersectionType) {
-            $members = array_values(array_filter(
-                array_map(self::fromReflection(...), $type->getTypes()),
-            ));
-            return new IntersectionType($members);
-        }
-
-        // @codeCoverageIgnoreStart
-        throw new LogicException('Unexpected ReflectionType kind');
         // @codeCoverageIgnoreEnd
     }
 

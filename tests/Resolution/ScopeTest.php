@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Resolution;
 
+use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
+use Firehed\PhpLsp\Tests\Parser\ParserOnlySyntaxSource;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
@@ -310,6 +313,71 @@ class ScopeTest extends TestCase
         self::assertNotNull($this_);
 
         self::assertSame('', Scope::at($this_, $ast)->nameContext()->namespace);
+    }
+
+    /**
+     * @return iterable<string, array{string, NameContext}>
+     */
+    public static function nameContexts(): iterable
+    {
+        $imports = 'Namespacing/ImportCompletion.php';
+        $models = 'Fixtures\Namespacing\Models';
+        yield 'imports of each kind, in the enclosing block' => [$imports, new NameContext(
+            'Fixtures\Namespacing\ImportCompletion',
+            classImports: [
+                'User' => "{$models}\User",
+                'Repo' => "{$models}\UserRepository",
+                'SingletonTrait' => 'Fixtures\Traits\SingletonTrait',
+            ],
+            functionImports: ['makeUser' => "{$models}\makeUser"],
+            constantImports: ['DEFAULT_LIMIT' => "{$models}\DEFAULT_LIMIT"],
+        )];
+        yield 'a group use, aliased member included, and no other block\'s imports' => [
+            $imports,
+            new NameContext('Fixtures\Namespacing\ImportCompletion\Grouped', classImports: [
+                'User' => "{$models}\User",
+                'Post' => "{$models}\Post",
+                'Repos' => "{$models}\UserRepository",
+            ]),
+        ];
+        yield 'a mixed group use, split by item kind' => [$imports, new NameContext(
+            'Fixtures\Namespacing\ImportCompletion\MixedGroup',
+            classImports: ['UserRepository' => "{$models}\UserRepository"],
+            functionImports: ['makeUser' => "{$models}\makeUser"],
+            constantImports: ['DEFAULT_LIMIT' => "{$models}\DEFAULT_LIMIT"],
+        )];
+        yield 'one short name imported as a class and as a function' => [
+            $imports,
+            new NameContext(
+                'Fixtures\Namespacing\ImportCompletion\Collision',
+                classImports: ['Widget' => "{$models}\Widget"],
+                functionImports: ['Widget' => 'Fixtures\Namespacing\Helpers\Widget'],
+            ),
+        ];
+        yield 'a file with no namespace' => ['TopLevel/simple_aliased.php', new NameContext(
+            '',
+            classImports: ['Alias' => 'Vendor\Package\ClassName'],
+        )];
+    }
+
+    #[DataProvider('nameContexts')]
+    public function testTheNameContextHoldsTheImportsInEffectInItsNamespace(
+        string $fixture,
+        NameContext $expected,
+    ): void {
+        $document = new TextDocument('file:///t.php', 'php', 0, $this->loadFixture($fixture));
+        $ast = ParserOnlySyntaxSource::create()->parse($document)->tree;
+        $namespace = array_find(
+            $ast,
+            static fn (Stmt $stmt): bool => $stmt instanceof Stmt\Namespace_
+                && $stmt->name?->toString() === $expected->namespace,
+        );
+
+        self::assertEquals(
+            $expected,
+            Scope::at($namespace, $ast)->nameContext(),
+            'the block\'s own imports, each in the table for its kind',
+        );
     }
 
     #[DataProvider('classNames')]

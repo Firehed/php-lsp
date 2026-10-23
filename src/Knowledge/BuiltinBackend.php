@@ -12,12 +12,16 @@ use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\ConstantInfo;
 use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\IntersectionType;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
+use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
@@ -25,19 +29,26 @@ use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\PropertyName;
 use Firehed\PhpLsp\Domain\QualifiedName;
 use Firehed\PhpLsp\Domain\SymbolInfoInterface;
-use Firehed\PhpLsp\Domain\TypeFactory;
+use Firehed\PhpLsp\Domain\TypeInterface;
+use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
+use LogicException;
 use ReflectionClass;
 use ReflectionException;
 use ReflectionFunction;
 use ReflectionFunctionAbstract;
+use ReflectionIntersectionType;
 use ReflectionMethod;
+use ReflectionNamedType;
 use ReflectionParameter;
 use ReflectionProperty;
+use ReflectionType;
+use ReflectionUnionType;
 
 /**
  * The lowest-precedence {@see SymbolSourceInterface}: the symbols built into PHP and its
@@ -224,7 +235,7 @@ final class BuiltinBackend implements SymbolSourceInterface
                 // No built-in class ships non-public constants; hard-code Public.
                 visibility: Visibility::Public,
                 isFinal: $constant->isFinal(),
-                type: TypeFactory::fromReflection($constant->getType()),
+                type: $this->typeFromReflection($constant->getType()),
                 docblock: $constant->getDocComment() !== false ? $constant->getDocComment() : null,
                 file: $class->getFileName() !== false ? $class->getFileName() : null,
                 line: null,
@@ -307,7 +318,7 @@ final class BuiltinBackend implements SymbolSourceInterface
                 isAbstract: $method->isAbstract(),
                 isFinal: $method->isFinal(),
                 parameters: $this->extractParameters($method),
-                returnType: TypeFactory::fromReflection($method->getReturnType()),
+                returnType: $this->typeFromReflection($method->getReturnType()),
                 docblock: $method->getDocComment() !== false ? $method->getDocComment() : null,
                 file: $method->getFileName() !== false ? $method->getFileName() : null,
                 line: $method->getStartLine() !== false ? $method->getStartLine() : null,
@@ -350,7 +361,7 @@ final class BuiltinBackend implements SymbolSourceInterface
                 isStatic: $property->isStatic(),
                 isReadonly: $property->isReadOnly(),
                 isPromoted: $property->isPromoted(),
-                type: TypeFactory::fromReflection($property->getType()),
+                type: $this->typeFromReflection($property->getType()),
                 docblock: $property->getDocComment() !== false ? $property->getDocComment() : null,
                 file: $class->getFileName() !== false ? $class->getFileName() : null,
                 line: null,
@@ -377,7 +388,7 @@ final class BuiltinBackend implements SymbolSourceInterface
         return new FunctionInfo(
             name: FunctionName::fromFullyQualified($reflection->getName()),
             parameters: $this->extractParameters($reflection),
-            returnType: TypeFactory::fromReflection($reflection->getReturnType()),
+            returnType: $this->typeFromReflection($reflection->getReturnType()),
             docblock: $reflection->getDocComment() !== false ? $reflection->getDocComment() : null,
             file: $reflection->getFileName() !== false ? $reflection->getFileName() : null,
             line: $reflection->getStartLine() !== false ? $reflection->getStartLine() : null,
@@ -463,12 +474,57 @@ final class BuiltinBackend implements SymbolSourceInterface
 
         return new ParameterInfo(
             name: $param->getName(),
-            type: TypeFactory::fromReflection($param->getType()),
+            type: $this->typeFromReflection($param->getType()),
             defaultValue: $defaultValue,
             position: $param->getPosition(),
             isVariadic: $param->isVariadic(),
             isPassedByReference: $param->isPassedByReference(),
         );
+    }
+
+    private function typeFromReflection(?ReflectionType $type): ?TypeInterface
+    {
+        if ($type === null) {
+            return null;
+        }
+
+        if ($type instanceof ReflectionNamedType) {
+            $name = $type->getName();
+
+            // Reflection reports `static` and `self` as class names.
+            $keyword = LateBindingKeyword::tryFromName($name);
+            if ($keyword !== null) {
+                $late = new LateStaticType($keyword);
+                return $type->allowsNull() ? new UnionType([$late, new PrimitiveType('null')]) : $late;
+            }
+
+            if ($type->isBuiltin()) {
+                $primitive = new PrimitiveType($name);
+                if ($type->allowsNull() && $name !== 'null' && $name !== 'mixed') {
+                    return new UnionType([$primitive, new PrimitiveType('null')]);
+                }
+                return $primitive;
+            }
+
+            $classType = new ClasslikeType(ClasslikeName::fromFullyQualified($name));
+            if ($type->allowsNull()) {
+                return new UnionType([$classType, new PrimitiveType('null')]);
+            }
+            return $classType;
+        }
+
+        if ($type instanceof ReflectionUnionType || $type instanceof ReflectionIntersectionType) {
+            $members = array_values(array_filter(
+                array_map($this->typeFromReflection(...), $type->getTypes()),
+            ));
+            return $type instanceof ReflectionUnionType
+                ? new UnionType($members)
+                : new IntersectionType($members);
+        }
+
+        // @codeCoverageIgnoreStart
+        throw new LogicException('Unexpected ReflectionType kind');
+        // @codeCoverageIgnoreEnd
     }
 
     private static function formatReflectionDefault(mixed $value): string

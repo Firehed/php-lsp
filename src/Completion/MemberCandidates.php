@@ -12,14 +12,14 @@ use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
 /**
  * Produces completion items for the members a member access reaches.
  *
- * @phpstan-import-type CompletionItem from CompletionItemFactory
+ * @phpstan-import-type CompletionItem from CompletionItemFormatter
  */
 final class MemberCandidates
 {
     public function __construct(
         private readonly SymbolCapabilitiesInterface $symbols,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
-        private readonly CompletionItemFactory $itemFactory,
+        private readonly CompletionItemFormatter $itemFormatter,
     ) {
     }
 
@@ -40,12 +40,12 @@ final class MemberCandidates
         $items = [];
         foreach ($members as $member) {
             if ($context->accepts($member) && PrefixMatcher::matches($member->getName()->name, $context->prefix)) {
-                $items[] = $this->itemFactory->forResolvedMember($member, $snippetSupport);
+                $items[] = $this->itemFormatter->forResolvedMember($member, $snippetSupport);
             }
         }
 
         if ($context->offersClassConstant && PrefixMatcher::matches('class', $context->prefix)) {
-            $items[] = $this->itemFactory->forClassConstant();
+            $items[] = $this->itemFormatter->forClassConstant();
         }
 
         return $items;

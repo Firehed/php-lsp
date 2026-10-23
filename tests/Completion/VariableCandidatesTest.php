@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
-use Firehed\PhpLsp\Completion\CompletionItemFactory;
+use Firehed\PhpLsp\Completion\CompletionItemFormatter;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\VariableCandidates;
 use Firehed\PhpLsp\Document\TextDocument;
@@ -45,7 +45,7 @@ final class VariableCandidatesTest extends TestCase
         ]);
         $document = new TextDocument('file:///t.php', 'php', 0, '');
 
-        $candidates = new VariableCandidates($scope, new CompletionItemFactory(new ResolvedSymbolPresenter()));
+        $candidates = new VariableCandidates($scope, new CompletionItemFormatter(new ResolvedSymbolPresenter()));
         $items = $candidates->find(new CompletionRequest($document, 0, 0), $prefix);
 
         self::assertSame(

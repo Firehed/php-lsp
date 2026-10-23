@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
-use Firehed\PhpLsp\Completion\CompletionItemFactory;
+use Firehed\PhpLsp\Completion\CompletionItemFormatter;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
@@ -99,16 +99,16 @@ final class CompositeCompletionSourceTest extends TestCase
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
         $symbols->method('search')->willReturn([QualifiedName::fromFullyQualified('Node')]);
         $session = self::capabilitiesProvider();
-        $factory = new CompletionItemFactory(new ResolvedSymbolPresenter());
+        $formatter = new CompletionItemFormatter(new ResolvedSymbolPresenter());
 
         return new CompositeCompletionSource(
             $at,
-            new MemberCandidates($capabilities, $session, $factory),
-            new NamedArgumentCandidates($factory),
-            new VariableCandidates($scope, $factory),
-            new KeywordCandidates($factory),
-            new BuiltinTypeCandidates($factory),
-            new SymbolCandidates($symbols, $capabilities, $session, $factory),
+            new MemberCandidates($capabilities, $session, $formatter),
+            new NamedArgumentCandidates($formatter),
+            new VariableCandidates($scope, $formatter),
+            new KeywordCandidates($formatter),
+            new BuiltinTypeCandidates($formatter),
+            new SymbolCandidates($symbols, $capabilities, $session, $formatter),
         );
     }
 

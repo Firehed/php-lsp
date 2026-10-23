@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Domain\PrefixMatcher;
  * implement {@see CompletionSourceInterface} because its behaviour is chosen
  * by the caller, not by inspection of the request.
  *
- * @phpstan-import-type CompletionItem from CompletionItemFactory
+ * @phpstan-import-type CompletionItem from CompletionItemFormatter
  */
 final class KeywordCandidates
 {
@@ -49,7 +49,7 @@ final class KeywordCandidates
     ];
 
     public function __construct(
-        private readonly CompletionItemFactory $itemFactory,
+        private readonly CompletionItemFormatter $itemFormatter,
     ) {
     }
 
@@ -61,7 +61,7 @@ final class KeywordCandidates
         $items = [];
         foreach ($this->keywordsFor($group) as $keyword) {
             if (PrefixMatcher::matches($keyword, $prefix)) {
-                $items[] = $this->itemFactory->forKeyword($keyword);
+                $items[] = $this->itemFormatter->forKeyword($keyword);
             }
         }
 

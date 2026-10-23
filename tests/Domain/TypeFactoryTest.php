@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Domain;
 
-use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\IntersectionType;
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
@@ -20,7 +19,6 @@ use PhpParser\Node\UnionType as AstUnionType;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use ReflectionFunction;
 
 #[CoversClass(TypeFactory::class)]
 class TypeFactoryTest extends TestCase
@@ -274,131 +272,11 @@ class TypeFactoryTest extends TestCase
         self::assertTrue($type->isNullable());
     }
 
-    public function testClasslikeNameCreatesClasslikeNameFromFqn(): void
-    {
-        $type = TypeFactory::className(\stdClass::class);
-
-        self::assertInstanceOf(ClasslikeName::class, $type);
-        self::assertSame(\stdClass::class, $type->qualifiedName->fullyQualifiedName());
-    }
-
     public function testPreservingLateBindingNeedsNoClassContext(): void
     {
         $type = TypeFactory::fromNode(new Name('self'), preserveLateBinding: true);
 
         self::assertInstanceOf(LateStaticType::class, $type, 'the keyword is bound where the member is used');
         self::assertSame(LateBindingKeyword::Self, $type->keyword);
-    }
-
-    public function testFromReflectionKeepsALateBindingKeyword(): void
-    {
-        $method = new \ReflectionMethod(\DateTimeImmutable::class, 'setMicrosecond');
-        $type = TypeFactory::fromReflection($method->getReturnType());
-
-        self::assertInstanceOf(LateStaticType::class, $type, 'reflection reports static as a class; it is a keyword');
-        self::assertSame(LateBindingKeyword::Static, $type->keyword);
-    }
-
-    public function testFromReflectionKeepsANullableLateBindingKeyword(): void
-    {
-        $closure = fn (bool $none): ?static => $none ? null : $this;
-        $type = TypeFactory::fromReflection((new ReflectionFunction($closure))->getReturnType());
-
-        self::assertInstanceOf(UnionType::class, $type, '?static is static or null');
-        self::assertSame('?static', $type->format());
-    }
-
-    public function testFromReflectionWithNullReturnsNull(): void
-    {
-        self::assertNull(TypeFactory::fromReflection(null));
-    }
-
-    public function testFromReflectionWithBuiltinCreatesPrimitiveType(): void
-    {
-        $func = new ReflectionFunction(fn (): string => '');
-        $type = TypeFactory::fromReflection($func->getReturnType());
-
-        self::assertInstanceOf(PrimitiveType::class, $type);
-        self::assertSame('string', $type->format());
-    }
-
-    public function testFromReflectionWithNullableBuiltinCreatesUnionType(): void
-    {
-        $func = new ReflectionFunction(fn (): ?string => null);
-        $type = TypeFactory::fromReflection($func->getReturnType());
-
-        self::assertInstanceOf(UnionType::class, $type);
-        self::assertTrue($type->isNullable());
-        self::assertSame('?string', $type->format());
-    }
-
-    public function testFromReflectionWithClassCreatesClasslikeType(): void
-    {
-        $func = new ReflectionFunction(fn (): \stdClass => new \stdClass());
-        $type = TypeFactory::fromReflection($func->getReturnType());
-
-        self::assertInstanceOf(ClasslikeType::class, $type);
-        self::assertSame(\stdClass::class, $type->name->qualifiedName->fullyQualifiedName());
-    }
-
-    public function testFromReflectionWithNullableCreatesUnionType(): void
-    {
-        $func = new ReflectionFunction(fn (): ?\stdClass => null);
-        $type = TypeFactory::fromReflection($func->getReturnType());
-
-        self::assertInstanceOf(UnionType::class, $type);
-        self::assertTrue($type->isNullable());
-        self::assertSame('?stdClass', $type->format());
-    }
-
-    public function testFromReflectionWithUnionCreatesUnionType(): void
-    {
-        $func = new ReflectionFunction(fn (): \Iterator|\Countable => new \ArrayIterator());
-        $type = TypeFactory::fromReflection($func->getReturnType());
-
-        self::assertInstanceOf(UnionType::class, $type);
-        self::assertSame('Iterator|Countable', $type->format());
-    }
-
-    public function testFromReflectionWithIntersectionCreatesIntersectionType(): void
-    {
-        $func = new ReflectionFunction(fn (): \Iterator&\Countable => new \ArrayIterator());
-        $type = TypeFactory::fromReflection($func->getReturnType());
-
-        self::assertInstanceOf(IntersectionType::class, $type);
-        self::assertSame('Iterator&Countable', $type->format());
-    }
-
-    public function testFromReflectionWithMixedDoesNotWrapInUnion(): void
-    {
-        $func = new ReflectionFunction(fn (): mixed => null);
-        $type = TypeFactory::fromReflection($func->getReturnType());
-
-        self::assertInstanceOf(PrimitiveType::class, $type);
-        self::assertSame('mixed', $type->format());
-    }
-
-    public function testFromReflectionWithNullDoesNotWrapInUnion(): void
-    {
-        $func = new ReflectionFunction(fn (): null => null);
-        $type = TypeFactory::fromReflection($func->getReturnType());
-
-        self::assertInstanceOf(PrimitiveType::class, $type);
-        self::assertSame('null', $type->format());
-    }
-
-    public function testUnionCollapsesToSingleMember(): void
-    {
-        $type = new ClasslikeType(TypeFactory::className(\DateTime::class));
-        self::assertSame($type, TypeFactory::union([$type]));
-    }
-
-    public function testUnionOfSeveralMembersBuildsUnionType(): void
-    {
-        $a = new ClasslikeType(TypeFactory::className(\DateTime::class));
-        $b = new ClasslikeType(TypeFactory::className(\DateTimeImmutable::class));
-        $type = TypeFactory::union([$a, $b]);
-        self::assertInstanceOf(UnionType::class, $type);
-        self::assertSame('DateTime|DateTimeImmutable', $type->format());
     }
 }

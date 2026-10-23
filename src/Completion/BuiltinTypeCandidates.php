@@ -15,7 +15,7 @@ use Firehed\PhpLsp\Domain\TypeHintContext;
  * implement {@see CompletionSourceInterface} because its behaviour is chosen
  * by the caller, not by inspection of the request.
  *
- * @phpstan-import-type CompletionItem from CompletionItemFactory
+ * @phpstan-import-type CompletionItem from CompletionItemFormatter
  */
 final class BuiltinTypeCandidates
 {
@@ -26,7 +26,7 @@ final class BuiltinTypeCandidates
     ];
 
     public function __construct(
-        private readonly CompletionItemFactory $itemFactory,
+        private readonly CompletionItemFormatter $itemFormatter,
     ) {
     }
 
@@ -38,7 +38,7 @@ final class BuiltinTypeCandidates
         $items = [];
         foreach ($this->typesFor($context) as $type) {
             if (PrefixMatcher::matches($type, $prefix)) {
-                $items[] = $this->itemFactory->forBuiltinType($type);
+                $items[] = $this->itemFormatter->forBuiltinType($type);
             }
         }
 

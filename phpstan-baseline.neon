@@ -2,43 +2,13 @@ parameters:
 	ignoreErrors:
 		-
 			message: '''
-				#^Call to method union\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 1
-			path: src/Domain/EnumImplicits.php
-
-		-
-			message: '''
-				#^Call to method fromReflection\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 5
-			path: src/Knowledge/BuiltinBackend.php
-
-		-
-			message: '''
 				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
 				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 6
-			path: src/Knowledge/DeclarationSymbolInfoFactory.php
-
-		-
-			message: '''
-				#^Call to method union\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 1
-			path: src/Resolution/ExpressionResolver.php
+			path: src/Knowledge/ParsedDeclarationSource.php
 
 		-
 			message: '''
@@ -62,40 +32,10 @@ parameters:
 
 		-
 			message: '''
-				#^Call to method className\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 4
-			path: tests/Domain/TypeFactoryTest.php
-
-		-
-			message: '''
 				#^Call to method fromNode\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
 				sweep\: source\-context factory; resolution should go through
 				TypeSourceInterface, construction primitives will migrate elsewhere$#
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 25
-			path: tests/Domain/TypeFactoryTest.php
-
-		-
-			message: '''
-				#^Call to method fromReflection\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 11
-			path: tests/Domain/TypeFactoryTest.php
-
-		-
-			message: '''
-				#^Call to method union\(\) of deprecated class Firehed\\PhpLsp\\Domain\\TypeFactory\:
-				sweep\: source\-context factory; resolution should go through
-				TypeSourceInterface, construction primitives will migrate elsewhere$#
-			'''
-			identifier: staticMethod.deprecatedClass
-			count: 2
 			path: tests/Domain/TypeFactoryTest.php

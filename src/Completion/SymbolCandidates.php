@@ -34,7 +34,7 @@ use Firehed\PhpLsp\Resolution\SymbolCapabilitiesInterface;
  * A name that resolves from the global namespace whatever the context, as an
  * import's does, is always navigated.
  *
- * @phpstan-import-type CompletionItem from CompletionItemFactory
+ * @phpstan-import-type CompletionItem from CompletionItemFormatter
  */
 final class SymbolCandidates
 {
@@ -46,7 +46,7 @@ final class SymbolCandidates
         private readonly SymbolSourceInterface $symbolSource,
         private readonly SymbolCapabilitiesInterface $symbolCapabilities,
         private readonly SessionCapabilitiesProviderInterface $capabilities,
-        private readonly CompletionItemFactory $itemFactory,
+        private readonly CompletionItemFormatter $itemFormatter,
     ) {
     }
 
@@ -360,7 +360,7 @@ final class SymbolCandidates
         $contents = $this->symbolSource->childrenOf(new NamespaceName($child));
         $elementCount = count($contents->childNamespaces) + count($contents->symbols);
         if ($elementCount === 0 || $elementCount > self::INLINE_THRESHOLD) {
-            $item = $this->itemFactory->forNamespace($segment, $child, $range);
+            $item = $this->itemFormatter->forNamespace($segment, $child, $range);
             $item['sortText'] = '1_' . $item['label'];
             return [$item];
         }
@@ -368,7 +368,7 @@ final class SymbolCandidates
         $items = [];
         foreach ($contents->childNamespaces as $grandchild) {
             $reference = NamespaceName::join($segment, NamespaceName::shortNameOf($grandchild));
-            $item = $this->itemFactory->forNamespace($reference, $grandchild, $range);
+            $item = $this->itemFormatter->forNamespace($reference, $grandchild, $range);
             $item['sortText'] = '1_' . $item['label'];
             $items[] = $item;
         }
@@ -429,7 +429,7 @@ final class SymbolCandidates
             ? $this->symbolSource->lookupFunction(FunctionName::fromFullyQualified($fqn))
             : null;
 
-        return $this->itemFactory->forSymbol(
+        return $this->itemFormatter->forSymbol(
             $reference,
             $fqn,
             $kind,

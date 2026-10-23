@@ -16,7 +16,6 @@ return [
     },
 
     Knowledge\DeclarationScanner::class,
-    Knowledge\DeclarationSymbolInfoFactory::class,
     Knowledge\ParsedDeclarationSource::class,
     // Working-set target: a typical editing session touches fewer files than
     // this, so nothing evicts. Not derived from measurement; picked as a

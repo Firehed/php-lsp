@@ -4,15 +4,22 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Knowledge;
 
+use Closure;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClassKind;
 use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\ConstantName;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
+use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\NamespaceName;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\QualifiedName;
+use Firehed\PhpLsp\Domain\TypeInterface;
+use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\BuiltinBackend;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -405,6 +412,54 @@ final class BuiltinBackendTest extends TestCase
             $mode->defaultValue,
             'a constant default is shown by name, without evaluating the constant (which may be deprecated)',
         );
+    }
+
+    /**
+     * Each built-in declares its return type outright rather than tentatively,
+     * so reflection reports it on every supported PHP version.
+     *
+     * @return iterable<string, array{Closure(BuiltinBackend): ?TypeInterface, TypeInterface}>
+     */
+    public static function reflectedTypes(): iterable
+    {
+        $null = new PrimitiveType('null');
+        $static = new LateStaticType(LateBindingKeyword::Static);
+        $method = static fn (string $class, string $name): Closure =>
+            static fn (BuiltinBackend $b): ?TypeInterface => self::classLikeIn($b, $class)?->methods[$name]->returnType;
+        $function = static fn (string $name): Closure =>
+            static fn (BuiltinBackend $b): ?TypeInterface => self::functionIn($b, $name)?->returnType;
+        $class = static fn (string $fqn): ClasslikeType => new ClasslikeType(ClasslikeName::fromFullyQualified($fqn));
+
+        yield 'a primitive' => [$function('str_contains'), new PrimitiveType('bool')];
+        yield 'a nullable primitive' => [$function('var_export'), new UnionType([new PrimitiveType('string'), $null])];
+        yield 'mixed, which already holds null' => [$function('array_pop'), new PrimitiveType('mixed')];
+        yield 'a class' => [$method(\Closure::class, 'fromCallable'), $class(\Closure::class)];
+        yield 'a nullable class' => [
+            $method(\Exception::class, 'getPrevious'),
+            new UnionType([$class(\Throwable::class), $null]),
+        ];
+        yield 'a union' => [
+            $function('ini_get'),
+            new UnionType([new PrimitiveType('string'), new PrimitiveType('false')]),
+        ];
+        yield 'a union holding null, which is not wrapped again' => [
+            $function('array_key_first'),
+            new UnionType([new PrimitiveType('string'), new PrimitiveType('int'), $null]),
+        ];
+        yield 'static, which reflection names as a class' => [
+            $method(\DateTimeImmutable::class, 'setMicrosecond'),
+            $static,
+        ];
+        yield 'a nullable static' => [$method(\BackedEnum::class, 'tryFrom'), new UnionType([$static, $null])];
+    }
+
+    /**
+     * @param Closure(BuiltinBackend): ?TypeInterface $read
+     */
+    #[DataProvider('reflectedTypes')]
+    public function testReflectedTypesBecomeDomainTypes(Closure $read, TypeInterface $expected): void
+    {
+        self::assertEquals($expected, $read($this->backend), 'the type reflection reports');
     }
 
     public function testExceptionPropertyVisibilitiesAreMapped(): void
