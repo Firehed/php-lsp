@@ -1424,6 +1424,24 @@ final class MemberResolverTest extends TestCase
         self::assertFalse($resolver->isTrait(ClasslikeName::fromFullyQualified(self::fakeClass())));
     }
 
+    public function testAliasNamingAnUnknownTraitIsInvisible(): void
+    {
+        $className = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $unknown = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = $this->resolverOverClasses($this->createClassInfo(
+            $className,
+            traits: [$unknown],
+            traitAliases: [
+                new TraitAlias(trait: $unknown, method: 'helper', newName: 'exposedName', newVisibility: null),
+            ],
+        ));
+
+        self::assertNull(
+            $resolver->findMethod($className, 'exposedName', null),
+            'an alias of a trait no source knows must not surface a method',
+        );
+    }
+
     public function testAliasNamingAnUnknownMethodOnANamedTraitIsInvisible(): void
     {
         $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
