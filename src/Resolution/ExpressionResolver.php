@@ -403,11 +403,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
     /**
      * Access a member on the receiver, delegating the kind-specific lookup to
-     * `$find`. The receiver-to-ClasslikeName dance — an instance expression that
-     * resolves through `resolve()`, versus a class-name `Name` that resolves
-     * through the {@see Scope} — is here, so a new member-access node kind adds
-     * one call site rather than another copy of this dance. Only a member
-     * visible from where the access is written is found.
+     * `$find`. Only a member visible from where the access is written is found.
      *
      * @template T of MemberInfoInterface
      * @param callable(ClasslikeName, string, ?ClasslikeName, ?ClasslikeName): ?T $find
@@ -420,22 +416,12 @@ final class ExpressionResolver implements ExpressionResolverInterface
         callable $find,
         ParsedDocument $parsed,
     ): ?MemberInfoInterface {
-        $scope = Scope::at($context, $parsed->tree);
-        if ($receiver instanceof Name) {
-            $className = $scope->resolveClasslikeName($receiver);
-            if ($className === null) {
-                return null;
-            }
-            return $find(
-                $className,
-                $memberName,
-                $scope->getSelfName(),
-                $scope->staticFor($receiver),
-            );
+        $access = $this->resolveMemberAccess($receiver, Scope::at($context, $parsed->tree), $parsed);
+        if ($access === null) {
+            return null;
         }
-        $receiverType = $this->resolve($receiver, $parsed)?->getType();
-        foreach (self::receiverClasslikeNames($receiverType) as $className) {
-            $member = $find($className, $memberName, $scope->getSelfName(), null);
+        foreach ($access->on->getResolvableClasslikeNames() as $className) {
+            $member = $find($className, $memberName, $access->from, $access->static);
             if ($member !== null) {
                 return $member;
             }
