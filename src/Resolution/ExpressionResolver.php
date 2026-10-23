@@ -160,7 +160,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
         return new ParameterInfo(
             name: $param->var->name,
-            type: $this->typeOfParameterBinding($param, $param->var->name, $scope),
+            type: ParameterTyping::resolve($this->typeSource, $param, $param->var->name, $scope),
             defaultValue: $param->default === null ? null : (new PrettyPrinter())->prettyPrintExpr($param->default),
             position: $position,
             isVariadic: $param->variadic,
@@ -197,12 +197,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
             return $this->resolveVariable($node->name, $outer, $closure->getStartFilePos(), $parsed)?->getType();
         }
         assert($parent instanceof Param, 'VariableBindings parent kinds are exhausted above');
-        return $this->typeOfParameterBinding($parent, $node->name, $scope);
-    }
-
-    private function typeOfParameterBinding(Param $param, string $name, Scope $scope): ?TypeInterface
-    {
-        return ParameterTyping::resolve($this->typeSource, $param, $name, $scope);
+        return ParameterTyping::resolve($this->typeSource, $parent, $node->name, $scope);
     }
 
     private function foreachElementType(
