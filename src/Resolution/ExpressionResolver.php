@@ -374,10 +374,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         );
     }
 
-    /**
-     * A `parent::` access passes on the class it is written in as `static`
-     * (PHP manual, Late Static Bindings).
-     */
     public function resolveMemberAccess(Expr|Name $receiver, Scope $scope, ParsedDocument $parsed): ?MemberAccess
     {
         $from = $scope->getSelfName();
@@ -386,19 +382,19 @@ final class ExpressionResolver implements ExpressionResolverInterface
             if ($class === null) {
                 return null;
             }
-            $isParent = LateBindingKeyword::tryFromName($receiver->toString()) === LateBindingKeyword::Parent;
             return new MemberAccess(
                 new ClasslikeType($class),
                 $from,
-                $isParent ? $from : null,
-                $isParent ? MemberAccessKind::Parent : MemberAccessKind::Static,
+                LateBindingKeyword::tryFromName($receiver->toString()) === LateBindingKeyword::Parent
+                    ? MemberAccessKind::Parent
+                    : MemberAccessKind::Static,
             );
         }
         $type = $this->resolve($receiver, $parsed)?->getType();
         if ($type === null || $type->getResolvableClasslikeNames() === []) {
             return null;
         }
-        return new MemberAccess($type, $from, null, MemberAccessKind::Instance);
+        return new MemberAccess($type, $from, MemberAccessKind::Instance);
     }
 
     /**
@@ -421,7 +417,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
             return null;
         }
         foreach ($access->on->getResolvableClasslikeNames() as $className) {
-            $member = $find($className, $memberName, $access->from, $access->static);
+            $member = $find($className, $memberName, $access->from, $access->staticClass());
             if ($member !== null) {
                 return $member;
             }
