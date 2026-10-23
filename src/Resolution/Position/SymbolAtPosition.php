@@ -31,7 +31,6 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
     {
         $located = $this->locator->locate($document, $offset);
         $written = $located->written;
-        $scope = $located->scope;
         $parent = $written?->getAttribute('parent');
 
         return match ($located->slot) {
@@ -44,10 +43,10 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
                 : null,
             Slot::Expression => $parent instanceof Expr\ConstFetch
                 ? $this->expressions->resolve($parent, $located->parsed)
-                : $this->classLike($written, $scope),
+                : $this->classLike($written, $located->scope),
             Slot::StaticReceiver, Slot::ParameterType, Slot::ReturnType, Slot::PropertyType, Slot::AfterModifiers,
             Slot::Catch, Slot::Instanceof, Slot::New, Slot::Implements, Slot::ClassExtends, Slot::InterfaceExtends,
-            Slot::Attribute, Slot::TraitUse, Slot::Import => $this->classLike($written, $scope),
+            Slot::Attribute, Slot::TraitUse, Slot::Import => $this->classLike($written, $located->scope),
         };
     }
 
