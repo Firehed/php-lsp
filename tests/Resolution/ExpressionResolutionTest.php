@@ -36,7 +36,6 @@ use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
-use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
@@ -353,6 +352,15 @@ final class ExpressionResolutionTest extends TestCase
             'named',
             new MemberAccess(new ClasslikeType($parent), $written, MemberAccessKind::Static),
         ];
+        yield 'a class name nothing declares, taken as written' => [
+            $receivers,
+            'undeclared',
+            new MemberAccess(
+                new ClasslikeType(self::className('Fixtures\Resolution\Undeclared')),
+                $written,
+                MemberAccessKind::Static,
+            ),
+        ];
         yield 'an instance' => [
             $receivers,
             'instance',
@@ -391,7 +399,7 @@ final class ExpressionResolutionTest extends TestCase
 
         self::assertEquals(
             $expected,
-            $expressions->resolveMemberAccess($node, Scope::at($node, $parsed->tree), $parsed),
+            $expressions->resolveMemberAccess($node, $parsed),
             'the class the access is on, the class it is written in, and what static names',
         );
     }

@@ -13,6 +13,7 @@ final class MemberAccessReceivers extends ParentClass
         parent/*|parent*/::parentMethod();
         self/*|self*/::receivers();
         ParentClass/*|named*/::PARENT_CONST;
+        Undeclared/*|undeclared*/::NOTHING;
         $this/*|instance*/->receivers();
         $this/*|expression_before_double_colon*/::PARENT_CONST;
         $unknown/*|unknown*/->receivers();
