@@ -96,7 +96,7 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
     {
         $receiver = $located->receiver;
         assert($receiver !== null, 'a member is accessed on something');
-        $access = $this->expressions->resolveMemberAccess($receiver, $located->scope, $located->parsed);
+        $access = $this->expressions->resolveMemberAccess($receiver, $located->parsed);
         // A static property's name is written with its `$`; a member's name is not.
         return $access === null ? null : new MemberAccessContext($access, ltrim($located->prefix, '$'));
     }

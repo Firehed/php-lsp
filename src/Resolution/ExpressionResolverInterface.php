@@ -35,10 +35,13 @@ interface ExpressionResolverInterface
     ): ?ResolvedCallableInterface;
 
     /**
-     * What a member access written in $scope is on: an expression before `->`,
-     * or a class name before `::`. Null when the receiver names no class-like.
+     * What a member access is on, seen from where it is written: an expression
+     * before `->`, or a class name before `::`. A class name is taken as written,
+     * whether or not anything declares it. Null when an expression's type names
+     * no class-like, when `self`, `static`, or `parent` names no class where it
+     * is written, and for any expression before `::`, which is not resolved.
      */
-    public function resolveMemberAccess(Expr|Name $receiver, Scope $scope, ParsedDocument $parsed): ?MemberAccess;
+    public function resolveMemberAccess(Expr|Name $receiver, ParsedDocument $parsed): ?MemberAccess;
 
     /**
      * A parameter as its declaration declares it.

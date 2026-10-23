@@ -288,7 +288,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $classNameNode,
-            $call,
             '__construct',
             $this->memberResolver->findMethod(...),
             $parsed,
@@ -302,7 +301,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->var,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findMethod(...),
             $parsed,
@@ -316,7 +314,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->class,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findMethod(...),
             $parsed,
@@ -353,7 +350,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->var,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findProperty(...),
             $parsed,
@@ -367,15 +363,15 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->class,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findProperty(...),
             $parsed,
         );
     }
 
-    public function resolveMemberAccess(Expr|Name $receiver, Scope $scope, ParsedDocument $parsed): ?MemberAccess
+    public function resolveMemberAccess(Expr|Name $receiver, ParsedDocument $parsed): ?MemberAccess
     {
+        $scope = Scope::at($receiver, $parsed->tree);
         $from = $scope->getSelfName();
         if ($receiver instanceof Name) {
             $class = $scope->resolveClasslikeName($receiver);
@@ -421,12 +417,11 @@ final class ExpressionResolver implements ExpressionResolverInterface
      */
     private function resolveMember(
         Expr|Name $receiver,
-        Node $context,
         string $memberName,
         callable $find,
         ParsedDocument $parsed,
     ): ?MemberInfoInterface {
-        $access = $this->resolveMemberAccess($receiver, Scope::at($context, $parsed->tree), $parsed);
+        $access = $this->resolveMemberAccess($receiver, $parsed);
         if ($access === null) {
             return null;
         }
@@ -446,7 +441,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->class,
-            $expr,
             $expr->name->toString(),
             // PHP never forwards `static` to a constant's type (zend_check_class_constant_type).
             fn (ClasslikeName $class, string $name, ?ClasslikeName $from): ?MemberInfoInterface
