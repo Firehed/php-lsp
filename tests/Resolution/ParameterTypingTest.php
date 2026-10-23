@@ -156,7 +156,12 @@ final class ParameterTypingTest extends TestCase
 
         self::assertEquals(
             $expected,
-            ParameterTyping::resolve(self::createStub(TypeSourceInterface::class), $param, $name, Scope::at($param, $ast)),
+            ParameterTyping::resolve(
+                self::createStub(TypeSourceInterface::class),
+                $param,
+                $name,
+                Scope::at($param, $ast),
+            ),
             'the keyword names the class the scope binds it to',
         );
     }
