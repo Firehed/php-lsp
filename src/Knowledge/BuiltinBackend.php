@@ -513,18 +513,13 @@ final class BuiltinBackend implements SymbolSourceInterface
             return $classType;
         }
 
-        if ($type instanceof ReflectionUnionType) {
+        if ($type instanceof ReflectionUnionType || $type instanceof ReflectionIntersectionType) {
             $members = array_values(array_filter(
                 array_map($this->typeFromReflection(...), $type->getTypes()),
             ));
-            return new UnionType($members);
-        }
-
-        if ($type instanceof ReflectionIntersectionType) {
-            $members = array_values(array_filter(
-                array_map($this->typeFromReflection(...), $type->getTypes()),
-            ));
-            return new IntersectionType($members);
+            return $type instanceof ReflectionUnionType
+                ? new UnionType($members)
+                : new IntersectionType($members);
         }
 
         // @codeCoverageIgnoreStart
