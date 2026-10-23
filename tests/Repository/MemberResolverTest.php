@@ -2081,6 +2081,23 @@ final class MemberResolverTest extends TestCase
         self::assertSame('App\\Base', $returns['App\\Base']['aliased'] ?? null, 'an alias, as in a lookup');
     }
 
+    public function testAParentListingBindsStaticToTheClassCalledFrom(): void
+    {
+        $sub = ClasslikeName::fromFullyQualified('App\\Sub');
+        $returns = [];
+        $members = $this->resolverOverLateBindingGraph()->getMembersOfKind(
+            ClasslikeName::fromFullyQualified('App\\Base'),
+            MemberKind::Method,
+            $sub,
+            static: $sub,
+        );
+        foreach ($members as $member) {
+            $returns[$member->getName()->name] = $member->getType()?->format();
+        }
+
+        self::assertSame('App\\Sub', $returns['copy'] ?? null, 'parent:: passes on the calling class');
+    }
+
     public function testAPropertyTypeIsBoundToo(): void
     {
         $resolved = $this->resolverOverLateBindingGraph()->findProperty(
