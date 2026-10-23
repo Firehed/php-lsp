@@ -315,6 +315,22 @@ final class ExpressionResolutionTest extends TestCase
     }
 
     /**
+     * PHP checks `static` in a constant's type against the class declaring
+     * the constant (`zend_check_class_constant_type` in php-src), not the
+     * class a `parent::` access passes on.
+     */
+    public function testStaticInAParentConstantsTypeIsTheDeclaringClass(): void
+    {
+        $this->resolveOverTheFixtures();
+
+        self::assertSame(
+            '?Fixtures\LateBinding\Base',
+            $this->resolveSymbolAt('src/LateBinding/Sub.php', 'parent_constant_static')?->getType()?->format(),
+            'Base declares NONE, so its static is Base',
+        );
+    }
+
+    /**
      * @return iterable<string, array{string, string, ?MemberAccess}>
      */
     public static function memberAccesses(): iterable
