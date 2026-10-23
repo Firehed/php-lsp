@@ -113,28 +113,12 @@ final class Scope
     }
 
     /**
-     * @return ?class-string
-     */
-    public function getSelfContext(): ?string
-    {
-        return LateBindingKeyword::Self->resolveIn($this->classLike);
-    }
-
-    /**
      * The class-like code here is written in, which `self` names.
      */
     public function getSelfName(): ?ClasslikeName
     {
-        $self = $this->getSelfContext();
+        $self = LateBindingKeyword::Self->resolveIn($this->classLike);
         return $self === null ? null : ClasslikeName::fromFullyQualified($self);
-    }
-
-    /**
-     * @return ?class-string
-     */
-    public function getParentContext(): ?string
-    {
-        return LateBindingKeyword::Parent->resolveIn($this->classLike);
     }
 
     /**
@@ -148,7 +132,7 @@ final class Scope
         if ($self === null) {
             return null;
         }
-        $parent = $this->getParentContext();
+        $parent = LateBindingKeyword::Parent->resolveIn($this->classLike);
         return new LateBinding($self, $self, $parent === null ? null : ClasslikeName::fromFullyQualified($parent));
     }
 
