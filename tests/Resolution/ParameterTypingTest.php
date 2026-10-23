@@ -104,13 +104,13 @@ final class ParameterTypingTest extends TestCase
 
     public function testClassMethodWithoutEnclosingClassFallsThrough(): void
     {
-        $ast = self::parseWithParents('<?php $o = new class { public function m(string $x): void {} };');
-        $param = self::findNode($ast, Param::class);
+        $ast = self::parseWithParents($this->loadFixture('src/Resolution/AnonymousParent.php'));
+        $param = self::parameterNamed($ast, 'anonymousTyped');
 
         $type = ParameterTyping::resolve(
             self::createStub(TypeSourceInterface::class),
             $param,
-            'x',
+            'anonymousTyped',
             Scope::at($param, $ast),
         );
 
@@ -153,13 +153,7 @@ final class ParameterTypingTest extends TestCase
         TypeInterface $expected,
     ): void {
         $ast = self::parseWithParents($this->loadFixture($fixture));
-        $param = (new NodeFinder())->findFirst(
-            $ast,
-            static fn ($node): bool => $node instanceof Param
-                && $node->var instanceof Variable
-                && $node->var->name === $name,
-        );
-        self::assertInstanceOf(Param::class, $param, "the fixture declares \${$name}");
+        $param = self::parameterNamed($ast, $name);
 
         self::assertEquals(
             $expected,
@@ -187,6 +181,21 @@ final class ParameterTypingTest extends TestCase
         $traverser->traverse($ast);
 
         return $ast;
+    }
+
+    /**
+     * @param array<Stmt> $ast
+     */
+    private static function parameterNamed(array $ast, string $name): Param
+    {
+        $param = (new NodeFinder())->findFirst(
+            $ast,
+            static fn ($node): bool => $node instanceof Param
+                && $node->var instanceof Variable
+                && $node->var->name === $name,
+        );
+        self::assertInstanceOf(Param::class, $param, "the fixture declares \${$name}");
+        return $param;
     }
 
     /**

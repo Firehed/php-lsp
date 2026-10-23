@@ -16,6 +16,10 @@ final class AnonymousParent
                 parent::parentMethod();
                 $byParent = fn (parent $anonymousInherited) => $anonymousInherited;
             }
+
+            public function typed(string $anonymousTyped): void
+            {
+            }
         };
     }
 }
