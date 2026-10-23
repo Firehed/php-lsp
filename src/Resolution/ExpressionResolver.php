@@ -430,16 +430,15 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
             return null;
         }
-        $scope = Scope::at($expr, $parsed->tree);
-        $className = $scope->resolveClasslikeName($expr->class);
-        if ($className === null) {
-            return null;
-        }
-        $enumCase = $this->memberResolver->findEnumCase($className, $expr->name->toString());
-        if ($enumCase !== null) {
-            return $enumCase;
-        }
-        return $this->memberResolver->findConstant($className, $expr->name->toString(), $scope->getSelfName());
+        return $this->resolveMember(
+            $expr->class,
+            $expr,
+            $expr->name->toString(),
+            fn (ClasslikeName $class, string $name, ?ClasslikeName $from, ?ClasslikeName $static): ?MemberInfoInterface
+                => $this->memberResolver->findEnumCase($class, $name)
+                    ?? $this->memberResolver->findConstant($class, $name, $from, $static),
+            $parsed,
+        );
     }
 
     private function resolveConstFetch(Expr\ConstFetch $expr, ParsedDocument $parsed): ?ConstantInfo
