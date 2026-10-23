@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
+use Firehed\PhpLsp\Resolution\Scope;
 use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Identifier;
@@ -30,6 +31,7 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
     {
         $located = $this->locator->locate($document, $offset);
         $written = $located->written;
+        $scope = $located->scope;
         $parent = $written?->getAttribute('parent');
 
         return match ($located->slot) {
@@ -42,10 +44,10 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
                 : null,
             Slot::Expression => $parent instanceof Expr\ConstFetch
                 ? $this->expressions->resolve($parent, $located->parsed)
-                : $this->classLike($written),
+                : $this->classLike($written, $scope),
             Slot::StaticReceiver, Slot::ParameterType, Slot::ReturnType, Slot::PropertyType, Slot::AfterModifiers,
             Slot::Catch, Slot::Instanceof, Slot::New, Slot::Implements, Slot::ClassExtends, Slot::InterfaceExtends,
-            Slot::Attribute, Slot::TraitUse, Slot::Import => $this->classLike($written),
+            Slot::Attribute, Slot::TraitUse, Slot::Import => $this->classLike($written, $scope),
         };
     }
 
@@ -86,11 +88,12 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
      * A name where a class-like may be named. A type that is not a class-like,
      * such as `int`, is an identifier.
      */
-    private function classLike(?Node $written): ?ResolvedSymbolInterface
+    private function classLike(?Node $written, Scope $scope): ?ResolvedSymbolInterface
     {
         if (!$written instanceof Name) {
             return null;
         }
-        return $this->symbols->lookupClassLike(ClasslikeName::fromFullyQualified($written->toString()));
+        $name = $scope->resolveClasslikeName($written);
+        return $name === null ? null : $this->symbols->lookupClassLike(ClasslikeName::fromFullyQualified($name));
     }
 }

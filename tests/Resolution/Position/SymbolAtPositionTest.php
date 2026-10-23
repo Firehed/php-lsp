@@ -113,19 +113,28 @@ final class SymbolAtPositionTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{string, string}>
+     * @return iterable<string, array{string, string, string}>
      */
     public static function positionsWithNothingToResolve(): iterable
     {
-        yield 'a literal' => ['return 42; //hover:literal_number', '42'];
+        $user = 'src/Domain/User.php';
+        yield 'a literal' => [$user, 'return 42; //hover:literal_number', '42'];
         // The inner `$name` resolves; the outer variable's name is an expression.
-        yield 'the outer $ of a variable variable' => ['echo /*|outer_var_var*/$$name;', '$$name'];
+        yield 'the outer $ of a variable variable' => [$user, 'echo /*|outer_var_var*/$$name;', '$$name'];
+        yield 'self outside any class' => [
+            'src/Hover/ResolveNewFallbacks.php',
+            '(new self())->foo(); //hover:global_self_new',
+            'self',
+        ];
     }
 
     #[DataProvider('positionsWithNothingToResolve')]
-    public function testNothingResolvesAtAPositionWithoutASymbol(string $lineText, string $target): void
-    {
-        $code = $this->loadFixture('src/Domain/User.php');
+    public function testNothingResolvesAtAPositionWithoutASymbol(
+        string $fixture,
+        string $lineText,
+        string $target,
+    ): void {
+        $code = $this->loadFixture($fixture);
         $line = strpos($code, $lineText);
         assert($line !== false);
         $offset = strpos($code, $target, $line);
