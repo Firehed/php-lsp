@@ -31,7 +31,7 @@ final class MemberCandidates
         $members = $this->symbols->getAccessibleMembers(
             $context->access->on,
             $context->access->from,
-            $context->memberFilter,
+            $context->memberFilter(),
             $context->access->staticClass(),
         );
 
@@ -44,7 +44,7 @@ final class MemberCandidates
             }
         }
 
-        if ($context->offersClassConstant && PrefixMatcher::matches('class', $context->prefix)) {
+        if ($context->offersClassConstant() && PrefixMatcher::matches('class', $context->prefix)) {
             $items[] = $this->itemFormatter->forClassConstant();
         }
 

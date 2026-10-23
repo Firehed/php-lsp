@@ -13,20 +13,24 @@ use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
  */
 final readonly class MemberAccessContext
 {
-    public MemberFilter $memberFilter;
-
-    public bool $offersClassConstant;
-
     public function __construct(
         public MemberAccess $access,
         public string $prefix,
     ) {
-        $this->memberFilter = match ($access->kind) {
+    }
+
+    public function memberFilter(): MemberFilter
+    {
+        return match ($this->access->kind) {
             MemberAccessKind::Instance => MemberFilter::Instance,
             MemberAccessKind::Static => MemberFilter::Static,
             MemberAccessKind::Parent => MemberFilter::All,
         };
-        $this->offersClassConstant = $access->kind === MemberAccessKind::Static;
+    }
+
+    public function offersClassConstant(): bool
+    {
+        return $this->access->kind === MemberAccessKind::Static;
     }
 
     public function accepts(ResolvedMemberInterface $member): bool
