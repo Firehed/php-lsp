@@ -6,7 +6,6 @@ namespace Firehed\PhpLsp\Tests\Parser;
 
 use Firehed\PhpLsp\Document\SourceFileReader;
 use Firehed\PhpLsp\Knowledge\DeclarationScanner;
-use Firehed\PhpLsp\Knowledge\DeclarationSymbolInfoFactory;
 use Firehed\PhpLsp\Knowledge\ParsedDeclarationSource;
 use Firehed\PhpLsp\Parser\Recovery\CompositeRecovery;
 use Firehed\PhpLsp\Parser\Recovery\EndOfFileRecovery;
@@ -42,7 +41,6 @@ final readonly class ProductionSyntaxSource
         $this->declarations = new ParsedDeclarationSource(
             $this->source,
             new DeclarationScanner(),
-            new DeclarationSymbolInfoFactory(),
         );
     }
 

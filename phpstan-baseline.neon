@@ -8,7 +8,7 @@ parameters:
 			'''
 			identifier: staticMethod.deprecatedClass
 			count: 6
-			path: src/Knowledge/DeclarationSymbolInfoFactory.php
+			path: src/Knowledge/ParsedDeclarationSource.php
 
 		-
 			message: '''
