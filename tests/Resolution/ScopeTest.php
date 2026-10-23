@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\LateBinding;
 use Firehed\PhpLsp\Resolution\NameContext;
 use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
@@ -406,6 +408,49 @@ class ScopeTest extends TestCase
             'self outside a class' => ['src/TypeInference/StaticCallOutsideClass.php', 'self', null],
             'parent with no extends' => ['src/TypeInference/ParentWithoutExtends.php', 'parent', null],
         ];
+    }
+
+    /**
+     * @return iterable<string, array{string, class-string<Stmt\ClassMethod|Stmt\Function_>, string, ?LateBinding}>
+     */
+    public static function lateBindings(): iterable
+    {
+        $parentClass = ClasslikeName::fromFullyQualified('Fixtures\Inheritance\ParentClass');
+        $grandparent = ClasslikeName::fromFullyQualified('Fixtures\Inheritance\Grandparent');
+        $trait = ClasslikeName::fromFullyQualified('Fixtures\Traits\HasTimestamps');
+        yield 'a class with a parent' => [
+            'src/Inheritance/ParentClass.php',
+            Stmt\ClassMethod::class,
+            'parentMethod',
+            new LateBinding($parentClass, $parentClass, $grandparent),
+        ];
+        yield 'a trait, which extends nothing' => [
+            'src/Traits/HasTimestamps.php',
+            Stmt\ClassMethod::class,
+            'getCreatedAt',
+            new LateBinding($trait, $trait, null),
+        ];
+        yield 'a free function' => ['src/Utility/GlobalScope.php', Stmt\Function_::class, 'utilityFunction', null];
+    }
+
+    /**
+     * @param class-string<Stmt\ClassMethod|Stmt\Function_> $kind
+     */
+    #[DataProvider('lateBindings')]
+    public function testTheLateBindingNamesTheEnclosingClass(
+        string $fixture,
+        string $kind,
+        string $function,
+        ?LateBinding $expected,
+    ): void {
+        $ast = self::parseWithParents($this->loadFixture($fixture));
+        $node = self::findFirst($kind, $ast, fn ($n) => $n->name->toString() === $function);
+
+        self::assertEquals(
+            $expected,
+            Scope::at($node, $ast)->lateBinding(),
+            'static and self name the class written in, parent what it extends',
+        );
     }
 
     /**
