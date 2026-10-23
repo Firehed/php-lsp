@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Domain\ConstantName;
 use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
@@ -371,6 +372,33 @@ final class ExpressionResolver implements ExpressionResolverInterface
             $this->memberResolver->findProperty(...),
             $parsed,
         );
+    }
+
+    /**
+     * A `parent::` access passes on the class it is written in as `static`
+     * (PHP manual, Late Static Bindings).
+     */
+    public function resolveMemberAccess(Expr|Name $receiver, Scope $scope, ParsedDocument $parsed): ?MemberAccess
+    {
+        $from = $scope->getSelfName();
+        if ($receiver instanceof Name) {
+            $class = $scope->resolveClasslikeName($receiver);
+            if ($class === null) {
+                return null;
+            }
+            $isParent = LateBindingKeyword::tryFromName($receiver->toString()) === LateBindingKeyword::Parent;
+            return new MemberAccess(
+                new ClasslikeType($class),
+                $from,
+                $isParent ? $from : null,
+                $isParent ? MemberAccessKind::Parent : MemberAccessKind::Static,
+            );
+        }
+        $type = $this->resolve($receiver, $parsed)?->getType();
+        if ($type === null || $type->getResolvableClasslikeNames() === []) {
+            return null;
+        }
+        return new MemberAccess($type, $from, null, MemberAccessKind::Instance);
     }
 
     /**

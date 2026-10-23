@@ -15,6 +15,7 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Name;
 use PhpParser\Node\Param;
 
 /**
@@ -32,6 +33,12 @@ interface ExpressionResolverInterface
         FuncCall|MethodCall|NullsafeMethodCall|StaticCall|New_|Attribute $call,
         ParsedDocument $parsed,
     ): ?ResolvedCallableInterface;
+
+    /**
+     * What a member access written in $scope is on: an expression before `->`,
+     * or a class name before `::`. Null when it is on no known class-like.
+     */
+    public function resolveMemberAccess(Expr|Name $receiver, Scope $scope, ParsedDocument $parsed): ?MemberAccess;
 
     /**
      * A parameter as its declaration declares it.
