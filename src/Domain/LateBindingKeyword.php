@@ -11,6 +11,8 @@ use PhpParser\Node\Stmt;
  * `self`, `static`, and `parent`. Every reader identifies one through
  * {@see self::tryFromName()} and resolves it through a {@see LateBinding},
  * so no other file in `src/` compares a string against these keywords.
+ * {@see self::resolveIn()} reads a class-like declaration's own name and
+ * parent, which is what a binding for code written in it is built from.
  */
 enum LateBindingKeyword: string
 {
