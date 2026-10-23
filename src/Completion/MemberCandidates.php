@@ -29,10 +29,10 @@ final class MemberCandidates
     public function find(MemberAccessContext $context): array
     {
         $members = $this->symbols->getAccessibleMembers(
-            $context->type,
-            $context->from,
+            $context->access->on,
+            $context->access->from,
             $context->memberFilter,
-            $context->static,
+            $context->access->static,
         );
 
         $snippetSupport = $this->capabilities->getSessionCapabilities()->snippetSupport;
