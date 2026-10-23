@@ -519,6 +519,11 @@ final class ExpectedAtPositionTest extends TestCase
         yield 'self:: in an anonymous class' => ['AnonymousClass.php', 'self_in_anonymous', null];
         yield 'self:: outside a class' => [self::PROCEDURAL, 'self_outside_class', null];
         yield 'a class held in a variable' => [self::PROCEDURAL, 'dynamic_static', null];
+        yield 'an object before ::, which only a class name is resolved before' => [
+            self::STATIC_ACCESS,
+            'this_static',
+            null,
+        ];
         yield 'self:: in the second class of a file' => [
             self::MULTI_CLASS,
             'self_in_second_class',
