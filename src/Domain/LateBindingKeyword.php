@@ -9,7 +9,7 @@ use PhpParser\Node\Stmt;
 /**
  * The three PHP keywords that stand in for a class in a class-name position:
  * `self`, `static`, and `parent`. Every reader identifies one through
- * {@see self::tryFromName()} and resolves it through {@see self::resolveIn()},
+ * {@see self::tryFromName()} and resolves it through a {@see LateBinding},
  * so no other file in `src/` compares a string against these keywords.
  */
 enum LateBindingKeyword: string
