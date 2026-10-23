@@ -89,7 +89,7 @@ final class EnumImplicits
             isAbstract: false,
             isFinal: false,
             parameters: [$valueParam],
-            returnType: TypeFactory::union([$enumType, new PrimitiveType('null')]),
+            returnType: new UnionType([$enumType, new PrimitiveType('null')]),
             docblock: null,
             file: null,
             line: null,

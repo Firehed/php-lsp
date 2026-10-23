@@ -91,20 +91,6 @@ final class TypeFactory
         return new PrimitiveType($name);
     }
 
-    /**
-     * Build a union from resolved parts. A single-member "union" collapses to
-     * that member, matching how PHP's type system treats it.
-     *
-     * @param non-empty-list<TypeInterface> $members
-     */
-    public static function union(array $members): TypeInterface
-    {
-        if (count($members) === 1) {
-            return $members[0];
-        }
-        return new UnionType($members);
-    }
-
     public static function fromReflection(?ReflectionType $type): ?TypeInterface
     {
         if ($type === null) {

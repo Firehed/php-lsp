@@ -20,8 +20,8 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
-use Firehed\PhpLsp\Domain\TypeFactory;
 use Firehed\PhpLsp\Domain\TypeInterface;
+use Firehed\PhpLsp\Domain\UnionType;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
@@ -188,7 +188,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
                 $name = ClasslikeName::fromFullyQualified($type->toString());
                 $classTypes[] = new ClasslikeType($name);
             }
-            return count($classTypes) === 1 ? $classTypes[0] : TypeFactory::union($classTypes);
+            return count($classTypes) === 1 ? $classTypes[0] : new UnionType($classTypes);
         }
         if ($parent instanceof Node\ClosureUse) {
             $closure = $scope->getSourceNode();
