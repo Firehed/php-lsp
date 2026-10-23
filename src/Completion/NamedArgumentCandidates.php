@@ -11,12 +11,12 @@ use Firehed\PhpLsp\Resolution\CallContext;
  * Produces named-argument completion items (`name:`) for a call, skipping
  * parameters already supplied positionally or by name and variadics.
  *
- * @phpstan-import-type CompletionItem from CompletionItemFactory
+ * @phpstan-import-type CompletionItem from CompletionItemFormatter
  */
 final class NamedArgumentCandidates
 {
     public function __construct(
-        private readonly CompletionItemFactory $itemFactory,
+        private readonly CompletionItemFormatter $itemFormatter,
     ) {
     }
 
@@ -46,7 +46,7 @@ final class NamedArgumentCandidates
             }
 
             if (PrefixMatcher::matches($param->name, $prefix)) {
-                $items[] = $this->itemFactory->forNamedArgument($param);
+                $items[] = $this->itemFormatter->forNamedArgument($param);
             }
         }
 

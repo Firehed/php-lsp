@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Handler;
 
-use Firehed\PhpLsp\Completion\CompletionItemFactory;
+use Firehed\PhpLsp\Completion\CompletionItemFormatter;
 use Firehed\PhpLsp\Completion\CompletionRequest;
 use Firehed\PhpLsp\Completion\CompletionSourceInterface;
 use Firehed\PhpLsp\Document\DocumentSourceInterface;
@@ -12,7 +12,7 @@ use Firehed\PhpLsp\Protocol\Message;
 use Firehed\PhpLsp\Protocol\TextDocumentPositionParams;
 
 /**
- * @phpstan-import-type CompletionItem from CompletionItemFactory
+ * @phpstan-import-type CompletionItem from CompletionItemFormatter
  */
 final class CompletionHandler implements DocumentFeatureHandlerInterface
 {

@@ -11,7 +11,7 @@ use Firehed\PhpLsp\Resolution\Position\ExpectedAtPositionInterface;
  * The one completion source the handler consumes. It hands each kind of thing
  * a position admits to the source that offers it, then merges what they offer.
  *
- * @phpstan-import-type CompletionItem from CompletionItemFactory
+ * @phpstan-import-type CompletionItem from CompletionItemFormatter
  */
 final class CompositeCompletionSource implements CompletionSourceInterface
 {

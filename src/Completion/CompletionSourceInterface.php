@@ -11,7 +11,7 @@ namespace Firehed\PhpLsp\Completion;
  * Null means "does not apply here; other sources may". An empty list means
  * "applies here but has no items to offer".
  *
- * @phpstan-import-type CompletionItem from CompletionItemFactory
+ * @phpstan-import-type CompletionItem from CompletionItemFormatter
  */
 interface CompletionSourceInterface
 {

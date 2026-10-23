@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
-use Firehed\PhpLsp\Completion\CompletionItemFactory;
+use Firehed\PhpLsp\Completion\CompletionItemFormatter;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
 use Firehed\PhpLsp\Domain\KeywordGroup;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
@@ -70,6 +70,6 @@ final class KeywordCandidatesTest extends TestCase
 
     private static function candidates(): KeywordCandidates
     {
-        return new KeywordCandidates(new CompletionItemFactory(new ResolvedSymbolPresenter()));
+        return new KeywordCandidates(new CompletionItemFormatter(new ResolvedSymbolPresenter()));
     }
 }

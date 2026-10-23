@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Completion;
 
-use Firehed\PhpLsp\Completion\CompletionItemFactory;
+use Firehed\PhpLsp\Completion\CompletionItemFormatter;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\PrimitiveType;
@@ -52,7 +52,7 @@ final class NamedArgumentCandidatesTest extends TestCase
             self::parameterInfo('active', new PrimitiveType('bool'), 2),
             new ParameterInfo('values', new PrimitiveType('string'), null, 3, true, false),
         ]);
-        $items = (new NamedArgumentCandidates(new CompletionItemFactory(new ResolvedSymbolPresenter())))
+        $items = (new NamedArgumentCandidates(new CompletionItemFormatter(new ResolvedSymbolPresenter())))
             ->find(new CallContext($callable, 0, $usedNames, $positionallyFilled), $prefix);
 
         self::assertSame(

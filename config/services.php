@@ -16,7 +16,7 @@ return [
     Client\ClientConnectionInterface::class => Client\TransportClientConnection::class,
 
     Completion\BuiltinTypeCandidates::class,
-    Completion\CompletionItemFactory::class,
+    Completion\CompletionItemFormatter::class,
     Completion\CompositeCompletionSource::class,
     Completion\CompletionSourceInterface::class => Completion\CompositeCompletionSource::class,
     Completion\KeywordCandidates::class,

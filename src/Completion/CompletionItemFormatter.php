@@ -32,7 +32,7 @@ use Firehed\PhpLsp\Resolution\ResolvedVariable;
  *   textEdit?: array{range: LspRange, newText: string},
  * }
  */
-final class CompletionItemFactory
+final class CompletionItemFormatter
 {
     public function __construct(
         private readonly ResolvedSymbolPresenterInterface $presenter,

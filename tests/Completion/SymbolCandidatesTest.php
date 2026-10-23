@@ -6,7 +6,7 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Closure;
 use Firehed\PhpLsp\Capability\SessionCapabilities;
-use Firehed\PhpLsp\Completion\CompletionItemFactory;
+use Firehed\PhpLsp\Completion\CompletionItemFormatter;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
 use Firehed\PhpLsp\Domain\CatalogSymbol;
@@ -628,7 +628,7 @@ final class SymbolCandidatesTest extends TestCase
             $symbols,
             $resolver,
             self::capabilitiesProvider($capabilities),
-            new CompletionItemFactory(new ResolvedSymbolPresenter()),
+            new CompletionItemFormatter(new ResolvedSymbolPresenter()),
         );
     }
 

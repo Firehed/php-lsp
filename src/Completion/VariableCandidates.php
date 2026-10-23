@@ -13,13 +13,13 @@ use Firehed\PhpLsp\Resolution\Position\ScopeAtPositionInterface;
  * Every variable is offered until a `$` is written, as where variables mix
  * with other items inside a call's argument list.
  *
- * @phpstan-import-type CompletionItem from CompletionItemFactory
+ * @phpstan-import-type CompletionItem from CompletionItemFormatter
  */
 final class VariableCandidates
 {
     public function __construct(
         private readonly ScopeAtPositionInterface $scope,
-        private readonly CompletionItemFactory $itemFactory,
+        private readonly CompletionItemFormatter $itemFormatter,
     ) {
     }
 
@@ -33,7 +33,7 @@ final class VariableCandidates
         $items = [];
         foreach ($variables as $variable) {
             if (PrefixMatcher::matches($variable->getName(), $prefix)) {
-                $items[] = $this->itemFactory->forVariable($variable);
+                $items[] = $this->itemFormatter->forVariable($variable);
             }
         }
 
