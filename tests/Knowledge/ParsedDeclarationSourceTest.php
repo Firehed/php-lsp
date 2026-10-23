@@ -67,11 +67,7 @@ final class ParsedDeclarationSourceTest extends TestCase
     public function testItReportsWhatTheDocumentDeclares(callable $spell): void
     {
         [$fixture] = self::USER;
-        $path = $this->fixturePath($fixture);
-
-        $declared = ProductionSyntaxSource::create()->declarations->declarationsIn(
-            new TextDocument($spell($path), 'php', 1, $this->loadFixture($fixture)),
-        );
+        $declared = $this->declaredIn($fixture, $spell);
 
         self::assertSame(
             [['Fixtures\Domain\User', NameKind::ClassLike]],
@@ -83,7 +79,11 @@ final class ParsedDeclarationSourceTest extends TestCase
         );
         $info = $declared[0]->info;
         self::assertInstanceOf(ClassInfo::class, $info, 'a class-like is described by a ClassInfo');
-        self::assertSame($path, $info->file, 'the declaring file is a path however the document was named');
+        self::assertSame(
+            $this->fixturePath($fixture),
+            $info->file,
+            'the declaring file is a path however the document was named',
+        );
     }
 
     public function testBuildsClassInfoForAClassLikeDeclaration(): void
@@ -849,12 +849,14 @@ final class ParsedDeclarationSourceTest extends TestCase
      * What the one production route reports for a fixture, so these cases
      * describe the {@see \Firehed\PhpLsp\Knowledge\DeclarationSourceInterface} contract callers rely on.
      *
+     * @param ?callable(string): string $spell How the document's path is written as its URI
      * @return list<DeclaredSymbol>
      */
-    private function declaredIn(string $fixture): array
+    private function declaredIn(string $fixture, ?callable $spell = null): array
     {
+        $path = $this->fixturePath($fixture);
         return ProductionSyntaxSource::create()->declarations->declarationsIn(
-            new TextDocument($this->fixturePath($fixture), 'php', 1, $this->loadFixture($fixture)),
+            new TextDocument($spell === null ? $path : $spell($path), 'php', 1, $this->loadFixture($fixture)),
         );
     }
 }
