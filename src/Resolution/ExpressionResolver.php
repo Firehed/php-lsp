@@ -434,9 +434,10 @@ final class ExpressionResolver implements ExpressionResolverInterface
             $expr->class,
             $expr,
             $expr->name->toString(),
-            fn (ClasslikeName $class, string $name, ?ClasslikeName $from, ?ClasslikeName $static): ?MemberInfoInterface
+            // PHP never forwards `static` to a constant's type (zend_check_class_constant_type).
+            fn (ClasslikeName $class, string $name, ?ClasslikeName $from): ?MemberInfoInterface
                 => $this->memberResolver->findEnumCase($class, $name)
-                    ?? $this->memberResolver->findConstant($class, $name, $from, $static),
+                    ?? $this->memberResolver->findConstant($class, $name, $from),
             $parsed,
         );
     }
