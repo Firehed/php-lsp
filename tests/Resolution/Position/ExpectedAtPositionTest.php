@@ -758,7 +758,7 @@ final class ExpectedAtPositionTest extends TestCase
     private static function instance(TypeInterface $type, ?string $from, string $prefix = ''): MemberAccessContext
     {
         $written = $from === null ? null : self::className($from);
-        return new MemberAccessContext(new MemberAccess($type, $written, null, MemberAccessKind::Instance), $prefix);
+        return new MemberAccessContext(new MemberAccess($type, $written, MemberAccessKind::Instance), $prefix);
     }
 
     /**
@@ -767,7 +767,7 @@ final class ExpectedAtPositionTest extends TestCase
     private static function static(TypeInterface $type, ?string $from, string $prefix = ''): MemberAccessContext
     {
         $written = $from === null ? null : self::className($from);
-        return new MemberAccessContext(new MemberAccess($type, $written, null, MemberAccessKind::Static), $prefix);
+        return new MemberAccessContext(new MemberAccess($type, $written, MemberAccessKind::Static), $prefix);
     }
 
     /**
@@ -775,9 +775,8 @@ final class ExpectedAtPositionTest extends TestCase
      */
     private static function parent(TypeInterface $type, string $from, string $prefix = ''): MemberAccessContext
     {
-        $written = self::className($from);
         return new MemberAccessContext(
-            new MemberAccess($type, $written, $written, MemberAccessKind::Parent),
+            new MemberAccess($type, self::className($from), MemberAccessKind::Parent),
             $prefix,
         );
     }

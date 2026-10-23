@@ -24,7 +24,6 @@ class MemberAccessContextTest extends TestCase
         return new MemberAccess(
             new ClasslikeType(ClasslikeName::fromFullyQualified(self::class)),
             null,
-            null,
             $kind,
         );
     }

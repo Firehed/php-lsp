@@ -26,5 +26,5 @@ function unknownClassParameter(UnknownClass $obj): void
 
 function methodCallOnUnresolvedType(): void
 {
-    $result = $unknown->someMethod();
+    $result = $unknown->someMethod(); //hover:unknown_receiver_call
 }

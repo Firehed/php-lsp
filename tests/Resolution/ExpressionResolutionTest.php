@@ -327,25 +327,26 @@ final class ExpressionResolutionTest extends TestCase
         yield 'parent:: passes on the class it is written in as static' => [
             $keywords,
             'parent',
-            new MemberAccess(new ClasslikeType($parent), $written, $written, MemberAccessKind::Parent),
+            new MemberAccess(new ClasslikeType($parent), $written, MemberAccessKind::Parent),
         ];
         yield 'self:: is a static access on the class written in' => [
             $keywords,
             'self',
-            new MemberAccess(new ClasslikeType($written), $written, null, MemberAccessKind::Static),
+            new MemberAccess(new ClasslikeType($written), $written, MemberAccessKind::Static),
         ];
         yield 'a named class' => [
             $keywords,
             'Fixtures\Inheritance\ParentClass',
-            new MemberAccess(new ClasslikeType($parent), $written, null, MemberAccessKind::Static),
+            new MemberAccess(new ClasslikeType($parent), $written, MemberAccessKind::Static),
         ];
         yield 'an instance' => [
             'src/Utility/ScopePatterns.php',
             '$this',
-            new MemberAccess(new ClasslikeType($patterns), $patterns, null, MemberAccessKind::Instance),
+            new MemberAccess(new ClasslikeType($patterns), $patterns, MemberAccessKind::Instance),
         ];
         yield 'self outside any class' => [$outside, 'self', null];
         yield 'an instance whose type is not known' => [$outside, '$unknown', null];
+        yield 'an instance of a type that names no class' => ['src/Resolution/ClosureParameter.php', '$captured', null];
     }
 
     /**
@@ -378,6 +379,14 @@ final class ExpressionResolutionTest extends TestCase
             $expected,
             $expressions->resolveMemberAccess($node, Scope::at($node, $parsed->tree), $parsed),
             'the class the access is on, the class it is written in, and what static names',
+        );
+    }
+
+    public function testAMemberOnAReceiverOfUnknownTypeIsUnresolved(): void
+    {
+        self::assertNull(
+            $this->resolveSymbolAt('src/TypeInference/StaticCallOutsideClass.php', 'unknown_receiver_call'),
+            'nothing says which class $unknown is',
         );
     }
 

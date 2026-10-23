@@ -53,7 +53,7 @@ final class CompositeCompletionSourceTest extends TestCase
         $items = self::source(new Expected(
             'n',
             members: new MemberAccessContext(
-                new MemberAccess(new ClasslikeType(self::owner()), null, null, MemberAccessKind::Instance),
+                new MemberAccess(new ClasslikeType(self::owner()), null, MemberAccessKind::Instance),
                 '',
             ),
             argumentNames: new CallContext($callable, 0, []),

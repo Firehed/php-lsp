@@ -64,17 +64,14 @@ final class MemberCandidatesTest extends TestCase
     }
 
     /**
-     * A member access on the owner, written in it when it names a `static`.
+     * A member access on the owner, written in $from.
      */
     private static function context(
         MemberAccessKind $kind,
         string $prefix,
-        ?ClasslikeName $static = null,
+        ?ClasslikeName $from = null,
     ): MemberAccessContext {
-        return new MemberAccessContext(
-            new MemberAccess(new ClasslikeType(self::owner()), $static, $static, $kind),
-            $prefix,
-        );
+        return new MemberAccessContext(new MemberAccess(new ClasslikeType(self::owner()), $from, $kind), $prefix);
     }
 
     /**
@@ -86,7 +83,12 @@ final class MemberCandidatesTest extends TestCase
         $symbols = $this->createMock(SymbolCapabilitiesInterface::class);
         $symbols->expects(self::once())
             ->method('getAccessibleMembers')
-            ->with($context->access->on, $context->access->from, $context->memberFilter, $context->access->static)
+            ->with(
+                $context->access->on,
+                $context->access->from,
+                $context->memberFilter,
+                $context->access->staticClass(),
+            )
             ->willReturn([
                 self::member(new MethodName(self::owner(), 'getName'), MemberKind::Method),
                 self::member(new MethodName(self::owner(), 'getCount'), MemberKind::Method),
