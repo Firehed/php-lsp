@@ -349,8 +349,8 @@ final class ExpressionResolutionTest extends TestCase
     }
 
     /**
-     * @param string $receiver The first class name, or `$`-prefixed variable,
-     *        written in the fixture
+     * @param string $receiver The class name, or `$`-prefixed variable, whose
+     *        last occurrence in the fixture is the receiver
      */
     #[DataProvider('memberAccesses')]
     public function testAMemberAccessIsOnWhatItsReceiverNames(
@@ -360,12 +360,13 @@ final class ExpressionResolutionTest extends TestCase
     ): void {
         $document = new TextDocument(self::uri($fixture), 'php', 1, $this->loadFixture($fixture));
         $parsed = ProductionSyntaxSource::create()->source->parse($document);
-        $node = (new NodeFinder())->findFirst(
+        $found = (new NodeFinder())->find(
             $parsed->tree,
             static fn (Node $node): bool => str_starts_with($receiver, '$')
-                ? $node instanceof Expr\Variable && '$' . $node->name === $receiver
+                ? $node instanceof Expr\Variable && is_string($node->name) && '$' . $node->name === $receiver
                 : $node instanceof Node\Name && $node->toString() === $receiver,
         );
+        $node = end($found);
         self::assertTrue($node instanceof Expr || $node instanceof Node\Name, "{$receiver} is written in {$fixture}");
         $expressions = new ExpressionResolver(
             self::createStub(MemberResolverInterface::class),
