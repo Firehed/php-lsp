@@ -10,4 +10,9 @@ class Sub extends Base
     {
         return $this;
     }
+
+    public static function triggerParentCallStatic(): void
+    {
+        parent::makeInstance(); //hover:parent_call_static
+    }
 }

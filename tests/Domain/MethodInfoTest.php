@@ -13,6 +13,51 @@ class MethodInfoTest extends TestCase
 {
     use HasSymbolLocationTestTrait;
 
+    public function testLateBindingBindsTheReturnAndParameterTypes(): void
+    {
+        $called = ClasslikeName::fromFullyQualified('App\\Called');
+        $method = new MethodInfo(
+            name: new MethodName(ClasslikeName::fromFullyQualified('App\\Declaring'), 'with'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [
+                new ParameterInfo('other', new LateStaticType(LateBindingKeyword::Self), null, 0, false, false),
+            ],
+            returnType: new LateStaticType(LateBindingKeyword::Static),
+            docblock: '/** Doc. */',
+            file: '/f.php',
+            line: 3,
+        );
+
+        $bound = $method->resolveLateBound(new LateBinding($called, $called, null));
+
+        self::assertSame('App\\Called', $bound->returnType?->format(), 'the return type is bound');
+        self::assertSame('App\\Called', $bound->parameters[0]->type?->format(), 'each parameter type is bound');
+        self::assertSame($method->name, $bound->name, 'the rest is kept');
+        self::assertSame('/** Doc. */', $bound->docblock);
+    }
+
+    public function testLateBindingKeepsAMethodWithNothingToBind(): void
+    {
+        $method = new MethodInfo(
+            name: new MethodName(ClasslikeName::fromFullyQualified('App\\Declaring'), 'run'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [new ParameterInfo('count', new PrimitiveType('int'), null, 0, false, false)],
+            returnType: new PrimitiveType('void'),
+            docblock: null,
+            file: null,
+            line: null,
+        );
+        $called = ClasslikeName::fromFullyQualified('App\\Called');
+
+        self::assertSame($method, $method->resolveLateBound(new LateBinding($called, $called, null)));
+    }
+
     public function testConstruction(): void
     {
         $owner = ClasslikeName::fromFullyQualified(MethodInfo::class);

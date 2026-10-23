@@ -45,7 +45,7 @@ final class MemberCandidatesTest extends TestCase
             [],
         ];
         yield 'parent, methods only' => [
-            MemberAccessContext::forParent($type, self::owner(), ''),
+            MemberAccessContext::forParent($type, self::owner(), self::owner(), ''),
             ['getName', 'getCount'],
         ];
         yield 'static adds ::class' => [
@@ -71,7 +71,7 @@ final class MemberCandidatesTest extends TestCase
         $symbols = $this->createMock(SymbolCapabilitiesInterface::class);
         $symbols->expects(self::once())
             ->method('getAccessibleMembers')
-            ->with($context->type, $context->from, $context->memberFilter)
+            ->with($context->type, $context->from, $context->memberFilter, $context->static)
             ->willReturn([
                 self::member(new MethodName(self::owner(), 'getName'), MemberKind::Method),
                 self::member(new MethodName(self::owner(), 'getCount'), MemberKind::Method),

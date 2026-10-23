@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
+use Firehed\PhpLsp\Domain\LateBinding;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MemberKind;
@@ -42,38 +43,35 @@ final class MemberResolver implements MemberResolverInterface
         ClasslikeName $class,
         string $name,
         ?ClasslikeName $from,
+        ?ClasslikeName $static = null,
     ): ?ClasslikeConstantInfo {
-        return $this->findMember($class, MemberKind::Constant, $name, $from);
+        return $this->findMember($class, MemberKind::Constant, $name, $from, $static ?? $class);
     }
 
     public function findEnumCase(ClasslikeName $class, string $name): ?EnumCaseInfo
     {
-        return $this->findMember($class, MemberKind::EnumCase, $name, null);
+        return $this->findMember($class, MemberKind::EnumCase, $name, null, $class);
     }
 
     public function findMethod(
         ClasslikeName $class,
         string $name,
         ?ClasslikeName $from,
+        ?ClasslikeName $static = null,
     ): ?MethodInfo {
         $origin = $this->source->lookupClassLike($class);
-        if ($origin === null) {
-            return null;
-        }
-        $aliased = $this->findAliasedMethod($origin, $name, $from);
-        if ($aliased !== null) {
-            return $aliased;
-        }
+        $found = $origin === null ? null : $this->declaredMethod($origin, $name, $from);
 
-        return $this->findMember($class, MemberKind::Method, $name, $from, $origin);
+        return $found === null ? null : $this->bind($found[0], $found[1], $static ?? $class);
     }
 
     public function findProperty(
         ClasslikeName $class,
         string $name,
         ?ClasslikeName $from,
+        ?ClasslikeName $static = null,
     ): ?PropertyInfo {
-        return $this->findMember($class, MemberKind::Property, $name, $from);
+        return $this->findMember($class, MemberKind::Property, $name, $from, $static ?? $class);
     }
 
     /**
@@ -89,17 +87,21 @@ final class MemberResolver implements MemberResolverInterface
         MemberKind $kind,
         ?ClasslikeName $from,
         MemberFilter $filter = MemberFilter::All,
+        ?ClasslikeName $static = null,
     ): array {
-        if (!$kind->isMethod()) {
-            return $this->collectMembers($class, $kind, $from, $filter);
-        }
         $origin = $this->source->lookupClassLike($class);
         if ($origin === null) {
             return [];
         }
-        $members = $this->collectMembers($class, $kind, $from, $filter, $origin);
+        $found = $this->collectMembers($origin, $kind, $from, $filter);
+        if ($kind->isMethod()) {
+            $found = $this->applyMethodAliases($found, $origin, $from, $filter);
+        }
 
-        return $this->applyMethodAliases($members, $origin, $from, $filter);
+        return array_map(
+            fn (array $member): MemberInfoInterface => $this->bind($member[0], $member[1], $static ?? $class),
+            $found,
+        );
     }
 
     public function isSubclassOf(ClasslikeName $class, ClasslikeName $potentialParent): bool
@@ -115,7 +117,7 @@ final class MemberResolver implements MemberResolverInterface
         }
 
         $seen = [];
-        foreach ($this->descend($origin, $origin->name, [], $seen) as [$info]) {
+        foreach ($this->descend($origin, $origin, [], $seen) as [$info]) {
             // is_subclass_of never treats a trait as a parent; the walk yields
             // used traits so member kinds see them, so filter them here.
             if ($info->isTrait()) {
@@ -144,27 +146,22 @@ final class MemberResolver implements MemberResolverInterface
     }
 
     /**
-     * Every member of $kind on $class that code in $from may use.
+     * Every member of $kind on $origin that code in $from may use, with the
+     * class declaring each.
      *
-     * @return list<MemberInfoInterface>
+     * @return list<array{MemberInfoInterface, ClassInfo}>
      */
     private function collectMembers(
-        ClasslikeName $class,
+        ClassInfo $origin,
         MemberKind $kind,
         ?ClasslikeName $from,
         MemberFilter $filter,
-        ?ClassInfo $origin = null,
     ): array {
-        $origin ??= $this->source->lookupClassLike($class);
-        if ($origin === null) {
-            return [];
-        }
-
         $collected = [];
         foreach ($this->declarations($origin, $kind, null) as $declarations) {
-            $member = $this->usable($declarations, $kind, $from, $filter);
-            if ($member !== null) {
-                $collected[] = $member;
+            $found = $this->usable($declarations, $kind, $from, $filter);
+            if ($found !== null) {
+                $collected[] = $found;
             }
         }
 
@@ -172,6 +169,9 @@ final class MemberResolver implements MemberResolverInterface
     }
 
     /**
+     * The member a name resolves to on $class for code in $from, with
+     * `static` naming $static.
+     *
      * @phpstan-return (
      *   $kind is MemberKind::Method ? ?MethodInfo : (
      *     $kind is MemberKind::Property ? ?PropertyInfo : (
@@ -187,15 +187,43 @@ final class MemberResolver implements MemberResolverInterface
         MemberKind $kind,
         string $name,
         ?ClasslikeName $from,
-        ?ClassInfo $origin = null,
+        ClasslikeName $static,
     ): ?MemberInfoInterface {
-        $origin ??= $this->source->lookupClassLike($class);
+        $origin = $this->source->lookupClassLike($class);
         if ($origin === null) {
             return null;
         }
+        $found = $this->findDeclared($origin, $kind, $name, $from);
+
+        return $found === null ? null : $this->bind($found[0], $found[1], $static);
+    }
+
+    /**
+     * The member a name resolves to on $origin for code in $from, as declared,
+     * with the class declaring it.
+     *
+     * @phpstan-return (
+     *   $kind is MemberKind::Method ? ?array{MethodInfo, ClassInfo} : ?array{MemberInfoInterface, ClassInfo}
+     * )
+     */
+    private function findDeclared(ClassInfo $origin, MemberKind $kind, string $name, ?ClasslikeName $from): ?array
+    {
         $declarations = $this->declarations($origin, $kind, $kind->keyFor($name));
 
         return $declarations === [] ? null : $this->usable($declarations[0], $kind, $from, MemberFilter::All);
+    }
+
+    /**
+     * $member with `static` naming $static, and `self` and `parent` naming
+     * $declaring and its parent (PHP manual, Late Static Bindings).
+     *
+     * @template T of MemberInfoInterface
+     * @param T $member
+     * @return T
+     */
+    private function bind(MemberInfoInterface $member, ClassInfo $declaring, ClasslikeName $static): MemberInfoInterface
+    {
+        return $member->resolveLateBound(new LateBinding($static, $declaring->name, $declaring->parent));
     }
 
     /**
@@ -203,13 +231,13 @@ final class MemberResolver implements MemberResolverInterface
      * first, each paired with the class that declares it — the class using a
      * trait for a member the trait brings in. Only $wanted's when given.
      *
-     * @return list<non-empty-list<array{MemberInfoInterface, ClasslikeName}>>
+     * @return list<non-empty-list<array{MemberInfoInterface, ClassInfo}>>
      */
     private function declarations(ClassInfo $origin, MemberKind $kind, ?string $wanted): array
     {
         $byKey = [];
         $seen = [];
-        foreach ($this->descend($origin, $origin->name, [], $seen) as [$classInfo, $declaringClass, $exclusions]) {
+        foreach ($this->descend($origin, $origin, [], $seen) as [$classInfo, $declaringClass, $exclusions]) {
             foreach ($kind->membersOf($classInfo) as $name => $member) {
                 $key = $kind->keyFor($name);
                 if ($wanted !== null && $key !== $wanted) {
@@ -235,51 +263,53 @@ final class MemberResolver implements MemberResolverInterface
      * kinds, code in a class also reaches that class's own private member on
      * an instance of a subclass.
      *
-     * @param non-empty-list<array{MemberInfoInterface, ClasslikeName}> $declarations
+     * @param non-empty-list<array{MemberInfoInterface, ClassInfo}> $declarations
+     * @return ?array{MemberInfoInterface, ClassInfo}
      */
     private function usable(
         array $declarations,
         MemberKind $kind,
         ?ClasslikeName $from,
         MemberFilter $filter,
-    ): ?MemberInfoInterface {
-        [$member, $declaringClass] = $declarations[0];
+    ): ?array {
+        $found = $declarations[0];
         $byFirstDeclaration = $kind->checksAccessByFirstDeclaration();
-        if ($byFirstDeclaration && $from !== null && !$from->equals($declaringClass)) {
-            foreach ($declarations as [$candidate, $candidateClass]) {
+        if ($byFirstDeclaration && $from !== null && !$from->equals($found[1]->name)) {
+            foreach ($declarations as $candidate) {
                 // A class's own member precedes its traits' in the walk, as in its method table.
-                if ($candidate->getVisibility() === Visibility::Private && $from->equals($candidateClass)) {
-                    [$member, $declaringClass] = [$candidate, $candidateClass];
+                if ($candidate[0]->getVisibility() === Visibility::Private && $from->equals($candidate[1]->name)) {
+                    $found = $candidate;
                     break;
                 }
             }
         }
 
+        [$member, $declaring] = $found;
         if (!$this->passes($member, $filter)) {
             return null;
         }
-        $checkedAgainst = $byFirstDeclaration ? self::firstDeclarer($declarations) : $declaringClass;
+        $checkedAgainst = $byFirstDeclaration ? self::firstDeclarer($declarations) : $declaring->name;
         $usable = match ($member->getVisibility()) {
             Visibility::Public => true,
-            Visibility::Private => $from !== null && $from->equals($declaringClass),
+            Visibility::Private => $from !== null && $from->equals($declaring->name),
             Visibility::Protected => $from !== null && $this->isRelated($from, $checkedAgainst),
         };
 
-        return $usable ? $member : null;
+        return $usable ? $found : null;
     }
 
     /**
      * The class that first declared a name along the parent chain: the
      * farthest declaration that is not private, which later ones override.
      *
-     * @param non-empty-list<array{MemberInfoInterface, ClasslikeName}> $declarations
+     * @param non-empty-list<array{MemberInfoInterface, ClassInfo}> $declarations
      */
     private static function firstDeclarer(array $declarations): ClasslikeName
     {
-        $first = $declarations[0][1];
-        foreach ($declarations as [$member, $declaringClass]) {
+        $first = $declarations[0][1]->name;
+        foreach ($declarations as [$member, $declaring]) {
             if ($member->getVisibility() !== Visibility::Private) {
-                $first = $declaringClass;
+                $first = $declaring->name;
             }
         }
         return $first;
@@ -293,11 +323,12 @@ final class MemberResolver implements MemberResolverInterface
     /**
      * @param list<string> $exclusions
      * @param array<string, true> $seen
-     * @return iterable<array{ClassInfo, ClasslikeName, list<string>}>
+     * @return iterable<array{ClassInfo, ClassInfo, list<string>}> Each class-like
+     *         with the class its members are declared in, and its excluded methods
      */
     private function descend(
         ClassInfo $classInfo,
-        ClasslikeName $declaringClass,
+        ClassInfo $declaring,
         array $exclusions,
         array &$seen,
     ): iterable {
@@ -307,11 +338,10 @@ final class MemberResolver implements MemberResolverInterface
         }
         $seen[$key] = true;
 
-        yield [$classInfo, $declaringClass, $exclusions];
+        yield [$classInfo, $declaring, $exclusions];
 
         foreach ($this->supertypes($classInfo) as [$superInfo, $isTrait, $superExclusions]) {
-            $superDeclaringClass = $isTrait ? $declaringClass : $superInfo->name;
-            yield from $this->descend($superInfo, $superDeclaringClass, $superExclusions, $seen);
+            yield from $this->descend($superInfo, $isTrait ? $declaring : $superInfo, $superExclusions, $seen);
         }
     }
 
@@ -371,8 +401,8 @@ final class MemberResolver implements MemberResolverInterface
      * entries the walk produced. The alias is invisible if its resolved source
      * cannot be found or fails the visibility gate.
      *
-     * @param list<MemberInfoInterface> $members
-     * @return list<MemberInfoInterface>
+     * @param list<array{MemberInfoInterface, ClassInfo}> $members
+     * @return list<array{MemberInfoInterface, ClassInfo}>
      */
     private function applyMethodAliases(
         array $members,
@@ -384,7 +414,7 @@ final class MemberResolver implements MemberResolverInterface
             return $members;
         }
         $byKey = [];
-        foreach ($members as $index => $member) {
+        foreach ($members as $index => [$member]) {
             $byKey[MemberKind::Method->keyFor($member->getName()->name)] = $index;
         }
         foreach ($origin->traitAliases as $alias) {
@@ -394,14 +424,14 @@ final class MemberResolver implements MemberResolverInterface
             }
             $key = MemberKind::Method->keyFor($aliased->getName()->name);
             if (array_key_exists($key, $byKey)) {
-                $members[$byKey[$key]] = $aliased;
+                $members[$byKey[$key]] = [$aliased, $origin];
             } else {
                 $byKey[$key] = count($members);
-                $members[] = $aliased;
+                $members[] = [$aliased, $origin];
             }
         }
 
-        return array_values($members);
+        return $members;
     }
 
     /**
@@ -443,7 +473,7 @@ final class MemberResolver implements MemberResolverInterface
         if ($aliased === null) {
             return null;
         }
-        $declarations = [[$aliased, $origin->name]];
+        $declarations = [[$aliased, $origin]];
         return $this->usable($declarations, MemberKind::Method, $from, $filter) === null ? null : $aliased;
     }
 
@@ -480,15 +510,40 @@ final class MemberResolver implements MemberResolverInterface
     private function findAliasSource(ClassInfo $origin, TraitAlias $alias): ?MethodInfo
     {
         if ($alias->trait !== null) {
-            return $this->findMethod($alias->trait, $alias->method, $alias->trait);
+            return $this->traitMethod($alias->trait, $alias->method);
         }
         foreach ($origin->traits as $trait) {
-            $method = $this->findMethod($trait, $alias->method, $trait);
+            $method = $this->traitMethod($trait, $alias->method);
             if ($method !== null) {
                 return $method;
             }
         }
 
         return null;
+    }
+
+    /**
+     * A trait's method as declared, so an alias of it binds `self` to the
+     * class using the trait.
+     */
+    private function traitMethod(ClasslikeName $trait, string $name): ?MethodInfo
+    {
+        $origin = $this->source->lookupClassLike($trait);
+        return $origin === null ? null : ($this->declaredMethod($origin, $name, $trait)[0] ?? null);
+    }
+
+    /**
+     * The method a name resolves to on $origin for code in $from, as declared:
+     * one of $origin's trait aliases, else the method the walk finds, with the
+     * class declaring it.
+     *
+     * @return ?array{MethodInfo, ClassInfo}
+     */
+    private function declaredMethod(ClassInfo $origin, string $name, ?ClasslikeName $from): ?array
+    {
+        $aliased = $this->findAliasedMethod($origin, $name, $from);
+        return $aliased === null
+            ? $this->findDeclared($origin, MemberKind::Method, $name, $from)
+            : [$aliased, $origin];
     }
 }

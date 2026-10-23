@@ -73,10 +73,6 @@ final readonly class NativeTypeSource implements TypeSourceInterface
         return null;
     }
 
-    public function forMethodReturn(MethodName $method): ?TypeInterface
-    {
-        return $this->members->findMethod($method->owner, $method->name, $method->owner)?->returnType;
-    }
 
     public function forProperty(PropertyName $property): ?TypeInterface
     {

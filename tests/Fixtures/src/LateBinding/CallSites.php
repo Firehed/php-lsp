@@ -34,4 +34,16 @@ class CallSites
         $s = new Sub();
         $s->parentMethod(); //hover:method_call_parent
     }
+
+    public function triggerTraitSelfProperty(): void
+    {
+        $node = new Node();
+        $node->next; //hover:trait_self_property
+    }
+
+    public function triggerCompletionStatic(): void
+    {
+        $s = new Sub();
+        $s->copy/*|completion_static_return*/
+    }
 }

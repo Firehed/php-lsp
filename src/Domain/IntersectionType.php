@@ -6,6 +6,8 @@ namespace Firehed\PhpLsp\Domain;
 
 final readonly class IntersectionType implements TypeInterface
 {
+    use ComposedOfTypesTrait;
+
     /**
      * @param list<TypeInterface> $members
      */
@@ -35,15 +37,6 @@ final readonly class IntersectionType implements TypeInterface
     public function isNullable(): bool
     {
         return false;
-    }
-
-    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): TypeInterface
-    {
-        $resolved = array_map(
-            fn (TypeInterface $member) => $member->resolveLateBound($callingClass, $declaringClassIsTrait),
-            $this->members,
-        );
-        return new self($resolved);
     }
 
     public function equals(TypeInterface $other): bool

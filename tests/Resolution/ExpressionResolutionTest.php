@@ -295,6 +295,19 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testAParentCallPassesOnTheCallingClassAsStatic(): void
+    {
+        $this->resolveOverTheFixtures();
+
+        $symbol = $this->resolveSymbolAt('src/LateBinding/Sub.php', 'parent_call_static');
+
+        self::assertSame(
+            'Fixtures\LateBinding\Sub',
+            $symbol?->getType()?->format(),
+            'parent::makeInstance() returns static, which a parent:: call binds to the calling class',
+        );
+    }
+
     public function testAPropertyHooksParameterIsABindingInTheHook(): void
     {
         self::assertEquals(

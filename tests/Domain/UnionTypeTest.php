@@ -131,16 +131,29 @@ class UnionTypeTest extends TestCase
     public function testResolveLateBoundResolvesMembers(): void
     {
         $type = new UnionType([
-            new LateStaticType(LateBindingKeyword::Static, ClasslikeName::fromFullyQualified(\Traversable::class)),
+            new LateStaticType(LateBindingKeyword::Static),
             new PrimitiveType('null'),
         ]);
 
-        $resolved = $type->resolveLateBound(\ArrayIterator::class);
+        $resolved = $type->resolveLateBound(self::bindingCalledOn(\ArrayIterator::class));
 
         self::assertInstanceOf(UnionType::class, $resolved);
         self::assertSame('?ArrayIterator', $resolved->format());
         $classNames = $resolved->getResolvableClasslikeNames();
         self::assertCount(1, $classNames);
         self::assertSame(\ArrayIterator::class, $classNames[0]->qualifiedName->fullyQualifiedName());
+    }
+
+    public function testResolveLateBoundKeepsAUnionWithNothingToBind(): void
+    {
+        $type = new UnionType([new PrimitiveType('int'), new PrimitiveType('null')]);
+
+        self::assertSame($type, $type->resolveLateBound(self::bindingCalledOn(\ArrayIterator::class)));
+    }
+
+    private static function bindingCalledOn(string $class): LateBinding
+    {
+        $name = ClasslikeName::fromFullyQualified($class);
+        return new LateBinding($name, $name, null);
     }
 }

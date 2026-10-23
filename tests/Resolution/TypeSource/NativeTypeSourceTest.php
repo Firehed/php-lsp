@@ -66,7 +66,7 @@ final class NativeTypeSourceTest extends TestCase
                 self::parameterInfo('first', self::type('MethodFirstParameter')),
                 self::parameterInfo('second', self::type('MethodSecondParameter')),
             ],
-            returnType: self::type('MethodReturn'),
+            returnType: null,
             docblock: null,
             file: null,
             line: null,
@@ -176,10 +176,6 @@ final class NativeTypeSourceTest extends TestCase
                 static fn (NativeTypeSource $s) => $s->forFunctionParameter($function, 'second'),
                 self::type('FunctionSecondParameter'),
             ],
-            'method return' => [
-                static fn (NativeTypeSource $s) => $s->forMethodReturn(new MethodName($owner, 'run')),
-                self::type('MethodReturn'),
-            ],
             'method first parameter' => [
                 static fn (NativeTypeSource $s) => $s->forMethodParameter(new MethodName($owner, 'run'), 'first'),
                 self::type('MethodFirstParameter'),
@@ -221,9 +217,6 @@ final class NativeTypeSourceTest extends TestCase
             ],
             'unknown parameter of function' => [
                 static fn (NativeTypeSource $s) => $s->forFunctionParameter($function, 'unknown'),
-            ],
-            'method return' => [
-                static fn (NativeTypeSource $s) => $s->forMethodReturn(new MethodName($owner, 'unknown')),
             ],
             'parameter of unknown method' => [
                 static fn (NativeTypeSource $s) => $s->forMethodParameter(new MethodName($owner, 'unknown'), 'first'),

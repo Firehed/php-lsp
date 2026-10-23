@@ -306,7 +306,13 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if (!$classNameNode instanceof Name) {
             return null;
         }
-        return $this->resolveMember($classNameNode, $call, '__construct', $this->findMethod(...), $parsed);
+        return $this->resolveMember(
+            $classNameNode,
+            $call,
+            '__construct',
+            $this->memberResolver->findMethod(...),
+            $parsed,
+        );
     }
 
     private function resolveMethodCall(MethodCall|NullsafeMethodCall $expr, ParsedDocument $parsed): ?MethodInfo
@@ -314,7 +320,13 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if (!$expr->name instanceof Identifier) {
             return null;
         }
-        return $this->resolveMember($expr->var, $expr, $expr->name->toString(), $this->findMethod(...), $parsed);
+        return $this->resolveMember(
+            $expr->var,
+            $expr,
+            $expr->name->toString(),
+            $this->memberResolver->findMethod(...),
+            $parsed,
+        );
     }
 
     private function resolveStaticCall(StaticCall $expr, ParsedDocument $parsed): ?MethodInfo
@@ -322,7 +334,13 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
             return null;
         }
-        return $this->resolveMember($expr->class, $expr, $expr->name->toString(), $this->findMethod(...), $parsed);
+        return $this->resolveMember(
+            $expr->class,
+            $expr,
+            $expr->name->toString(),
+            $this->memberResolver->findMethod(...),
+            $parsed,
+        );
     }
 
     private function resolveFuncCall(FuncCall $expr, ParsedDocument $parsed): ?FunctionInfo
@@ -353,7 +371,13 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if (!$expr->name instanceof Identifier) {
             return null;
         }
-        return $this->resolveMember($expr->var, $expr, $expr->name->toString(), $this->findProperty(...), $parsed);
+        return $this->resolveMember(
+            $expr->var,
+            $expr,
+            $expr->name->toString(),
+            $this->memberResolver->findProperty(...),
+            $parsed,
+        );
     }
 
     private function resolveStaticPropertyFetch(StaticPropertyFetch $expr, ParsedDocument $parsed): ?PropertyInfo
@@ -361,7 +385,13 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if (!$expr->name instanceof VarLikeIdentifier || !$expr->class instanceof Name) {
             return null;
         }
-        return $this->resolveMember($expr->class, $expr, $expr->name->toString(), $this->findProperty(...), $parsed);
+        return $this->resolveMember(
+            $expr->class,
+            $expr,
+            $expr->name->toString(),
+            $this->memberResolver->findProperty(...),
+            $parsed,
+        );
     }
 
     /**
@@ -373,7 +403,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
      * visible from where the access is written is found.
      *
      * @template T of MemberInfoInterface
-     * @param callable(ClasslikeName, string, ?ClasslikeName): ?T $find
+     * @param callable(ClasslikeName, string, ?ClasslikeName, ?ClasslikeName): ?T $find
      * @return ?T
      */
     private function resolveMember(
@@ -389,11 +419,16 @@ final class ExpressionResolver implements ExpressionResolverInterface
             if ($classNameStr === null) {
                 return null;
             }
-            return $find(ClasslikeName::fromFullyQualified($classNameStr), $memberName, $scope->getSelfName());
+            return $find(
+                ClasslikeName::fromFullyQualified($classNameStr),
+                $memberName,
+                $scope->getSelfName(),
+                $scope->staticFor($receiver),
+            );
         }
         $receiverType = $this->resolve($receiver, $parsed)?->getType();
         foreach (self::receiverClasslikeNames($receiverType) as $className) {
-            $member = $find($className, $memberName, $scope->getSelfName());
+            $member = $find($className, $memberName, $scope->getSelfName(), null);
             if ($member !== null) {
                 return $member;
             }
@@ -407,20 +442,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
     public static function receiverClasslikeNames(?TypeInterface $type): array
     {
         return $type?->getResolvableClasslikeNames() ?? [];
-    }
-
-    private function findMethod(ClasslikeName $className, string $name, ?ClasslikeName $from): ?MethodInfo
-    {
-        $info = $this->memberResolver->findMethod($className, $name, $from);
-        if ($info === null) {
-            return null;
-        }
-        return $this->resolveLateBoundReturn($info, $className);
-    }
-
-    private function findProperty(ClasslikeName $className, string $name, ?ClasslikeName $from): ?PropertyInfo
-    {
-        return $this->memberResolver->findProperty($className, $name, $from);
     }
 
     private function resolveClassConstFetch(ClassConstFetch $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
@@ -456,39 +477,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
             }
         }
         return null;
-    }
-
-    private function resolveLateBoundReturn(MethodInfo $methodInfo, ClasslikeName $callingClass): MethodInfo
-    {
-        // The found method's own name, not the receiver's: the receiver may
-        // declare a different method of that name, such as one shadowing a
-        // parent's private method. An alias's name is on the aliasing class,
-        // which is where the alias is declared.
-        $declaredReturn = $this->typeSource->forMethodReturn($methodInfo->name);
-        // An aliased method's owner is the aliasing class; its source-trait
-        // identity is on `aliasedFrom`, which is what the `self` binding rule
-        // needs to see.
-        $traitSubject = $methodInfo->aliasedFrom !== null
-            ? $methodInfo->aliasedFrom->owner
-            : $methodInfo->name->owner;
-        $isFromTrait = $this->memberResolver->isTrait($traitSubject);
-        $return = $declaredReturn?->resolveLateBound($callingClass->qualifiedName->fullyQualifiedName(), $isFromTrait);
-        if ($return === $declaredReturn) {
-            return $methodInfo;
-        }
-        return new MethodInfo(
-            name: $methodInfo->name,
-            visibility: $methodInfo->visibility,
-            isStatic: $methodInfo->isStatic,
-            isAbstract: $methodInfo->isAbstract,
-            isFinal: $methodInfo->isFinal,
-            parameters: $methodInfo->parameters,
-            returnType: $return,
-            docblock: $methodInfo->docblock,
-            file: $methodInfo->file,
-            line: $methodInfo->line,
-            aliasedFrom: $methodInfo->aliasedFrom,
-        );
     }
 
     private static function locationFor(Node $node, TextDocument $document): Location

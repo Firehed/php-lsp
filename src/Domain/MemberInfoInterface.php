@@ -11,4 +11,9 @@ namespace Firehed\PhpLsp\Domain;
  */
 interface MemberInfoInterface extends ResolvedMemberInterface
 {
+    /**
+     * This member with `static`, `self`, and `parent` in its types replaced by
+     * the classes the binding names, or this same instance when it has none.
+     */
+    public function resolveLateBound(LateBinding $binding): static;
 }

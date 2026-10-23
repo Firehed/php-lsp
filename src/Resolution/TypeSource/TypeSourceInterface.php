@@ -24,8 +24,6 @@ interface TypeSourceInterface
 
     public function forFunctionReturn(FunctionName $function): ?TypeInterface;
 
-    public function forMethodReturn(MethodName $method): ?TypeInterface;
-
     public function forFunctionParameter(FunctionName $function, string $parameter): ?TypeInterface;
 
     public function forMethodParameter(MethodName $method, string $parameter): ?TypeInterface;

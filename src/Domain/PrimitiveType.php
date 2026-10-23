@@ -51,7 +51,7 @@ final readonly class PrimitiveType implements TypeInterface
         return $this->name === 'null';
     }
 
-    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): TypeInterface
+    public function resolveLateBound(LateBinding $binding): TypeInterface
     {
         return $this;
     }

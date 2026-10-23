@@ -341,6 +341,35 @@ class ScopeTest extends TestCase
     }
 
     /**
+     * @return array<string, array{string, ?string}>
+     */
+    public static function forwardedStatics(): array
+    {
+        return [
+            'parent:: passes on the class written in' => ['parent', 'Fixtures\TypeInference\NewKeywords'],
+            'self:: is the class looked up anyway' => ['self', null],
+            'a named class' => ['Fixtures\Inheritance\ParentClass', null],
+        ];
+    }
+
+    /**
+     * A `parent::` access forwards late static binding (PHP manual, Late
+     * Static Bindings), so `static` names the class the access is written in.
+     */
+    #[DataProvider('forwardedStatics')]
+    public function testOnlyAParentAccessPassesOnTheClassItIsWrittenIn(string $receiver, ?string $expected): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/TypeInference/NewKeywords.php'));
+        $node = self::findFirst(Node\Name::class, $ast, fn ($n) => $n->toString() === $receiver);
+
+        self::assertSame(
+            $expected,
+            Scope::at($node, $ast)->staticFor($node)?->qualifiedName->fullyQualifiedName(),
+            "static for a member on {$receiver}",
+        );
+    }
+
+    /**
      * @return list<string>
      */
     private static function useNames(Scope $scope): array

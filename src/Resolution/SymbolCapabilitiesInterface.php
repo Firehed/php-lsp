@@ -17,7 +17,8 @@ interface SymbolCapabilitiesInterface
     /**
      * The members of a type that code written in $from (null: outside any
      * class) can use: methods and properties, and for static access, constants
-     * and enum cases too.
+     * and enum cases too. `static` in their types names each class the type may
+     * be, or $static when given.
      *
      * @return list<ResolvedMemberInterface>
      */
@@ -25,6 +26,7 @@ interface SymbolCapabilitiesInterface
         TypeInterface $type,
         ?ClasslikeName $from,
         MemberFilter $filter = MemberFilter::Instance,
+        ?ClasslikeName $static = null,
     ): array;
 
     /**

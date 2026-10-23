@@ -578,16 +578,13 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
             'src/Domain/Team.php',
             'Fixtures\Domain\Team',
             'withLeader',
-            new LateStaticType(LateBindingKeyword::Self, ClasslikeName::fromFullyQualified('Fixtures\Domain\Team')),
+            new LateStaticType(LateBindingKeyword::Self),
         ];
         yield 'static stays late-bound' => [
             'src/Traits/SingletonTrait.php',
             'Fixtures\Traits\SingletonTrait',
             'instance',
-            new LateStaticType(
-                LateBindingKeyword::Static,
-                ClasslikeName::fromFullyQualified('Fixtures\Traits\SingletonTrait'),
-            ),
+            new LateStaticType(LateBindingKeyword::Static),
         ];
         yield 'nullable class' => [...self::USER, 'getTeam', self::nullable('Fixtures\Domain\Team')];
     }
@@ -629,10 +626,10 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
                 false,
             ),
         ];
-        yield 'nullable with a null default' => [
+        yield 'nullable self, kept late-bound, with a null default' => [
             ...$constructor,
             5,
-            new ParameterInfo('manager', self::nullable('Fixtures\Domain\User'), 'null', 5, false, false),
+            new ParameterInfo('manager', self::nullableSelf(), 'null', 5, false, false),
         ];
         yield 'untyped' => [
             'vendor/psr/http-message/src/ServerRequestInterface.php',
@@ -681,13 +678,13 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         $string = new PrimitiveType('string');
         yield 'private static' => [...self::USER, 'instanceCount', Visibility::Private, true, false, $int];
         yield 'private readonly' => [...self::USER, 'id', Visibility::Private, false, true, $string];
-        yield 'public nullable' => [
+        yield 'public nullable self, kept late-bound' => [
             ...self::USER,
             'manager',
             Visibility::Public,
             false,
             false,
-            self::nullable('Fixtures\Domain\User'),
+            self::nullableSelf(),
         ];
         yield 'public static' => [...self::PARENT_CLASS, 'staticProperty', Visibility::Public, true, false, $string];
         yield 'protected' => [...self::PARENT_CLASS, 'protectedProperty', Visibility::Protected, false, false, $int];
@@ -776,6 +773,15 @@ final class DeclarationSymbolInfoFactoryTest extends TestCase
         self::assertArrayHasKey('cases', $info->methods, 'every enum has cases()');
         self::assertArrayNotHasKey('from', $info->methods, 'only a backed enum has from()');
         self::assertArrayNotHasKey('value', $info->properties, 'only a backed enum has $value');
+    }
+
+    /**
+     * `?self` as a declaration writes it: the class it names is bound where the
+     * member is used.
+     */
+    private static function nullableSelf(): UnionType
+    {
+        return new UnionType([new LateStaticType(LateBindingKeyword::Self), new PrimitiveType('null')]);
     }
 
     private static function nullable(string $fqn): UnionType

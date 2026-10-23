@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-/** Represents a late-static-binding type (static, self, or parent). */
+/**
+ * `static`, `self`, or `parent` as a declaration writes it, before the class it
+ * names is known; see {@see self::resolveLateBound()}.
+ */
 final class LateStaticType implements TypeInterface
 {
     public function __construct(
         public readonly LateBindingKeyword $keyword,
-        public readonly ClasslikeName $declaringClass,
     ) {
     }
 
@@ -23,7 +25,7 @@ final class LateStaticType implements TypeInterface
      */
     public function getResolvableClasslikeNames(): array
     {
-        return [$this->declaringClass];
+        return [];
     }
 
     public function isNullable(): bool
@@ -31,21 +33,14 @@ final class LateStaticType implements TypeInterface
         return false;
     }
 
-    public function resolveLateBound(string $callingClass, bool $declaringClassIsTrait = false): TypeInterface
+    public function resolveLateBound(LateBinding $binding): TypeInterface
     {
-        return match ($this->keyword) {
-            LateBindingKeyword::Self => $declaringClassIsTrait
-                ? new ClasslikeType(ClasslikeName::fromFullyQualified($callingClass))
-                : new ClasslikeType($this->declaringClass),
-            LateBindingKeyword::Static => new ClasslikeType(ClasslikeName::fromFullyQualified($callingClass)),
-            LateBindingKeyword::Parent => new ClasslikeType($this->declaringClass),
-        };
+        $class = $binding->classFor($this->keyword);
+        return $class === null ? $this : new ClasslikeType($class);
     }
 
     public function equals(TypeInterface $other): bool
     {
-        return $other instanceof self
-            && $this->keyword === $other->keyword
-            && $this->declaringClass->equals($other->declaringClass);
+        return $other instanceof self && $this->keyword === $other->keyword;
     }
 }

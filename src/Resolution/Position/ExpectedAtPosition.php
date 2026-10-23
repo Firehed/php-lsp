@@ -123,7 +123,7 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
         }
         $target = new ClasslikeType(ClasslikeName::fromFullyQualified($targetName));
         return $keyword === LateBindingKeyword::Parent
-            ? MemberAccessContext::forParent($target, $from, $prefix)
+            ? MemberAccessContext::forParent($target, $from, $located->scope->staticFor($receiver), $prefix)
             : MemberAccessContext::forStatic($target, $from, $prefix);
     }
 

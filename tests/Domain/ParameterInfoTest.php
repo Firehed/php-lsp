@@ -10,6 +10,29 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ParameterInfo::class)]
 class ParameterInfoTest extends TestCase
 {
+    public function testLateBindingBindsTheType(): void
+    {
+        $declaring = ClasslikeName::fromFullyQualified('App\\Declaring');
+        $param = new ParameterInfo('other', new LateStaticType(LateBindingKeyword::Self), "'x'", 2, true, true);
+
+        $bound = $param->resolveLateBound(new LateBinding($declaring, $declaring, null));
+
+        self::assertSame('App\\Declaring', $bound->type?->format(), 'the type is bound');
+        self::assertSame(
+            ['other', "'x'", 2, true, true],
+            [$bound->name, $bound->defaultValue, $bound->position, $bound->isVariadic, $bound->isPassedByReference],
+            'the rest is kept',
+        );
+    }
+
+    public function testLateBindingKeepsAParameterWithNothingToBind(): void
+    {
+        $declaring = ClasslikeName::fromFullyQualified('App\\Declaring');
+        $param = new ParameterInfo('count', new PrimitiveType('int'), null, 0, false, false);
+
+        self::assertSame($param, $param->resolveLateBound(new LateBinding($declaring, $declaring, null)));
+    }
+
     public function testConstruction(): void
     {
         $param = new ParameterInfo(

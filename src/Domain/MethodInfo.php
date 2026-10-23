@@ -38,6 +38,31 @@ final readonly class MethodInfo implements MemberInfoInterface, ResolvedCallable
         return MemberKind::Method;
     }
 
+    public function resolveLateBound(LateBinding $binding): static
+    {
+        $parameters = array_map(
+            static fn (ParameterInfo $parameter): ParameterInfo => $parameter->resolveLateBound($binding),
+            $this->parameters,
+        );
+        $returnType = $this->returnType?->resolveLateBound($binding);
+        if ($parameters === $this->parameters && $returnType === $this->returnType) {
+            return $this;
+        }
+        return new static(
+            name: $this->name,
+            visibility: $this->visibility,
+            isStatic: $this->isStatic,
+            isAbstract: $this->isAbstract,
+            isFinal: $this->isFinal,
+            parameters: $parameters,
+            returnType: $returnType,
+            docblock: $this->docblock,
+            file: $this->file,
+            line: $this->line,
+            aliasedFrom: $this->aliasedFrom,
+        );
+    }
+
     public function getName(): ClasslikeOwnedNameInterface
     {
         return $this->name;

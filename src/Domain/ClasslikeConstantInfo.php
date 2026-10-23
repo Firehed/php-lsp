@@ -45,6 +45,23 @@ final readonly class ClasslikeConstantInfo implements MemberInfoInterface
         return MemberKind::Constant;
     }
 
+    public function resolveLateBound(LateBinding $binding): static
+    {
+        $type = $this->type?->resolveLateBound($binding);
+        if ($type === $this->type) {
+            return $this;
+        }
+        return new static(
+            name: $this->name,
+            visibility: $this->visibility,
+            isFinal: $this->isFinal,
+            type: $type,
+            docblock: $this->docblock,
+            file: $this->file,
+            line: $this->line,
+        );
+    }
+
     public function getName(): ClasslikeOwnedNameInterface
     {
         return $this->name;

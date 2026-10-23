@@ -32,7 +32,8 @@ class ClasslikeTypeTest extends TestCase
     public function testResolveLateBoundReturnsSelf(): void
     {
         $type = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        $resolved = $type->resolveLateBound(\ArrayIterator::class);
+        $called = ClasslikeName::fromFullyQualified(\ArrayIterator::class);
+        $resolved = $type->resolveLateBound(new LateBinding($called, $called, null));
         self::assertSame($type, $resolved, 'a concrete class-like type has nothing to resolve');
     }
 

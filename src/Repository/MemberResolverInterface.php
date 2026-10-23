@@ -22,6 +22,11 @@ use Firehed\PhpLsp\Domain\PropertyInfo;
  * A member lookup takes `$from`: the class-like the code asking is written
  * in, or null for code outside any class. Only a member PHP lets that code
  * use is found.
+ *
+ * A member comes back with `static`, `self`, and `parent` in its types bound:
+ * `self` to the class declaring it, `parent` to that class's parent, and
+ * `static` to $class, or to `$static` when given — code calling `parent::`
+ * passes its own class, as PHP does.
  */
 interface MemberResolverInterface
 {
@@ -29,6 +34,7 @@ interface MemberResolverInterface
         ClasslikeName $class,
         string $name,
         ?ClasslikeName $from,
+        ?ClasslikeName $static = null,
     ): ?ClasslikeConstantInfo;
 
     public function findEnumCase(ClasslikeName $class, string $name): ?EnumCaseInfo;
@@ -37,12 +43,14 @@ interface MemberResolverInterface
         ClasslikeName $class,
         string $name,
         ?ClasslikeName $from,
+        ?ClasslikeName $static = null,
     ): ?MethodInfo;
 
     public function findProperty(
         ClasslikeName $class,
         string $name,
         ?ClasslikeName $from,
+        ?ClasslikeName $static = null,
     ): ?PropertyInfo;
 
     /**
@@ -53,6 +61,7 @@ interface MemberResolverInterface
         MemberKind $kind,
         ?ClasslikeName $from,
         MemberFilter $filter = MemberFilter::All,
+        ?ClasslikeName $static = null,
     ): array;
 
     /**

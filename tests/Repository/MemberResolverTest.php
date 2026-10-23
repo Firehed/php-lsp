@@ -11,6 +11,8 @@ use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
 use Firehed\PhpLsp\Domain\EnumCaseName;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
+use Firehed\PhpLsp\Domain\LateStaticType;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\MethodInfo;
@@ -1422,6 +1424,24 @@ final class MemberResolverTest extends TestCase
         self::assertFalse($resolver->isTrait(ClasslikeName::fromFullyQualified(self::fakeClass())));
     }
 
+    public function testAliasNamingAnUnknownTraitIsInvisible(): void
+    {
+        $className = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $unknown = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = $this->resolverOverClasses($this->createClassInfo(
+            $className,
+            traits: [$unknown],
+            traitAliases: [
+                new TraitAlias(trait: $unknown, method: 'helper', newName: 'exposedName', newVisibility: null),
+            ],
+        ));
+
+        self::assertNull(
+            $resolver->findMethod($className, 'exposedName', null),
+            'an alias of a trait no source knows must not surface a method',
+        );
+    }
+
     public function testAliasNamingAnUnknownMethodOnANamedTraitIsInvisible(): void
     {
         $traitName = ClasslikeName::fromFullyQualified(self::fakeClass());
@@ -1998,6 +2018,97 @@ final class MemberResolverTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<string, array{string, string, string}>
+     */
+    public static function lateBindingCases(): iterable
+    {
+        yield 'static, on the class it is called on' => ['App\\Sub', 'copy', 'App\\Sub'];
+        yield 'self, on the class declaring it' => ['App\\Sub', 'same', 'App\\Base'];
+        yield 'parent, on the declaring class\'s parent' => ['App\\Sub', 'up', 'App\\Root'];
+        yield 'self from a trait, on the class using it' => ['App\\Sub', 'fromTrait', 'App\\Base'];
+        yield 'parent from a trait, on the using class\'s parent' => ['App\\Sub', 'upFromTrait', 'App\\Root'];
+        yield 'self from a trait alias, on the class using it' => ['App\\Base', 'aliased', 'App\\Base'];
+    }
+
+    /**
+     * `static` names the class a member is called on; `self` the class that
+     * declares it, which for a trait's member is the class using the trait;
+     * `parent` that class's parent (PHP manual, Late Static Bindings; Traits).
+     */
+    #[DataProvider('lateBindingCases')]
+    public function testAMemberIsReturnedWithItsLateBindingResolved(
+        string $class,
+        string $method,
+        string $expected,
+    ): void {
+        $resolved = $this->resolverOverLateBindingGraph()->findMethod(
+            ClasslikeName::fromFullyQualified($class),
+            $method,
+            null,
+        );
+
+        self::assertSame($expected, $resolved?->returnType?->format(), "{$class}::{$method}()");
+    }
+
+    public function testAParentCallBindsStaticToTheClassCalledFrom(): void
+    {
+        $sub = ClasslikeName::fromFullyQualified('App\\Sub');
+
+        $resolved = $this->resolverOverLateBindingGraph()->findMethod(
+            ClasslikeName::fromFullyQualified('App\\Base'),
+            'copy',
+            $sub,
+            $sub,
+        );
+
+        self::assertSame('App\\Sub', $resolved?->returnType?->format(), 'parent:: passes on the calling class');
+    }
+
+    public function testAListingBindsEachMember(): void
+    {
+        $resolver = $this->resolverOverLateBindingGraph();
+        $returns = [];
+        foreach (['App\\Sub', 'App\\Base'] as $class) {
+            $members = $resolver->getMembersOfKind(ClasslikeName::fromFullyQualified($class), MemberKind::Method, null);
+            foreach ($members as $member) {
+                $returns[$class][$member->getName()->name] = $member->getType()?->format();
+            }
+        }
+
+        self::assertSame('App\\Sub', $returns['App\\Sub']['copy'] ?? null, 'static, as in a lookup');
+        self::assertSame('App\\Base', $returns['App\\Sub']['fromTrait'] ?? null, 'a trait\'s self, as in a lookup');
+        self::assertSame('App\\Base', $returns['App\\Base']['aliased'] ?? null, 'an alias, as in a lookup');
+    }
+
+    public function testAParentListingBindsStaticToTheClassCalledFrom(): void
+    {
+        $sub = ClasslikeName::fromFullyQualified('App\\Sub');
+        $returns = [];
+        $members = $this->resolverOverLateBindingGraph()->getMembersOfKind(
+            ClasslikeName::fromFullyQualified('App\\Base'),
+            MemberKind::Method,
+            $sub,
+            static: $sub,
+        );
+        foreach ($members as $member) {
+            $returns[$member->getName()->name] = $member->getType()?->format();
+        }
+
+        self::assertSame('App\\Sub', $returns['copy'] ?? null, 'parent:: passes on the calling class');
+    }
+
+    public function testAPropertyTypeIsBoundToo(): void
+    {
+        $resolved = $this->resolverOverLateBindingGraph()->findProperty(
+            ClasslikeName::fromFullyQualified('App\\Sub'),
+            'next',
+            null,
+        );
+
+        self::assertSame('App\\Base', $resolved?->type?->format(), 'self in a trait\'s property is the using class');
+    }
+
     public function testAPropertyFollowsTheSameRule(): void
     {
         $base = ClasslikeName::fromFullyQualified('App\\Base');
@@ -2055,6 +2166,67 @@ final class MemberResolverTest extends TestCase
             $this->createClassInfo($usesChild, parent: $uses, methods: $this->methodsWith($usesChild, [
                 'both' => Visibility::Public,
             ])),
+        );
+    }
+
+    /**
+     * Root, then Base extending it and using the trait Mixin, then Sub
+     * extending Base; Base also exposes Mixin's `fromTrait` as `aliased`.
+     */
+    private function resolverOverLateBindingGraph(): MemberResolver
+    {
+        $root = ClasslikeName::fromFullyQualified('App\\Root');
+        $base = ClasslikeName::fromFullyQualified('App\\Base');
+        $mixin = ClasslikeName::fromFullyQualified('App\\Mixin');
+        $returning = fn (ClasslikeName $owner, string $name, LateBindingKeyword $keyword): MethodInfo => new MethodInfo(
+            name: new MethodName($owner, $name),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isAbstract: false,
+            isFinal: false,
+            parameters: [],
+            returnType: new LateStaticType($keyword),
+            docblock: null,
+            file: null,
+            line: null,
+        );
+        $next = new PropertyInfo(
+            name: new PropertyName($mixin, 'next'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isReadonly: false,
+            isPromoted: false,
+            type: new LateStaticType(LateBindingKeyword::Self),
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        return $this->resolverOverClasses(
+            $this->createClassInfo($root),
+            $this->createClassInfo(
+                $base,
+                parent: $root,
+                methods: [
+                    'copy' => $returning($base, 'copy', LateBindingKeyword::Static),
+                    'same' => $returning($base, 'same', LateBindingKeyword::Self),
+                    'up' => $returning($base, 'up', LateBindingKeyword::Parent),
+                ],
+                traits: [$mixin],
+                traitAliases: [
+                    new TraitAlias(trait: $mixin, method: 'fromTrait', newName: 'aliased', newVisibility: null),
+                ],
+            ),
+            $this->createClassInfo(
+                $mixin,
+                ClassKind::Trait_,
+                methods: [
+                    'fromTrait' => $returning($mixin, 'fromTrait', LateBindingKeyword::Self),
+                    'upFromTrait' => $returning($mixin, 'upFromTrait', LateBindingKeyword::Parent),
+                ],
+                properties: ['next' => $next],
+            ),
+            $this->createClassInfo(ClasslikeName::fromFullyQualified('App\\Sub'), parent: $base),
         );
     }
 

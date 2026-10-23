@@ -13,6 +13,45 @@ class PropertyInfoTest extends TestCase
 {
     use HasSymbolLocationTestTrait;
 
+    public function testLateBindingBindsTheType(): void
+    {
+        $declaring = ClasslikeName::fromFullyQualified('App\\Declaring');
+        $property = new PropertyInfo(
+            name: new PropertyName($declaring, 'next'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isReadonly: true,
+            isPromoted: false,
+            type: new LateStaticType(LateBindingKeyword::Self),
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        $bound = $property->resolveLateBound(new LateBinding($declaring, $declaring, null));
+
+        self::assertSame('App\\Declaring', $bound->type?->format(), 'the type is bound');
+        self::assertTrue($bound->isReadonly, 'the rest is kept');
+    }
+
+    public function testLateBindingKeepsAPropertyWithNothingToBind(): void
+    {
+        $declaring = ClasslikeName::fromFullyQualified('App\\Declaring');
+        $property = new PropertyInfo(
+            name: new PropertyName($declaring, 'count'),
+            visibility: Visibility::Public,
+            isStatic: false,
+            isReadonly: false,
+            isPromoted: false,
+            type: new PrimitiveType('int'),
+            docblock: null,
+            file: null,
+            line: null,
+        );
+
+        self::assertSame($property, $property->resolveLateBound(new LateBinding($declaring, $declaring, null)));
+    }
+
     public function testConstruction(): void
     {
         $owner = ClasslikeName::fromFullyQualified(PropertyInfo::class);
