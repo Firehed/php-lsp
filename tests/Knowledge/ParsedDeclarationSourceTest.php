@@ -164,7 +164,7 @@ final class ParsedDeclarationSourceTest extends TestCase
         );
     }
 
-    public function testAllInReportsEveryBuildableDeclarationWithItsKind(): void
+    public function testReportsEveryBuildableDeclarationWithItsKind(): void
     {
         $reported = [];
         foreach ($this->declared as $symbol) {
@@ -188,7 +188,7 @@ final class ParsedDeclarationSourceTest extends TestCase
         );
     }
 
-    public function testAllInKeepsTheFirstOfDuplicateDeclarations(): void
+    public function testKeepsTheFirstOfDuplicateDeclarations(): void
     {
         $names = [];
         foreach ($this->declaredIn('MultiClass/DuplicateDeclarations.php') as $symbol) {
