@@ -186,8 +186,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
         $scope = $binding->scope;
         $node = $binding->node;
         if ($node === null) {
-            $thisClass = $scope->getThisType();
-            return $thisClass === null ? null : new ClasslikeType($thisClass);
+            return $binding->type;
         }
         assert($node instanceof Variable && is_string($node->name), 'VariableBindings yields named Variables only');
         $parent = $node->getAttribute('parent');

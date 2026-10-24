@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Domain\TypeInterface;
 use PhpParser\Node;
 
 /**
@@ -14,10 +15,15 @@ use PhpParser\Node;
  */
 final readonly class VariableBinding
 {
+    /**
+     * @param ?TypeInterface $type The type PHP gives a binding it makes without
+     *        code; null where code binds it, and the code gives the type
+     */
     public function __construct(
         public string $name,
         public ?Node $node,
         public Scope $scope,
+        public ?TypeInterface $type = null,
     ) {
     }
 }

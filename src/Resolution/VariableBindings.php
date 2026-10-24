@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\Variable;
@@ -29,17 +30,18 @@ final class VariableBindings
      */
     public static function visible(Scope $scope, int $offset): array
     {
-        // PHP binds `$this` itself, and never lets code bind it.
-        $visible = $scope->getThisType() === null ? [] : ['this' => new VariableBinding('this', null, $scope)];
-        $written = [];
+        $thisClass = $scope->getThisType();
+        $visible = $thisClass === null
+            ? []
+            : ['this' => new VariableBinding('this', null, $scope, new ClasslikeType($thisClass))];
         while (true) {
             $nearest = [];
             foreach (self::before($scope, $offset) as $binding) {
                 $nearest[$binding->name] = $binding;
             }
-            $written += $nearest;
+            $visible += $nearest;
             if (!$scope->allowsImplicitCapture()) {
-                break;
+                return $visible;
             }
             $sourceNode = $scope->getSourceNode();
             $outer = $scope->outer();
@@ -47,8 +49,6 @@ final class VariableBindings
             $scope = $outer;
             $offset = $sourceNode->getStartFilePos();
         }
-        unset($written['this']);
-        return $visible + $written;
     }
 
     /**
@@ -139,13 +139,14 @@ final class VariableBindings
     }
 
     /**
-     * Records $target when it names a variable.
+     * Records $target when it names a variable. PHP never lets code bind
+     * `$this`; {@see self::visible()} binds it where PHP does.
      *
      * @param list<VariableBinding> $bindings
      */
     private static function bind(?Node $target, Scope $scope, array &$bindings): void
     {
-        if ($target instanceof Variable && is_string($target->name)) {
+        if ($target instanceof Variable && is_string($target->name) && $target->name !== 'this') {
             $bindings[] = new VariableBinding($target->name, $target, $scope);
         }
     }
