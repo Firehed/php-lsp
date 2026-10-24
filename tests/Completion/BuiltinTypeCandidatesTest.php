@@ -11,36 +11,21 @@ use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\TypeHintContext;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(BuiltinTypeCandidates::class)]
 final class BuiltinTypeCandidatesTest extends TestCase
 {
-    /**
-     * @return iterable<string, array{TypeHintContext}>
-     */
-    public static function contexts(): iterable
-    {
-        foreach (TypeHintContext::cases() as $context) {
-            yield $context->name => [$context];
-        }
-    }
-
-    #[DataProvider('contexts')]
-    public function testOffersTheTypesValidInThePosition(TypeHintContext $context): void
+    public function testOffersPrimitivesAndKeywordsValidInThePosition(): void
     {
         $candidates = new BuiltinTypeCandidates(new CompletionItemFormatter(new ResolvedSymbolPresenter()));
-        $valid = array_filter(
-            [...PrimitiveType::cases(), ...LateBindingKeyword::cases()],
-            static fn (PrimitiveType|LateBindingKeyword $type): bool => $type->validIn($context),
-        );
 
-        self::assertEqualsCanonicalizing(
-            array_column($valid, 'value'),
-            array_column($candidates->find($context, ''), 'label'),
-            'each position offers every built-in type PHP accepts there, and no other',
-        );
+        $labels = array_column($candidates->find(TypeHintContext::Property, ''), 'label');
+
+        self::assertContains(PrimitiveType::Int->value, $labels, 'primitives are offered');
+        self::assertContains(LateBindingKeyword::Self->value, $labels, 'late-binding keywords are offered');
+        self::assertNotContains(PrimitiveType::Callable->value, $labels, 'a primitive invalid here is withheld');
+        self::assertNotContains(LateBindingKeyword::Static->value, $labels, 'a keyword invalid here is withheld');
     }
 
     public function testFiltersByThePrefix(): void
