@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Resolution;
 
 use Firehed\PhpLsp\Document\TextDocument;
+use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Domain\ClassInfo;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
@@ -547,9 +548,17 @@ final class ExpressionResolutionTest extends TestCase
     ): SymbolAtPosition {
         return new SymbolAtPosition(
             new PositionLocator(ProductionSyntaxSource::create()->source),
-            new ExpressionResolver($members, $symbols, $types),
+            self::expressionsOver($symbols, $types, $members),
             $symbols,
         );
+    }
+
+    private static function expressionsOver(
+        SymbolSourceInterface $symbols,
+        TypeSourceInterface $types,
+        MemberResolverInterface $members,
+    ): ExpressionResolver {
+        return new ExpressionResolver($members, $symbols, $types);
     }
 
     private static function uri(string $fixture): string
@@ -681,11 +690,23 @@ final class ExpressionResolutionTest extends TestCase
      */
     private function resolveAt(string $fixture, \Closure $locate): ?ResolvedSymbolInterface
     {
+        [$document, $offset] = $this->positionIn($fixture, $locate);
+
+        return $this->resolver->symbolAt($document, $offset);
+    }
+
+    /**
+     * @param \Closure(string): array{line: int, character: int} $locate Finds
+     *        the position in the fixture's text.
+     * @return array{TextDocument, ByteOffset}
+     */
+    private function positionIn(string $fixture, \Closure $locate): array
+    {
         $content = $this->loadFixture($fixture);
         ['line' => $line, 'character' => $character] = $locate($content);
 
         $document = new TextDocument(self::uri($fixture), 'php', 1, $content);
 
-        return $this->resolver->symbolAt($document, $document->offsetAt($line, $character));
+        return [$document, $document->offsetAt($line, $character)];
     }
 }
