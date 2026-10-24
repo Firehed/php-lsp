@@ -56,6 +56,20 @@ final class NamespaceContentsTest extends TestCase
         );
     }
 
+    public function testMergeListsAChildNamespaceOnceAsTheFirstSourceSpellsIt(): void
+    {
+        $merged = NamespaceContents::merge([
+            new NamespaceContents(['Fixtures\Domain'], []),
+            new NamespaceContents(['FIXTURES\DOMAIN', 'Fixtures\Enum'], []),
+        ]);
+
+        self::assertSame(
+            ['Fixtures\Domain', 'Fixtures\Enum'],
+            $merged->childNamespaces,
+            'namespaces are case-insensitive; the earlier source wins the spelling',
+        );
+    }
+
     public function testMergeKeepsConstantsDifferingOnlyInShortNameCase(): void
     {
         $merged = NamespaceContents::merge([
