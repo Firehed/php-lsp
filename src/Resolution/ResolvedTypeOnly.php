@@ -10,8 +10,9 @@ use Firehed\PhpLsp\Domain\TypeInterface;
 
 /**
  * A ResolvedSymbolInterface that carries only a type — used when an expression's value
- * type is known but there is no persistent symbol to point at (`$this`, an
- * arithmetic result, a pre-resolved fallback type on a synthetic node).
+ * type is known but there is no persistent symbol to point at (a `new` of a
+ * class nothing declares, an arithmetic result, a pre-resolved fallback type on
+ * a synthetic node).
  *
  * @internal
  */
