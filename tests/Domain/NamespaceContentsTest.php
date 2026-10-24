@@ -20,6 +20,26 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(NamespaceContents::class)]
 final class NamespaceContentsTest extends TestCase
 {
+    public function testIndexFilesEachSymbolUnderItsNamespaceAndEachNamespaceUnderItsParent(): void
+    {
+        $user = new CatalogSymbol('Fixtures\Domain\User', NameKind::ClassLike);
+        $format = new CatalogSymbol('format', NameKind::Function_);
+
+        $index = NamespaceContents::indexByNamespace([$user, $format]);
+
+        self::assertEquals(new NamespaceContents(['Fixtures'], [$format]), $index[''], 'the global namespace');
+        self::assertEquals(
+            new NamespaceContents(['Fixtures\Domain'], []),
+            $index['fixtures'],
+            'a namespace that declares nothing itself still leads to its child',
+        );
+        self::assertEquals(
+            new NamespaceContents([], [$user]),
+            $index['fixtures\domain'],
+            'keyed by the namespace under its case rule',
+        );
+    }
+
     public function testMergeKeepsConstantsDifferingOnlyInShortNameCase(): void
     {
         $merged = NamespaceContents::merge([
