@@ -97,6 +97,7 @@ deptrac:
       - Knowledge
     Parser:
       - Document
+      - Domain
     Document:
       - Domain # FileUri: one path has several valid URI spellings
       - Protocol
