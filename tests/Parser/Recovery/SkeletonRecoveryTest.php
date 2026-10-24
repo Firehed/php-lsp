@@ -572,6 +572,40 @@ final class SkeletonRecoveryTest extends TestCase
         ];
     }
 
+    public function testParameterTypesTakeTheNodeKindTheParserGivesThem(): void
+    {
+        $fixture = 'src/TypeInference/WrittenParameterTypes.php';
+        $document = new TextDocument('file:///' . $fixture, 'php', 1, $this->loadFixture($fixture));
+        $parsed = (ParserOnlySyntaxSource::create())->parse($document)->tree;
+
+        self::assertSame(
+            self::describeParameterTypes($parsed),
+            self::describeParameterTypes($this->tree($document)),
+            'a primitive is an Identifier in any letter case, and self or parent is a Name, as the parser builds them',
+        );
+    }
+
+    /**
+     * @param array<Stmt> $tree
+     * @return list<array{string, class-string<Node>, string}>
+     */
+    private static function describeParameterTypes(array $tree): array
+    {
+        $described = [];
+        foreach ((new NodeFinder())->findInstanceOf($tree, Node\Param::class) as $param) {
+            $type = $param->type instanceof Node\NullableType ? $param->type->type : $param->type;
+            if (
+                !($type instanceof Node\Identifier || $type instanceof Node\Name)
+                || !$param->var instanceof Node\Expr\Variable
+                || !is_string($param->var->name)
+            ) {
+                continue;
+            }
+            $described[] = [$param->var->name, $type::class, $type->toString()];
+        }
+        return $described;
+    }
+
     /**
      * @param array<Stmt> $tree
      * @return list<array{string, string, int, int, int, int}>
