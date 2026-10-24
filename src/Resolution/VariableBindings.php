@@ -56,15 +56,11 @@ final class VariableBindings
         $bindings = [];
 
         foreach ($scope->getParams() as $param) {
-            if ($param->var instanceof Variable && is_string($param->var->name)) {
-                $bindings[] = new VariableBinding($param->var->name, $param->var, $scope);
-            }
+            self::bind($param->var, $scope, $bindings);
         }
 
         foreach ($scope->getUses() as $use) {
-            if (is_string($use->var->name)) {
-                $bindings[] = new VariableBinding($use->var->name, $use->var, $scope);
-            }
+            self::bind($use->var, $scope, $bindings);
         }
 
         self::walk($scope->getStatements(), $offset, $scope, $bindings);
@@ -87,24 +83,18 @@ final class VariableBindings
             }
 
             if ($stmt instanceof Stmt\Expression && $stmt->expr instanceof Assign) {
-                self::collectAssignTargets($stmt->expr, $scope, $bindings);
+                self::bind($stmt->expr->var, $scope, $bindings);
             }
 
             if ($stmt instanceof Stmt\Foreach_) {
-                if ($stmt->keyVar instanceof Variable && is_string($stmt->keyVar->name)) {
-                    $bindings[] = new VariableBinding($stmt->keyVar->name, $stmt->keyVar, $scope);
-                }
-                if ($stmt->valueVar instanceof Variable && is_string($stmt->valueVar->name)) {
-                    $bindings[] = new VariableBinding($stmt->valueVar->name, $stmt->valueVar, $scope);
-                }
+                self::bind($stmt->keyVar, $scope, $bindings);
+                self::bind($stmt->valueVar, $scope, $bindings);
             }
 
             if ($stmt instanceof Stmt\TryCatch) {
                 self::walk($stmt->stmts, $offset, $scope, $bindings);
                 foreach ($stmt->catches as $catch) {
-                    if ($catch->var !== null && is_string($catch->var->name)) {
-                        $bindings[] = new VariableBinding($catch->var->name, $catch->var, $scope);
-                    }
+                    self::bind($catch->var, $scope, $bindings);
                     self::walk($catch->stmts, $offset, $scope, $bindings);
                 }
                 if ($stmt->finally !== null) {
@@ -144,12 +134,15 @@ final class VariableBindings
     }
 
     /**
+     * Records $target when it names a variable. PHP never lets code bind
+     * `$this`, so a target naming it binds nothing.
+     *
      * @param list<VariableBinding> $bindings
      */
-    private static function collectAssignTargets(Assign $assign, Scope $scope, array &$bindings): void
+    private static function bind(?Node $target, Scope $scope, array &$bindings): void
     {
-        if ($assign->var instanceof Variable && is_string($assign->var->name)) {
-            $bindings[] = new VariableBinding($assign->var->name, $assign->var, $scope);
+        if ($target instanceof Variable && is_string($target->name) && $target->name !== 'this') {
+            $bindings[] = new VariableBinding($target->name, $target, $scope);
         }
     }
 }
