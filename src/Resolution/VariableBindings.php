@@ -16,8 +16,8 @@ use PhpParser\Node\Stmt;
  * A binding code writes is a parameter, a closure `use` clause, an assignment
  * target, a foreach key/value, or a catch variable, listed in source order —
  * the nearest binding is last. Nested function-like bodies are not entered;
- * control-flow bodies (if/while/for/foreach/try...) are. PHP binds `$this`
- * without code, so only what a name refers to includes it.
+ * control-flow bodies (if/while/for/foreach/try...) are. What a name refers to
+ * is decided in {@see self::visible()}, `$this` included.
  */
 final class VariableBindings
 {
@@ -31,10 +31,8 @@ final class VariableBindings
      */
     public static function visible(Scope $scope, int $offset): array
     {
-        $thisClass = $scope->getThisType();
-        $visible = $thisClass === null
-            ? []
-            : ['this' => VariableBinding::implicit('this', new ClasslikeType($thisClass), $scope)];
+        $innermost = $scope;
+        $visible = [];
         while (true) {
             $nearest = [];
             foreach (self::before($scope, $offset) as $binding) {
@@ -42,7 +40,7 @@ final class VariableBindings
             }
             $visible += $nearest;
             if (!$scope->allowsImplicitCapture()) {
-                return $visible;
+                break;
             }
             $sourceNode = $scope->getSourceNode();
             $outer = $scope->outer();
@@ -50,10 +48,18 @@ final class VariableBindings
             $scope = $outer;
             $offset = $sourceNode->getStartFilePos();
         }
+
+        // `$this` is what PHP binds, whatever code writes.
+        unset($visible['this']);
+        $thisClass = $innermost->getThisType();
+        return $thisClass === null
+            ? $visible
+            : ['this' => VariableBinding::implicit('this', new ClasslikeType($thisClass), $innermost)] + $visible;
     }
 
     /**
-     * The bindings visible strictly before $offset, in source order.
+     * The bindings code writes strictly before $offset, in source order: what
+     * the code says, `$this` included, not what a name refers to.
      *
      * @return list<VariableBinding>
      */
@@ -140,14 +146,13 @@ final class VariableBindings
     }
 
     /**
-     * Records $target when it names a variable. PHP never lets code bind
-     * `$this`; {@see self::visible()} binds it where PHP does.
+     * Records $target when it names a variable.
      *
      * @param list<VariableBinding> $bindings
      */
     private static function bind(?Node $target, Scope $scope, array &$bindings): void
     {
-        if ($target instanceof Variable && is_string($target->name) && $target->name !== 'this') {
+        if ($target instanceof Variable && is_string($target->name)) {
             $bindings[] = VariableBinding::written($target->name, $target, $scope);
         }
     }
