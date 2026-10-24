@@ -79,13 +79,14 @@ trait DeclaredSymbolStoreTrait
     }
 
     /**
-     * Drop every recorded symbol. One rebuild replaces the per-source loop
-     * a caller would otherwise run, which repeats {@see rebuildIndexes}
-     * for every remaining entry.
+     * Replace every recorded symbol, rebuilding the indexes once rather than
+     * once per source.
+     *
+     * @param array<string, list<DeclaredSymbol>> $symbolsBySource Source key -> the symbols it declares
      */
-    private function clearAllSymbols(): void
+    private function replaceAllSymbols(array $symbolsBySource): void
     {
-        $this->symbolsBySource = [];
+        $this->symbolsBySource = $symbolsBySource;
         $this->rebuildIndexes();
     }
 
