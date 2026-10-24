@@ -594,10 +594,10 @@ final class ExpressionResolutionTest extends TestCase
         string $marker,
         ?MemberTarget $expected,
     ): void {
-        $expressions = self::expressionsOver(
+        $expressions = new ExpressionResolver(
+            self::createStub(MemberResolverInterface::class),
             self::createStub(SymbolSourceInterface::class),
             self::createStub(TypeSourceInterface::class),
-            self::createStub(MemberResolverInterface::class),
         );
 
         self::assertEquals(
@@ -615,10 +615,10 @@ final class ExpressionResolutionTest extends TestCase
     {
         $types = self::createStub(TypeSourceInterface::class);
         $types->method('forMethodParameter')->willReturn(new PrimitiveType('int'));
-        $expressions = self::expressionsOver(
+        $expressions = new ExpressionResolver(
+            self::createStub(MemberResolverInterface::class),
             self::createStub(SymbolSourceInterface::class),
             $types,
-            self::createStub(MemberResolverInterface::class),
         );
 
         self::assertNull(
@@ -663,17 +663,9 @@ final class ExpressionResolutionTest extends TestCase
     ): SymbolAtPosition {
         return new SymbolAtPosition(
             new PositionLocator(ProductionSyntaxSource::create()->source),
-            self::expressionsOver($symbols, $types, $members),
+            new ExpressionResolver($members, $symbols, $types),
             $symbols,
         );
-    }
-
-    private static function expressionsOver(
-        SymbolSourceInterface $symbols,
-        TypeSourceInterface $types,
-        MemberResolverInterface $members,
-    ): ExpressionResolver {
-        return new ExpressionResolver($members, $symbols, $types);
     }
 
     private static function uri(string $fixture): string
