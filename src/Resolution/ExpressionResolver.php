@@ -69,8 +69,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
     public function resolve(Expr $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
     {
         if ($expr instanceof Variable && $expr->name === 'this') {
-            $type = Scope::at($expr, $parsed->tree)->getThisType();
-            return $type === null ? null : new ResolvedTypeOnly(new ClasslikeType($type));
+            return $this->resolveThis(Scope::at($expr, $parsed->tree));
         }
 
         if ($expr instanceof Variable && is_string($expr->name)) {
@@ -135,6 +134,12 @@ final class ExpressionResolver implements ExpressionResolverInterface
     {
         $binding = VariableBindings::visible($scope, $offset)[$name] ?? null;
         return $binding === null ? null : $this->resolveBinding($binding, $parsed);
+    }
+
+    public function resolveThis(Scope $scope): ?ResolvedVariable
+    {
+        $type = $scope->getThisType();
+        return $type === null ? null : new ResolvedVariable('this', new ClasslikeType($type));
     }
 
     /**

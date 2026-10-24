@@ -47,6 +47,11 @@ interface ExpressionResolverInterface
     public function resolveParameter(Param $param, ParsedDocument $parsed): ParameterInfo;
 
     /**
+     * `$this` in a scope, or null where PHP does not bind it there.
+     */
+    public function resolveThis(Scope $scope): ?ResolvedVariable;
+
+    /**
      * A variable as a binding in a scope declares it.
      */
     public function resolveBinding(VariableBinding $binding, ParsedDocument $parsed): ResolvedVariable;
