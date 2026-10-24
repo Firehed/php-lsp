@@ -587,21 +587,16 @@ final class SkeletonRecoveryTest extends TestCase
 
     /**
      * @param array<Stmt> $tree
-     * @return list<array{string, class-string<Node>, string}>
+     * @return list<array{class-string<Node>, string}>
      */
     private static function describeParameterTypes(array $tree): array
     {
         $described = [];
         foreach ((new NodeFinder())->findInstanceOf($tree, Node\Param::class) as $param) {
             $type = $param->type instanceof Node\NullableType ? $param->type->type : $param->type;
-            if (
-                !($type instanceof Node\Identifier || $type instanceof Node\Name)
-                || !$param->var instanceof Node\Expr\Variable
-                || !is_string($param->var->name)
-            ) {
-                continue;
+            if ($type instanceof Node\Identifier || $type instanceof Node\Name) {
+                $described[] = [$type::class, $type->toString()];
             }
-            $described[] = [$param->var->name, $type::class, $type->toString()];
         }
         return $described;
     }
