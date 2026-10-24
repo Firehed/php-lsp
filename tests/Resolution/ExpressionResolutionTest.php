@@ -7,6 +7,8 @@ namespace Firehed\PhpLsp\Tests\Resolution;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Domain\ClassInfo;
+use Firehed\PhpLsp\Domain\ClasslikeConstantInfo;
+use Firehed\PhpLsp\Domain\ClasslikeConstantName;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\ConstantInfo;
@@ -307,6 +309,36 @@ final class ExpressionResolutionTest extends TestCase
             'Fixtures\LateBinding\Sub',
             $symbol?->getType()?->format(),
             'parent::makeInstance() returns static, which a parent:: call binds to the calling class',
+        );
+    }
+
+    public function testAParentConstantPassesOnTheCallingClassAsStatic(): void
+    {
+        $sub = self::className('Fixtures\LateBinding\Sub');
+        $constant = new ClasslikeConstantInfo(
+            name: new ClasslikeConstantName(self::className('Fixtures\LateBinding\Base'), 'NAME'),
+            visibility: Visibility::Public,
+            isFinal: false,
+            type: null,
+            docblock: null,
+            file: null,
+            line: null,
+        );
+        $members = self::createStub(MemberResolverInterface::class);
+        $members->method('findConstant')->willReturnCallback(
+            static fn (ClasslikeName $class, string $name, ?ClasslikeName $from, ?ClasslikeName $static)
+                => $static?->equals($sub) === true ? $constant : null,
+        );
+        $this->resolver = self::resolverOver(
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+            $members,
+        );
+
+        self::assertSame(
+            $constant,
+            $this->resolveSymbolAt('src/LateBinding/Sub.php', 'parent_constant_static'),
+            'a parent:: constant binds static to the calling class, as a parent:: call does',
         );
     }
 
