@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Completion;
 
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\PrefixMatcher;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\TypeHintContext;
 
 /**
@@ -19,12 +21,6 @@ use Firehed\PhpLsp\Domain\TypeHintContext;
  */
 final class BuiltinTypeCandidates
 {
-    /** Types valid in every type-hint position */
-    private const COMMON_TYPES = [
-        'string', 'int', 'float', 'bool', 'array', 'object',
-        'mixed', 'null', 'callable', 'iterable', 'true', 'false',
-    ];
-
     public function __construct(
         private readonly CompletionItemFormatter $itemFormatter,
     ) {
@@ -36,34 +32,12 @@ final class BuiltinTypeCandidates
     public function find(TypeHintContext $context, string $prefix): array
     {
         $items = [];
-        foreach ($this->typesFor($context) as $type) {
-            if (PrefixMatcher::matches($type, $prefix)) {
-                $items[] = $this->itemFormatter->forBuiltinType($type);
+        foreach ([...PrimitiveType::cases(), ...LateBindingKeyword::cases()] as $type) {
+            if ($type->validIn($context) && PrefixMatcher::matches($type->value, $prefix)) {
+                $items[] = $this->itemFormatter->forBuiltinType($type->value);
             }
         }
 
         return $items;
-    }
-
-    /**
-     * Context-specific type validity:
-     *
-     * | Type   | Property | Parameter | Return |
-     * |--------|----------|-----------|--------|
-     * | void   | No       | No        | Yes    |
-     * | never  | No       | No        | Yes    |
-     * | self   | No       | Yes       | Yes    |
-     * | static | No       | No        | Yes    |
-     * | parent | No       | Yes       | Yes    |
-     *
-     * @return list<string>
-     */
-    private function typesFor(TypeHintContext $context): array
-    {
-        return match ($context) {
-            TypeHintContext::Property => self::COMMON_TYPES,
-            TypeHintContext::Parameter => [...self::COMMON_TYPES, 'self', 'parent'],
-            TypeHintContext::ReturnType => [...self::COMMON_TYPES, 'void', 'never', 'self', 'static', 'parent'],
-        };
     }
 }
