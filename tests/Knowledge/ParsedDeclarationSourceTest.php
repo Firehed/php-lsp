@@ -799,6 +799,16 @@ final class ParsedDeclarationSourceTest extends TestCase
         self::assertEquals(PrimitiveType::Int, $info->properties['value']->type, '$value has the backing type');
     }
 
+    public function testAnEnumBackedByANonPrimitiveHasNoTypedBackedMembers(): void
+    {
+        $info = $this->buildClassInfoFromFixture(
+            'EdgeCases/EnumBackedByAClassName.php',
+            'Fixtures\EdgeCases\EnumBackedByAClassName',
+        );
+
+        self::assertArrayNotHasKey('from', $info->methods, 'a backing type that names no primitive types nothing');
+    }
+
     public function testPureEnumHasNoBackedMembers(): void
     {
         $info = $this->buildClassInfoFromFixture('src/Enum/Status.php', 'Fixtures\Enum\Status');
