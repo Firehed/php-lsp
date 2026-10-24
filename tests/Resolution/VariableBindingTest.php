@@ -19,7 +19,7 @@ final class VariableBindingTest extends TestCase
     {
         $node = new Variable('user');
         $scope = Scope::at(null, []);
-        $binding = new VariableBinding('user', $node, $scope);
+        $binding = VariableBinding::written('user', $node, $scope);
 
         self::assertSame('user', $binding->name, 'the name is kept');
         self::assertSame($node, $binding->node, 'the node to point at is kept');
@@ -31,7 +31,7 @@ final class VariableBindingTest extends TestCase
     {
         $type = new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\ThisBinding\ThisBinding'));
 
-        $binding = new VariableBinding('this', null, Scope::at(null, []), $type);
+        $binding = VariableBinding::implicit('this', $type, Scope::at(null, []));
 
         self::assertNull($binding->node, 'no code binds it');
         self::assertSame($type, $binding->type, 'the type PHP gives it is kept');
