@@ -45,20 +45,18 @@ final readonly class NamespaceContents
 
         foreach ($symbols as $symbol) {
             $namespace = new NamespaceName(NamespaceName::namespaceOf($symbol->fullyQualifiedName));
-            $symbolsByNamespace[$namespace->normalize()][$symbol->key()] ??= $symbol;
+            $symbolsByNamespace[$namespace->normalize()][] = $symbol;
 
             foreach ($namespace->ancestors() as $parent => $child) {
-                $parentKey = (new NamespaceName($parent))->normalize();
-                $childKey = (new NamespaceName($child))->normalize();
-                $childNamespaces[$parentKey][$childKey] ??= $child;
+                $childNamespaces[(new NamespaceName($parent))->normalize()][] = $child;
             }
         }
 
         $contents = [];
         foreach (array_keys($childNamespaces + $symbolsByNamespace) as $namespace) {
-            $contents[$namespace] = new self(
-                array_values($childNamespaces[$namespace] ?? []),
-                array_values($symbolsByNamespace[$namespace] ?? []),
+            $contents[$namespace] = self::firstListings(
+                $childNamespaces[$namespace] ?? [],
+                $symbolsByNamespace[$namespace] ?? [],
             );
         }
 
@@ -79,18 +77,30 @@ final readonly class NamespaceContents
      */
     public static function merge(array $contents): self
     {
-        $namespaces = [];
-        $symbols = [];
+        return self::firstListings(
+            array_merge(...array_map(static fn (self $part): array => $part->childNamespaces, $contents)),
+            array_merge(...array_map(static fn (self $part): array => $part->symbols, $contents)),
+        );
+    }
 
-        foreach ($contents as $part) {
-            foreach ($part->childNamespaces as $namespace) {
-                $namespaces[(new NamespaceName($namespace))->normalize()] ??= $namespace;
-            }
-            foreach ($part->symbols as $symbol) {
-                $symbols[$symbol->key()] ??= $symbol;
-            }
+    /**
+     * Contents listing each namespace and each symbol once. Of several
+     * listings of one, under its case rule, the first is kept.
+     *
+     * @param list<string> $namespaces
+     * @param list<CatalogSymbol> $symbols
+     */
+    private static function firstListings(array $namespaces, array $symbols): self
+    {
+        $firstNamespaces = [];
+        foreach ($namespaces as $namespace) {
+            $firstNamespaces[(new NamespaceName($namespace))->normalize()] ??= $namespace;
+        }
+        $firstSymbols = [];
+        foreach ($symbols as $symbol) {
+            $firstSymbols[$symbol->key()] ??= $symbol;
         }
 
-        return new self(array_values($namespaces), array_values($symbols));
+        return new self(array_values($firstNamespaces), array_values($firstSymbols));
     }
 }
