@@ -134,6 +134,25 @@ class VariableBindingsTest extends TestCase
         self::assertSame($arrow, $visible['value']->scope->getSourceNode(), 'bound in the arrow function\'s scope');
     }
 
+    public function testThisIsNeverABinding(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
+        $method = self::findMethodByName('rebindsThis', $ast);
+        $closure = self::findFirst([$method], fn (Node $n) => $n instanceof Node\Expr\Closure);
+        self::assertInstanceOf(Node\Expr\Closure::class, $closure);
+
+        self::assertSame(
+            ['items', 'closure'],
+            self::namesOf(VariableBindings::before(Scope::at($method, $ast), $method->getEndFilePos())),
+            'an assignment, foreach, or catch naming $this binds nothing',
+        );
+        self::assertSame(
+            [],
+            self::namesOf(VariableBindings::before(Scope::at($closure, $ast), $closure->getEndFilePos())),
+            'a parameter or use clause naming $this binds nothing',
+        );
+    }
+
     /**
      * @param array<Stmt> $ast
      */
