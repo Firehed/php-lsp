@@ -149,6 +149,24 @@ final class ExpressionResolver implements ExpressionResolverInterface
         return new ResolvedVariable($binding->name, $type, $location);
     }
 
+    public function memberTarget(Expr|Name $receiver, ParsedDocument $parsed): ?MemberTarget
+    {
+        $scope = Scope::at($receiver, $parsed->tree);
+        if ($receiver instanceof Name) {
+            $className = $scope->resolveClasslikeName($receiver);
+            return $className === null ? null : new MemberTarget(
+                new ClasslikeType($className),
+                $scope->getSelfName(),
+                $scope->staticFor($receiver),
+            );
+        }
+        $type = $this->resolve($receiver, $parsed)?->getType();
+        if ($type === null || $type->getResolvableClasslikeNames() === []) {
+            return null;
+        }
+        return new MemberTarget($type, $scope->getSelfName(), null);
+    }
+
     public function resolveParameter(Param $param, ParsedDocument $parsed): ParameterInfo
     {
         assert($param->var instanceof Variable && is_string($param->var->name), 'a declared parameter is named');
