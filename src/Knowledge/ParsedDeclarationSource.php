@@ -403,7 +403,7 @@ final readonly class ParsedDeclarationSource implements DeclarationSourceInterfa
             return null;
         }
 
-        return PrimitiveType::from($enum->scalarType->toString());
+        return PrimitiveType::tryFromName($enum->scalarType->toString());
     }
 
     private function functionInfoFromNode(
