@@ -6,9 +6,7 @@ namespace Firehed\PhpLsp\Resolution\Position;
 
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
-use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
-use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\VariableBindings;
 
 final class ScopeAtPosition implements ScopeAtPositionInterface
@@ -25,9 +23,9 @@ final class ScopeAtPosition implements ScopeAtPositionInterface
         $nearest = VariableBindings::visible($located->scope, $offset->value);
 
         $variables = [];
-        $thisClass = $located->scope->getThisType();
-        if ($thisClass !== null) {
-            $variables[] = new ResolvedVariable('this', new ClasslikeType($thisClass));
+        $thisVariable = $this->expressions->resolveThis($located->scope);
+        if ($thisVariable !== null) {
+            $variables[] = $thisVariable;
             unset($nearest['this']);
         }
         foreach ($nearest as $binding) {
