@@ -32,7 +32,7 @@ final class CompletionItemFormatterTest extends TestCase
 {
     public function testNamedArgumentSortsAheadOfEveryOtherItem(): void
     {
-        $parameter = new ParameterInfo('count', new PrimitiveType('int'), '0', 1, false, false);
+        $parameter = new ParameterInfo('count', PrimitiveType::Int, '0', 1, false, false);
 
         self::assertSame(
             [

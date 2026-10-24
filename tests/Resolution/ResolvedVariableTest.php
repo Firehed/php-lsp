@@ -14,35 +14,35 @@ class ResolvedVariableTest extends TestCase
 {
     public function testImplementsResolvedSymbol(): void
     {
-        $resolved = new ResolvedVariable('name', new PrimitiveType('string'));
+        $resolved = new ResolvedVariable('name', PrimitiveType::String);
 
         self::assertInstanceOf(ResolvedSymbolInterface::class, $resolved);
     }
 
     public function testGetName(): void
     {
-        $resolved = new ResolvedVariable('myVar', new PrimitiveType('string'));
+        $resolved = new ResolvedVariable('myVar', PrimitiveType::String);
 
         self::assertSame('myVar', $resolved->getName());
     }
 
     public function testGetDefinitionLocationAlwaysReturnsNull(): void
     {
-        $resolved = new ResolvedVariable('name', new PrimitiveType('string'));
+        $resolved = new ResolvedVariable('name', PrimitiveType::String);
 
         self::assertNull($resolved->getDefinitionLocation());
     }
 
     public function testGetDocumentationAlwaysReturnsNull(): void
     {
-        $resolved = new ResolvedVariable('name', new PrimitiveType('string'));
+        $resolved = new ResolvedVariable('name', PrimitiveType::String);
 
         self::assertNull($resolved->getDocumentation());
     }
 
     public function testGetType(): void
     {
-        $type = new PrimitiveType('string');
+        $type = PrimitiveType::String;
         $resolved = new ResolvedVariable('name', $type);
 
         self::assertSame($type, $resolved->getType());
@@ -57,7 +57,7 @@ class ResolvedVariableTest extends TestCase
 
     public function testFormatWithType(): void
     {
-        $resolved = new ResolvedVariable('name', new PrimitiveType('string'));
+        $resolved = new ResolvedVariable('name', PrimitiveType::String);
 
         self::assertSame('string', $resolved->format(), 'a variable is described by its type alone');
     }

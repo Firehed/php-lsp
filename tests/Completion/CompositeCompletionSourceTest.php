@@ -46,7 +46,7 @@ final class CompositeCompletionSourceTest extends TestCase
     public function testEachThingThePositionAdmitsIsOfferedByItsSourceInOneList(): void
     {
         $callable = self::createStub(ResolvedCallableInterface::class);
-        $callable->method('getParameters')->willReturn([self::parameterInfo('name', new PrimitiveType('string'), 0)]);
+        $callable->method('getParameters')->willReturn([self::parameterInfo('name', PrimitiveType::String, 0)]);
 
         $items = self::source(new Expected(
             'n',

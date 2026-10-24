@@ -23,7 +23,7 @@ class UnionTypeTest extends TestCase
     {
         $type = new UnionType([
             new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class)),
-            new PrimitiveType('null'),
+            PrimitiveType::Null,
         ]);
         self::assertSame('?stdClass', $type->format());
     }
@@ -31,7 +31,7 @@ class UnionTypeTest extends TestCase
     public function testFormatNullableWithNullFirst(): void
     {
         $type = new UnionType([
-            new PrimitiveType('null'),
+            PrimitiveType::Null,
             new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class)),
         ]);
         self::assertSame('?stdClass', $type->format());
@@ -44,7 +44,7 @@ class UnionTypeTest extends TestCase
                 new ClasslikeType(ClasslikeName::fromFullyQualified(\Iterator::class)),
                 new ClasslikeType(ClasslikeName::fromFullyQualified(\Countable::class)),
             ]),
-            new PrimitiveType('null'),
+            PrimitiveType::Null,
         ]);
         self::assertSame('(Iterator&Countable)|null', $type->format());
     }
@@ -53,7 +53,7 @@ class UnionTypeTest extends TestCase
     {
         $type = new UnionType([
             new ClasslikeType(ClasslikeName::fromFullyQualified(\Iterator::class)),
-            new PrimitiveType('string'),
+            PrimitiveType::String,
             new ClasslikeType(ClasslikeName::fromFullyQualified(\Countable::class)),
         ]);
         $classNames = $type->getResolvableClasslikeNames();
@@ -82,7 +82,7 @@ class UnionTypeTest extends TestCase
     {
         $type = new UnionType([
             new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class)),
-            new PrimitiveType('null'),
+            PrimitiveType::Null,
         ]);
         self::assertTrue($type->isNullable());
     }
@@ -99,23 +99,23 @@ class UnionTypeTest extends TestCase
     public function testEqualsSameMembersInOrder(): void
     {
         $stdClass = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        $a = new UnionType([$stdClass, new PrimitiveType('null')]);
-        $b = new UnionType([$stdClass, new PrimitiveType('null')]);
+        $a = new UnionType([$stdClass, PrimitiveType::Null]);
+        $b = new UnionType([$stdClass, PrimitiveType::Null]);
         self::assertTrue($a->equals($b));
     }
 
     public function testEqualsFalseWhenMemberOrderDiffers(): void
     {
         $stdClass = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        $a = new UnionType([$stdClass, new PrimitiveType('null')]);
-        $b = new UnionType([new PrimitiveType('null'), $stdClass]);
+        $a = new UnionType([$stdClass, PrimitiveType::Null]);
+        $b = new UnionType([PrimitiveType::Null, $stdClass]);
         self::assertFalse($a->equals($b));
     }
 
     public function testEqualsFalseWhenMemberCountDiffers(): void
     {
         $stdClass = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        $a = new UnionType([$stdClass, new PrimitiveType('null')]);
+        $a = new UnionType([$stdClass, PrimitiveType::Null]);
         $b = new UnionType([$stdClass]);
         self::assertFalse($a->equals($b));
     }
@@ -123,8 +123,8 @@ class UnionTypeTest extends TestCase
     public function testEqualsFalseAgainstDifferentTypeKind(): void
     {
         $stdClass = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        $a = new UnionType([$stdClass, new PrimitiveType('null')]);
-        $b = new IntersectionType([$stdClass, new PrimitiveType('null')]);
+        $a = new UnionType([$stdClass, PrimitiveType::Null]);
+        $b = new IntersectionType([$stdClass, PrimitiveType::Null]);
         self::assertFalse($a->equals($b));
     }
 
@@ -132,7 +132,7 @@ class UnionTypeTest extends TestCase
     {
         $type = new UnionType([
             new LateStaticType(LateBindingKeyword::Static),
-            new PrimitiveType('null'),
+            PrimitiveType::Null,
         ]);
 
         $resolved = $type->resolveLateBound(self::bindingCalledOn(\ArrayIterator::class));
@@ -146,7 +146,7 @@ class UnionTypeTest extends TestCase
 
     public function testResolveLateBoundKeepsAUnionWithNothingToBind(): void
     {
-        $type = new UnionType([new PrimitiveType('int'), new PrimitiveType('null')]);
+        $type = new UnionType([PrimitiveType::Int, PrimitiveType::Null]);
 
         self::assertSame($type, $type->resolveLateBound(self::bindingCalledOn(\ArrayIterator::class)));
     }

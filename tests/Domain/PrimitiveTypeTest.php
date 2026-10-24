@@ -12,53 +12,46 @@ class PrimitiveTypeTest extends TestCase
 {
     public function testFormatReturnsName(): void
     {
-        $type = new PrimitiveType('string');
-        self::assertSame('string', $type->format());
+        self::assertSame('string', PrimitiveType::String->format());
     }
 
     public function testGetResolvableClasslikeNamesReturnsEmptyList(): void
     {
-        $type = new PrimitiveType('int');
-        self::assertSame([], $type->getResolvableClasslikeNames());
+        self::assertSame([], PrimitiveType::Int->getResolvableClasslikeNames());
     }
 
     public function testNullIsNullable(): void
     {
-        $type = new PrimitiveType('null');
-        self::assertTrue($type->isNullable());
+        self::assertTrue(PrimitiveType::Null->isNullable());
     }
 
     public function testNonNullIsNotNullable(): void
     {
-        $type = new PrimitiveType('string');
-        self::assertFalse($type->isNullable());
+        self::assertFalse(PrimitiveType::String->isNullable());
     }
 
     public function testResolveLateBoundReturnsSelf(): void
     {
-        $type = new PrimitiveType('string');
         $called = ClasslikeName::fromFullyQualified(\ArrayIterator::class);
-        self::assertSame($type, $type->resolveLateBound(new LateBinding($called, $called, null)));
+        self::assertSame(
+            PrimitiveType::String,
+            PrimitiveType::String->resolveLateBound(new LateBinding($called, $called, null)),
+        );
     }
 
     public function testEqualsSameName(): void
     {
-        $a = new PrimitiveType('array');
-        $b = new PrimitiveType('array');
-        self::assertTrue($a->equals($b));
+        self::assertTrue(PrimitiveType::Array->equals(PrimitiveType::Array));
     }
 
     public function testEqualsFalseWhenNameDiffers(): void
     {
-        $a = new PrimitiveType('string');
-        $b = new PrimitiveType('int');
-        self::assertFalse($a->equals($b));
+        self::assertFalse(PrimitiveType::String->equals(PrimitiveType::Int));
     }
 
     public function testEqualsFalseAgainstDifferentTypeKind(): void
     {
-        $a = new PrimitiveType('object');
-        $b = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        self::assertFalse($a->equals($b), 'a primitive is never equal to a class-like type');
+        $other = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
+        self::assertFalse(PrimitiveType::Object->equals($other), 'a primitive is never equal to a class-like type');
     }
 }

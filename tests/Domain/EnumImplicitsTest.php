@@ -62,8 +62,8 @@ final class EnumImplicitsTest extends TestCase
      */
     public static function backingTypes(): iterable
     {
-        yield 'int' => [new PrimitiveType('int')];
-        yield 'string' => [new PrimitiveType('string')];
+        yield 'int' => [PrimitiveType::Int];
+        yield 'string' => [PrimitiveType::String];
     }
 
     #[DataProvider('backingTypes')]
@@ -78,7 +78,7 @@ final class EnumImplicitsTest extends TestCase
         self::assertEquals($backing, $methods['tryFrom']->parameters[0]->type, 'tryFrom() takes the backing type');
         self::assertEquals(new ClasslikeType($enum), $methods['from']->returnType, 'from() returns a case');
         self::assertEquals(
-            new UnionType([new ClasslikeType($enum), new PrimitiveType('null')]),
+            new UnionType([new ClasslikeType($enum), PrimitiveType::Null]),
             $methods['tryFrom']->returnType,
             'tryFrom() returns a case or null',
         );

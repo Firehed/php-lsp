@@ -405,7 +405,7 @@ final class ExpectedAtPositionTest extends TestCase
         yield 'nullsafe property chain' => [
             self::CHAINS,
             'nullsafe_property_chain',
-            self::instance(new UnionType([$user, new PrimitiveType('null')]), $chains),
+            self::instance(new UnionType([$user, PrimitiveType::Null]), $chains),
         ];
         yield 'chain across lines' => [
             self::CHAINS,
@@ -704,7 +704,7 @@ final class ExpectedAtPositionTest extends TestCase
         ];
         $properties = [
             'Fixtures\Completion\ChainCompletion::user' => $user,
-            'Fixtures\Completion\ChainCompletion::nullableUser' => new UnionType([$user, new PrimitiveType('null')]),
+            'Fixtures\Completion\ChainCompletion::nullableUser' => new UnionType([$user, PrimitiveType::Null]),
         ];
         $memberResolver = self::createStub(MemberResolverInterface::class);
         $memberResolver->method('findMethod')->willReturnCallback(

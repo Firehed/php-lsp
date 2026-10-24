@@ -422,7 +422,7 @@ final class BuiltinBackendTest extends TestCase
      */
     public static function reflectedTypes(): iterable
     {
-        $null = new PrimitiveType('null');
+        $null = PrimitiveType::Null;
         $static = new LateStaticType(LateBindingKeyword::Static);
         $method = static fn (string $class, string $name): Closure =>
             static fn (BuiltinBackend $b): ?TypeInterface => self::classLikeIn($b, $class)?->methods[$name]->returnType;
@@ -430,9 +430,9 @@ final class BuiltinBackendTest extends TestCase
             static fn (BuiltinBackend $b): ?TypeInterface => self::functionIn($b, $name)?->returnType;
         $class = static fn (string $fqn): ClasslikeType => new ClasslikeType(ClasslikeName::fromFullyQualified($fqn));
 
-        yield 'a primitive' => [$function('str_contains'), new PrimitiveType('bool')];
-        yield 'a nullable primitive' => [$function('var_export'), new UnionType([new PrimitiveType('string'), $null])];
-        yield 'mixed, which already holds null' => [$function('array_pop'), new PrimitiveType('mixed')];
+        yield 'a primitive' => [$function('str_contains'), PrimitiveType::Bool];
+        yield 'a nullable primitive' => [$function('var_export'), new UnionType([PrimitiveType::String, $null])];
+        yield 'mixed, which already holds null' => [$function('array_pop'), PrimitiveType::Mixed];
         yield 'a class' => [$method(\Closure::class, 'fromCallable'), $class(\Closure::class)];
         yield 'a nullable class' => [
             $method(\Exception::class, 'getPrevious'),
@@ -440,11 +440,11 @@ final class BuiltinBackendTest extends TestCase
         ];
         yield 'a union' => [
             $function('ini_get'),
-            new UnionType([new PrimitiveType('string'), new PrimitiveType('false')]),
+            new UnionType([PrimitiveType::String, PrimitiveType::False]),
         ];
         yield 'a union holding null, which is not wrapped again' => [
             $function('array_key_first'),
-            new UnionType([new PrimitiveType('string'), new PrimitiveType('int'), $null]),
+            new UnionType([PrimitiveType::String, PrimitiveType::Int, $null]),
         ];
         yield 'static, which reflection names as a class' => [
             $method(\DateTimeImmutable::class, 'setMicrosecond'),

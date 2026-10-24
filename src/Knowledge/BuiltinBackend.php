@@ -495,20 +495,20 @@ final class BuiltinBackend implements SymbolSourceInterface
             $keyword = LateBindingKeyword::tryFromName($name);
             if ($keyword !== null) {
                 $late = new LateStaticType($keyword);
-                return $type->allowsNull() ? new UnionType([$late, new PrimitiveType('null')]) : $late;
+                return $type->allowsNull() ? new UnionType([$late, PrimitiveType::Null]) : $late;
             }
 
             if ($type->isBuiltin()) {
-                $primitive = new PrimitiveType($name);
-                if ($type->allowsNull() && $name !== 'null' && $name !== 'mixed') {
-                    return new UnionType([$primitive, new PrimitiveType('null')]);
+                $primitive = PrimitiveType::from($name);
+                if ($type->allowsNull() && $primitive !== PrimitiveType::Null && $primitive !== PrimitiveType::Mixed) {
+                    return new UnionType([$primitive, PrimitiveType::Null]);
                 }
                 return $primitive;
             }
 
             $classType = new ClasslikeType(ClasslikeName::fromFullyQualified($name));
             if ($type->allowsNull()) {
-                return new UnionType([$classType, new PrimitiveType('null')]);
+                return new UnionType([$classType, PrimitiveType::Null]);
             }
             return $classType;
         }

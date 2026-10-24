@@ -37,13 +37,7 @@ final class TypeFactory
                 return new ClasslikeType(ClasslikeName::fromFullyQualified($name));
             }
 
-            if (in_array($name, PrimitiveType::NAMES, true)) {
-                return new PrimitiveType($name);
-            }
-
-            // @codeCoverageIgnoreStart
-            throw new LogicException("Unexpected Identifier in type context: $name");
-            // @codeCoverageIgnoreEnd
+            return PrimitiveType::from($name);
         }
 
         if ($node instanceof Node\NullableType) {
@@ -53,7 +47,7 @@ final class TypeFactory
                 throw new LogicException('NullableType inner type resolved to null');
             }
             // @codeCoverageIgnoreEnd
-            return new UnionType([$inner, new PrimitiveType('null')]);
+            return new UnionType([$inner, PrimitiveType::Null]);
         }
 
         if ($node instanceof Node\UnionType || $node instanceof Node\IntersectionType) {

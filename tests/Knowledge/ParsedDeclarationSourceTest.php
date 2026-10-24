@@ -645,7 +645,7 @@ final class ParsedDeclarationSourceTest extends TestCase
         yield 'scalar default' => [
             ...$constructor,
             3,
-            new ParameterInfo('age', new PrimitiveType('int'), '0', 3, false, false),
+            new ParameterInfo('age', PrimitiveType::Int, '0', 3, false, false),
         ];
         yield 'class-constant default, printed with its resolved name' => [
             ...$constructor,
@@ -707,8 +707,8 @@ final class ParsedDeclarationSourceTest extends TestCase
      */
     public static function properties(): iterable
     {
-        $int = new PrimitiveType('int');
-        $string = new PrimitiveType('string');
+        $int = PrimitiveType::Int;
+        $string = PrimitiveType::String;
         yield 'private static' => [...self::USER, 'instanceCount', Visibility::Private, true, false, $int];
         yield 'private readonly' => [...self::USER, 'id', Visibility::Private, false, true, $string];
         yield 'public nullable self, kept late-bound' => [
@@ -792,11 +792,11 @@ final class ParsedDeclarationSourceTest extends TestCase
 
         self::assertArrayHasKey('fromScore', $info->methods, 'a declared method is kept alongside the implicit ones');
         self::assertEquals(
-            new PrimitiveType('int'),
+            PrimitiveType::Int,
             $info->methods['from']->parameters[0]->type,
             'from() takes the backing type',
         );
-        self::assertEquals(new PrimitiveType('int'), $info->properties['value']->type, '$value has the backing type');
+        self::assertEquals(PrimitiveType::Int, $info->properties['value']->type, '$value has the backing type');
     }
 
     public function testPureEnumHasNoBackedMembers(): void
@@ -814,14 +814,14 @@ final class ParsedDeclarationSourceTest extends TestCase
      */
     private static function nullableSelf(): UnionType
     {
-        return new UnionType([new LateStaticType(LateBindingKeyword::Self), new PrimitiveType('null')]);
+        return new UnionType([new LateStaticType(LateBindingKeyword::Self), PrimitiveType::Null]);
     }
 
     private static function nullable(string $fqn): UnionType
     {
         return new UnionType([
             new ClasslikeType(ClasslikeName::fromFullyQualified($fqn)),
-            new PrimitiveType('null'),
+            PrimitiveType::Null,
         ]);
     }
 

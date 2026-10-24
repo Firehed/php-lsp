@@ -28,7 +28,7 @@ class ParameterInfoTest extends TestCase
     public function testLateBindingKeepsAParameterWithNothingToBind(): void
     {
         $declaring = ClasslikeName::fromFullyQualified('App\\Declaring');
-        $param = new ParameterInfo('count', new PrimitiveType('int'), null, 0, false, false);
+        $param = new ParameterInfo('count', PrimitiveType::Int, null, 0, false, false);
 
         self::assertSame($param, $param->resolveLateBound(new LateBinding($declaring, $declaring, null)));
     }
@@ -37,7 +37,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'value',
-            type: new PrimitiveType('string'),
+            type: PrimitiveType::String,
             defaultValue: "'hello'",
             position: 0,
             isVariadic: false,
@@ -71,7 +71,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'value',
-            type: new PrimitiveType('string'),
+            type: PrimitiveType::String,
             defaultValue: null,
             position: 0,
             isVariadic: false,
@@ -99,7 +99,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'args',
-            type: new PrimitiveType('string'),
+            type: PrimitiveType::String,
             defaultValue: null,
             position: 0,
             isVariadic: true,
@@ -113,7 +113,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'args',
-            type: new PrimitiveType('string'),
+            type: PrimitiveType::String,
             defaultValue: '[]',
             position: 0,
             isVariadic: true,
@@ -127,7 +127,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'value',
-            type: new PrimitiveType('string'),
+            type: PrimitiveType::String,
             defaultValue: null,
             position: 0,
             isVariadic: false,
@@ -141,7 +141,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'args',
-            type: new PrimitiveType('array'),
+            type: PrimitiveType::Array,
             defaultValue: null,
             position: 0,
             isVariadic: true,
@@ -155,7 +155,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'second',
-            type: new PrimitiveType('string'),
+            type: PrimitiveType::String,
             defaultValue: null,
             position: 1,
             isVariadic: false,
@@ -169,7 +169,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'count',
-            type: new PrimitiveType('int'),
+            type: PrimitiveType::Int,
             defaultValue: '42',
             position: 0,
             isVariadic: false,
@@ -183,7 +183,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'count',
-            type: new PrimitiveType('int'),
+            type: PrimitiveType::Int,
             defaultValue: '42',
             position: 0,
             isVariadic: false,
@@ -197,7 +197,7 @@ class ParameterInfoTest extends TestCase
     {
         $param = new ParameterInfo(
             name: 'value',
-            type: new PrimitiveType('string'),
+            type: PrimitiveType::String,
             defaultValue: null,
             position: 0,
             isVariadic: false,
