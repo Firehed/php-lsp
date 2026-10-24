@@ -175,6 +175,11 @@ class VariableBindingsTest extends TestCase
             self::namesOf(VariableBindings::before(Scope::at($closure, $ast), $closure->getEndFilePos())),
             'a parameter or use clause naming $this binds nothing',
         );
+        self::assertArrayNotHasKey(
+            'this',
+            VariableBindings::visible(Scope::at($method, $ast), $method->getEndFilePos()),
+            'a static method has no $this, however its code names one',
+        );
     }
 
     /**
