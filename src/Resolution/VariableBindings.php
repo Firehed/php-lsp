@@ -33,7 +33,7 @@ final class VariableBindings
         $thisClass = $scope->getThisType();
         $visible = $thisClass === null
             ? []
-            : ['this' => new VariableBinding('this', null, $scope, new ClasslikeType($thisClass))];
+            : ['this' => VariableBinding::implicit('this', new ClasslikeType($thisClass), $scope)];
         while (true) {
             $nearest = [];
             foreach (self::before($scope, $offset) as $binding) {
@@ -147,7 +147,7 @@ final class VariableBindings
     private static function bind(?Node $target, Scope $scope, array &$bindings): void
     {
         if ($target instanceof Variable && is_string($target->name) && $target->name !== 'this') {
-            $bindings[] = new VariableBinding($target->name, $target, $scope);
+            $bindings[] = VariableBinding::written($target->name, $target, $scope);
         }
     }
 }
