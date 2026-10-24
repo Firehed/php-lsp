@@ -68,10 +68,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
     public function resolve(Expr $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
     {
-        if ($expr instanceof Variable && $expr->name === 'this') {
-            return $this->resolveThis(Scope::at($expr, $parsed->tree));
-        }
-
         if ($expr instanceof Variable && is_string($expr->name)) {
             $scope = Scope::at($expr, $parsed->tree);
             return $this->resolveVariable($expr->name, $scope, $expr->getStartFilePos(), $parsed);
@@ -126,12 +122,15 @@ final class ExpressionResolver implements ExpressionResolverInterface
     }
 
     /**
-     * Resolve `$name` referenced at $offset in $scope: the nearest binding
-     * {@see VariableBindings::visible()} there. Long closures are isolated: an
-     * uncaptured name returns null (#301).
+     * Resolve `$name` referenced at $offset in $scope: `$this` as the scope
+     * binds it, else the nearest binding {@see VariableBindings::visible()}
+     * there. Long closures are isolated: an uncaptured name returns null (#301).
      */
     public function resolveVariable(string $name, Scope $scope, int $offset, ParsedDocument $parsed): ?ResolvedVariable
     {
+        if ($name === 'this') {
+            return $this->resolveThis($scope);
+        }
         $binding = VariableBindings::visible($scope, $offset)[$name] ?? null;
         return $binding === null ? null : $this->resolveBinding($binding, $parsed);
     }
