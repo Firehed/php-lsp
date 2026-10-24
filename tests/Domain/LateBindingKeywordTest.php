@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\Domain;
 
 use Firehed\PhpLsp\Domain\LateBindingKeyword;
+use Firehed\PhpLsp\Domain\TypeHintContext;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -39,6 +40,31 @@ final class LateBindingKeywordTest extends TestCase
             $expected,
             LateBindingKeyword::tryFromName($name),
             'the three keywords resolve regardless of source case; anything else is not a keyword',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{LateBindingKeyword, TypeHintContext, bool}>
+     */
+    public static function positions(): iterable
+    {
+        foreach ([LateBindingKeyword::Self, LateBindingKeyword::Parent] as $keyword) {
+            foreach (TypeHintContext::cases() as $context) {
+                yield "{$keyword->value} as a {$context->name} type" => [$keyword, $context, true];
+            }
+        }
+        yield 'static as a ReturnType type' => [LateBindingKeyword::Static, TypeHintContext::ReturnType, true];
+        yield 'static as a Parameter type' => [LateBindingKeyword::Static, TypeHintContext::Parameter, false];
+        yield 'static as a Property type' => [LateBindingKeyword::Static, TypeHintContext::Property, false];
+    }
+
+    #[DataProvider('positions')]
+    public function testValidIn(LateBindingKeyword $keyword, TypeHintContext $context, bool $expected): void
+    {
+        self::assertSame(
+            $expected,
+            $keyword->validIn($context),
+            'PHP accepts static only as a return type, and self or parent wherever a class name fits',
         );
     }
 

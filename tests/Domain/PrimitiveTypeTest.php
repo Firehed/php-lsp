@@ -73,4 +73,32 @@ class PrimitiveTypeTest extends TestCase
     {
         self::assertSame($expected, PrimitiveType::tryFromName($name), 'PHP matches type names case-insensitively');
     }
+
+    /**
+     * @return iterable<string, array{PrimitiveType, TypeHintContext, bool}>
+     */
+    public static function positions(): iterable
+    {
+        foreach ([PrimitiveType::Void, PrimitiveType::Never] as $type) {
+            yield "{$type->value} as a ReturnType type" => [$type, TypeHintContext::ReturnType, true];
+            yield "{$type->value} as a Parameter type" => [$type, TypeHintContext::Parameter, false];
+            yield "{$type->value} as a Property type" => [$type, TypeHintContext::Property, false];
+        }
+        yield 'callable as a ReturnType type' => [PrimitiveType::Callable, TypeHintContext::ReturnType, true];
+        yield 'callable as a Parameter type' => [PrimitiveType::Callable, TypeHintContext::Parameter, true];
+        yield 'callable as a Property type' => [PrimitiveType::Callable, TypeHintContext::Property, false];
+        foreach (TypeHintContext::cases() as $context) {
+            yield "int as a {$context->name} type" => [PrimitiveType::Int, $context, true];
+        }
+    }
+
+    #[DataProvider('positions')]
+    public function testValidIn(PrimitiveType $type, TypeHintContext $context, bool $expected): void
+    {
+        self::assertSame(
+            $expected,
+            $type->validIn($context),
+            'void and never are return types only, and a property cannot be callable',
+        );
+    }
 }
