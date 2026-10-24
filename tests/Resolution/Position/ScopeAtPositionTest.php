@@ -74,11 +74,9 @@ final class ScopeAtPositionTest extends TestCase
 
     public function testThisIsInScopeInAMethod(): void
     {
-        self::assertContains(
-            'this',
-            $this->variableNamesAt('src/Completion/Variables.php', 'this_prefix'),
-            'an instance method binds $this',
-        );
+        $names = $this->variableNamesAt('src/Completion/Variables.php', 'this_prefix');
+
+        self::assertSame(1, count(array_keys($names, 'this', true)), 'an instance method binds $this, once');
     }
 
     /**
