@@ -40,6 +40,22 @@ final class NamespaceContentsTest extends TestCase
         );
     }
 
+    public function testIndexKeepsTheFirstOfASymbolListedTwice(): void
+    {
+        $first = new CatalogSymbol('Fixtures\Domain\User', NameKind::ClassLike);
+
+        $index = NamespaceContents::indexByNamespace([
+            $first,
+            new CatalogSymbol('FIXTURES\DOMAIN\USER', NameKind::ClassLike),
+        ]);
+
+        self::assertSame(
+            [$first],
+            $index['fixtures\domain']->symbols,
+            'one symbol under its case rule; the first listed wins, as PHP keeps the first declaration',
+        );
+    }
+
     public function testMergeKeepsConstantsDifferingOnlyInShortNameCase(): void
     {
         $merged = NamespaceContents::merge([
