@@ -118,7 +118,11 @@ class VariableBindingsTest extends TestCase
 
         $visible = VariableBindings::visible(Scope::at($closure, $ast), $closure->getEndFilePos());
 
-        self::assertSame(['closureParam', 'assigned', 'insideClosure'], array_keys($visible), 'no fall-through');
+        self::assertSame(
+            ['this', 'closureParam', 'assigned', 'insideClosure'],
+            array_keys($visible),
+            'no fall-through; $this, which the closure inherits, is all it sees without a use clause',
+        );
     }
 
     public function testAnInnerBindingShadowsAnOuterOne(): void
@@ -134,7 +138,20 @@ class VariableBindingsTest extends TestCase
         self::assertSame($arrow, $visible['value']->scope->getSourceNode(), 'bound in the arrow function\'s scope');
     }
 
-    public function testThisIsNeverABinding(): void
+    public function testThisIsBoundWherePhpBindsIt(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
+        $method = self::findMethodByName('instanceMethod', $ast);
+        $scope = Scope::at($method, $ast);
+
+        $visible = VariableBindings::visible($scope, $method->getStartFilePos());
+
+        self::assertSame(['this'], array_keys($visible), 'an instance method binds $this before any code runs');
+        self::assertNull($visible['this']->node, 'no code binds it');
+        self::assertSame($scope, $visible['this']->scope, 'bound in the method\'s scope');
+    }
+
+    public function testCodeNeverBindsThis(): void
     {
         $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
         $method = self::findMethodByName('rebindsThis', $ast);
@@ -143,12 +160,12 @@ class VariableBindingsTest extends TestCase
 
         self::assertSame(
             ['items', 'closure'],
-            self::namesOf(VariableBindings::before(Scope::at($method, $ast), $method->getEndFilePos())),
+            array_keys(VariableBindings::visible(Scope::at($method, $ast), $method->getEndFilePos())),
             'an assignment, foreach, or catch naming $this binds nothing',
         );
         self::assertSame(
             [],
-            self::namesOf(VariableBindings::before(Scope::at($closure, $ast), $closure->getEndFilePos())),
+            array_keys(VariableBindings::visible(Scope::at($closure, $ast), $closure->getEndFilePos())),
             'a parameter or use clause naming $this binds nothing',
         );
     }
