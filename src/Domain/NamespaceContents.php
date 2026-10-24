@@ -32,7 +32,8 @@ final readonly class NamespaceContents
      * Every ancestor namespace on the way to a symbol is registered too, so an
      * intermediate namespace that declares nothing itself is still reachable:
      * `Random\Engine\Xoshiro256StarStar` makes `Random\Engine` a child of
-     * `Random`, and `Random` a child of the global namespace.
+     * `Random`, and `Random` a child of the global namespace. Of a symbol
+     * listed more than once, the first listing is kept.
      *
      * @param iterable<CatalogSymbol> $symbols
      * @return array<string, self> Lowercase namespace -> contents
@@ -44,7 +45,7 @@ final readonly class NamespaceContents
 
         foreach ($symbols as $symbol) {
             $namespace = new NamespaceName(NamespaceName::namespaceOf($symbol->fullyQualifiedName));
-            $symbolsByNamespace[$namespace->normalize()][] = $symbol;
+            $symbolsByNamespace[$namespace->normalize()][$symbol->key()] ??= $symbol;
 
             foreach ($namespace->ancestors() as $parent => $child) {
                 $parentKey = (new NamespaceName($parent))->normalize();
@@ -57,7 +58,7 @@ final readonly class NamespaceContents
         foreach (array_keys($childNamespaces + $symbolsByNamespace) as $namespace) {
             $contents[$namespace] = new self(
                 array_values($childNamespaces[$namespace] ?? []),
-                $symbolsByNamespace[$namespace] ?? [],
+                array_values($symbolsByNamespace[$namespace] ?? []),
             );
         }
 
