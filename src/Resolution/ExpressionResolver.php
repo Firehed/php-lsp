@@ -149,7 +149,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
     public function resolveBinding(VariableBinding $binding, ParsedDocument $parsed): ResolvedVariable
     {
         $type = $this->typeOfBinding($binding, $parsed);
-        $location = self::locationFor($binding->node, $parsed->document);
+        $location = $binding->node === null ? null : self::locationFor($binding->node, $parsed->document);
         return new ResolvedVariable($binding->name, $type, $location);
     }
 
@@ -194,6 +194,10 @@ final class ExpressionResolver implements ExpressionResolverInterface
     {
         $scope = $binding->scope;
         $node = $binding->node;
+        if ($node === null) {
+            $thisClass = $scope->getThisType();
+            return $thisClass === null ? null : new ClasslikeType($thisClass);
+        }
         assert($node instanceof Variable && is_string($node->name), 'VariableBindings yields named Variables only');
         $parent = $node->getAttribute('parent');
 
