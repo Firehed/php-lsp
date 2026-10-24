@@ -16,7 +16,7 @@ use Firehed\PhpLsp\Domain\SymbolInfoInterface;
 /**
  * The store the {@see SymbolSourceInterface} backends whose answers come from an
  * in-memory set of {@see DeclaredSymbol}s share: `lookup`, `childrenOf` and
- * `search` all read one map keyed by source. The lookup index is rebuilt after
+ * `search` all read one map keyed by source. The indexes are rebuilt after
  * every write and remove, so the first declaration of a name in map order wins
  * every answer; the three surfaces can never disagree about what the store
  * declares.
@@ -29,36 +29,12 @@ trait DeclaredSymbolStoreTrait
     /** @var array<string, SymbolInfoInterface> Kind-qualified key -> metadata, first source in map order wins */
     private array $byKey = [];
 
+    /** @var array<string, NamespaceContents> Lowercase namespace -> contents, first source in map order wins */
+    private array $byNamespace = [];
+
     public function childrenOf(NamespaceName $namespace): NamespaceContents
     {
-        $targetKey = $namespace->normalize();
-        $childNamespaces = [];
-        $symbols = [];
-        $seenSymbolKey = [];
-
-        foreach ($this->symbolsBySource as $sourceSymbols) {
-            foreach ($sourceSymbols as $symbol) {
-                $fqn = $symbol->name->fullyQualifiedName();
-                $ns = new NamespaceName(NamespaceName::namespaceOf($fqn));
-                if ($ns->normalize() === $targetKey) {
-                    $key = $symbol->kind->keyFor($symbol->name);
-                    if (array_key_exists($key, $seenSymbolKey)) {
-                        continue;
-                    }
-                    $seenSymbolKey[$key] = true;
-                    $symbols[] = new CatalogSymbol($fqn, $symbol->kind);
-                    continue;
-                }
-                $below = $ns->relativeTo($namespace);
-                if ($below === null) {
-                    continue;
-                }
-                $child = NamespaceName::join($namespace->path, NamespaceName::firstSegment($below));
-                $childNamespaces[(new NamespaceName($child))->normalize()] ??= $child;
-            }
-        }
-
-        return new NamespaceContents(array_values($childNamespaces), $symbols);
+        return $this->byNamespace[$namespace->normalize()] ?? new NamespaceContents();
     }
 
     /**
@@ -83,13 +59,13 @@ trait DeclaredSymbolStoreTrait
 
     /**
      * Replace the symbols recorded under $source with $symbols. Rebuilds the
-     * lookup index from the resulting map, so lookup, `childrenOf`, and
+     * indexes from the resulting map, so lookup, `childrenOf`, and
      * `search` all resolve the same declaration for any shared name.
      */
     private function setSymbolsFor(string $source, DeclaredSymbol ...$symbols): void
     {
         $this->symbolsBySource[$source] = array_values($symbols);
-        $this->rebuildLookupIndex();
+        $this->rebuildIndexes();
     }
 
     /**
@@ -99,28 +75,32 @@ trait DeclaredSymbolStoreTrait
     private function removeSymbolsFor(string $source): void
     {
         unset($this->symbolsBySource[$source]);
-        $this->rebuildLookupIndex();
+        $this->rebuildIndexes();
     }
 
     /**
-     * Drop every recorded symbol. One rebuild replaces the per-source loop
-     * a caller would otherwise run, which repeats {@see rebuildLookupIndex}
-     * for every remaining entry.
+     * Replace every recorded symbol, rebuilding the indexes once rather than
+     * once per source.
+     *
+     * @param array<string, list<DeclaredSymbol>> $symbolsBySource Source key -> the symbols it declares
      */
-    private function clearAllSymbols(): void
+    private function replaceAllSymbols(array $symbolsBySource): void
     {
-        $this->symbolsBySource = [];
-        $this->byKey = [];
+        $this->symbolsBySource = $symbolsBySource;
+        $this->rebuildIndexes();
     }
 
-    private function rebuildLookupIndex(): void
+    private function rebuildIndexes(): void
     {
         $this->byKey = [];
+        $catalog = [];
         foreach ($this->symbolsBySource as $sourceSymbols) {
             foreach ($sourceSymbols as $symbol) {
                 $this->byKey[$symbol->kind->keyFor($symbol->name)] ??= $symbol->info;
+                $catalog[] = new CatalogSymbol($symbol->name->fullyQualifiedName(), $symbol->kind);
             }
         }
+        $this->byNamespace = NamespaceContents::indexByNamespace($catalog);
     }
 
     private function lookup(QualifiedName $name, NameKind $kind): ?SymbolInfoInterface

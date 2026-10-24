@@ -20,6 +20,56 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(NamespaceContents::class)]
 final class NamespaceContentsTest extends TestCase
 {
+    public function testIndexFilesEachSymbolUnderItsNamespaceAndEachNamespaceUnderItsParent(): void
+    {
+        $user = new CatalogSymbol('Fixtures\Domain\User', NameKind::ClassLike);
+        $format = new CatalogSymbol('format', NameKind::Function_);
+
+        $index = NamespaceContents::indexByNamespace([$user, $format]);
+
+        self::assertEquals(new NamespaceContents(['Fixtures'], [$format]), $index[''], 'the global namespace');
+        self::assertEquals(
+            new NamespaceContents(['Fixtures\Domain'], []),
+            $index['fixtures'],
+            'a namespace that declares nothing itself still leads to its child',
+        );
+        self::assertEquals(
+            new NamespaceContents([], [$user]),
+            $index['fixtures\domain'],
+            'keyed by the namespace under its case rule',
+        );
+    }
+
+    public function testIndexKeepsTheFirstOfASymbolListedTwice(): void
+    {
+        $first = new CatalogSymbol('Fixtures\Domain\User', NameKind::ClassLike);
+
+        $index = NamespaceContents::indexByNamespace([
+            $first,
+            new CatalogSymbol('FIXTURES\DOMAIN\USER', NameKind::ClassLike),
+        ]);
+
+        self::assertSame(
+            [$first],
+            $index['fixtures\domain']->symbols,
+            'one symbol under its case rule; the first listed wins, as PHP keeps the first declaration',
+        );
+    }
+
+    public function testMergeListsAChildNamespaceOnceAsTheFirstSourceSpellsIt(): void
+    {
+        $merged = NamespaceContents::merge([
+            new NamespaceContents(['Fixtures\Domain'], []),
+            new NamespaceContents(['FIXTURES\DOMAIN', 'Fixtures\Enum'], []),
+        ]);
+
+        self::assertSame(
+            ['Fixtures\Domain', 'Fixtures\Enum'],
+            $merged->childNamespaces,
+            'namespaces are case-insensitive; the earlier source wins the spelling',
+        );
+    }
+
     public function testMergeKeepsConstantsDifferingOnlyInShortNameCase(): void
     {
         $merged = NamespaceContents::merge([
