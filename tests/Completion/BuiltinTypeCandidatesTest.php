@@ -6,6 +6,8 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFormatter;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\TypeHintContext;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -15,33 +17,29 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(BuiltinTypeCandidates::class)]
 final class BuiltinTypeCandidatesTest extends TestCase
 {
-    private const array COMMON = [
-        'string', 'int', 'float', 'bool', 'array', 'object',
-        'mixed', 'null', 'callable', 'iterable', 'true', 'false',
-    ];
-
     /**
-     * @return iterable<string, array{TypeHintContext, list<string>}>
+     * @return iterable<string, array{TypeHintContext}>
      */
     public static function contexts(): iterable
     {
-        yield 'property' => [TypeHintContext::Property, self::COMMON];
-        yield 'parameter' => [TypeHintContext::Parameter, [...self::COMMON, 'self', 'parent']];
-        yield 'return' => [TypeHintContext::ReturnType, [...self::COMMON, 'void', 'never', 'self', 'static', 'parent']];
+        foreach (TypeHintContext::cases() as $context) {
+            yield $context->name => [$context];
+        }
     }
 
-    /**
-     * @param list<string> $expected
-     */
     #[DataProvider('contexts')]
-    public function testOffersTheTypesValidInThePosition(TypeHintContext $context, array $expected): void
+    public function testOffersTheTypesValidInThePosition(TypeHintContext $context): void
     {
         $candidates = new BuiltinTypeCandidates(new CompletionItemFormatter(new ResolvedSymbolPresenter()));
+        $valid = array_filter(
+            [...PrimitiveType::cases(), ...LateBindingKeyword::cases()],
+            static fn (PrimitiveType|LateBindingKeyword $type): bool => $type->validIn($context),
+        );
 
-        self::assertSame(
-            $expected,
+        self::assertEqualsCanonicalizing(
+            array_column($valid, 'value'),
             array_column($candidates->find($context, ''), 'label'),
-            'each position offers the built-in types PHP accepts there',
+            'each position offers every built-in type PHP accepts there, and no other',
         );
     }
 
