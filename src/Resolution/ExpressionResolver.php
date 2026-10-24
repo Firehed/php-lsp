@@ -68,11 +68,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
     public function resolve(Expr $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
     {
-        if ($expr instanceof Variable && $expr->name === 'this') {
-            $type = Scope::at($expr, $parsed->tree)->getThisType();
-            return $type === null ? null : new ResolvedTypeOnly(new ClasslikeType($type));
-        }
-
         if ($expr instanceof Variable && is_string($expr->name)) {
             $scope = Scope::at($expr, $parsed->tree);
             return $this->resolveVariable($expr->name, $scope, $expr->getStartFilePos(), $parsed);
@@ -127,7 +122,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
     }
 
     /**
-     * Resolve `$name` referenced at $offset in $scope: the nearest binding
+     * Resolve `$name` referenced at $offset in $scope: the binding
      * {@see VariableBindings::visible()} there. Long closures are isolated: an
      * uncaptured name returns null (#301).
      */
@@ -145,7 +140,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
     public function resolveBinding(VariableBinding $binding, ParsedDocument $parsed): ResolvedVariable
     {
         $type = $this->typeOfBinding($binding, $parsed);
-        $location = self::locationFor($binding->node, $parsed->document);
+        $location = $binding->node === null ? null : self::locationFor($binding->node, $parsed->document);
         return new ResolvedVariable($binding->name, $type, $location);
     }
 
@@ -190,6 +185,9 @@ final class ExpressionResolver implements ExpressionResolverInterface
     {
         $scope = $binding->scope;
         $node = $binding->node;
+        if ($node === null) {
+            return $binding->type;
+        }
         assert($node instanceof Variable && is_string($node->name), 'VariableBindings yields named Variables only');
         $parent = $node->getAttribute('parent');
 

@@ -46,6 +46,22 @@ class ThisBinding
     public int $tripled {
         get => $this->count * 3;
     }
+
+    /**
+     * Binds `$this` every way a variable is bound, which PHP refuses to
+     * compile; this file is outside the autoload paths for that reason.
+     */
+    public static function rebindsThis(array $items): void
+    {
+        $this = null;
+        foreach ($items as $this => $this) {
+        }
+        try {
+        } catch (\Throwable $this) {
+        }
+        $closure = function ($this) use ($this) {
+        };
+    }
 }
 
 function freeFunction(): void

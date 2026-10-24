@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Resolution;
 
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\VariableBinding;
 use Firehed\PhpLsp\Resolution\VariableBindings;
@@ -118,7 +120,11 @@ class VariableBindingsTest extends TestCase
 
         $visible = VariableBindings::visible(Scope::at($closure, $ast), $closure->getEndFilePos());
 
-        self::assertSame(['closureParam', 'assigned', 'insideClosure'], array_keys($visible), 'no fall-through');
+        self::assertSame(
+            ['this', 'closureParam', 'assigned', 'insideClosure'],
+            array_keys($visible),
+            'no fall-through; $this, which the closure inherits, is all it sees without a use clause',
+        );
     }
 
     public function testAnInnerBindingShadowsAnOuterOne(): void
@@ -132,6 +138,43 @@ class VariableBindingsTest extends TestCase
 
         self::assertSame($arrow->params[0]->var, $visible['value']->node ?? null, 'the arrow function\'s own $value');
         self::assertSame($arrow, $visible['value']->scope->getSourceNode(), 'bound in the arrow function\'s scope');
+    }
+
+    public function testThisIsBoundWherePhpBindsIt(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
+        $method = self::findMethodByName('instanceMethod', $ast);
+        $scope = Scope::at($method, $ast);
+
+        $visible = VariableBindings::visible($scope, $method->getStartFilePos());
+
+        self::assertSame(['this'], array_keys($visible), 'an instance method binds $this before any code runs');
+        self::assertNull($visible['this']->node, 'no code binds it');
+        self::assertSame($scope, $visible['this']->scope, 'bound in the method\'s scope');
+        self::assertEquals(
+            new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\ThisBinding\ThisBinding')),
+            $visible['this']->type,
+            'PHP binds it to the class the method is in',
+        );
+    }
+
+    public function testCodeNeverBindsThis(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
+        $method = self::findMethodByName('rebindsThis', $ast);
+        $closure = self::findFirst([$method], fn (Node $n) => $n instanceof Node\Expr\Closure);
+        self::assertInstanceOf(Node\Expr\Closure::class, $closure);
+
+        self::assertSame(
+            ['items', 'closure'],
+            array_keys(VariableBindings::visible(Scope::at($method, $ast), $method->getEndFilePos())),
+            'an assignment, foreach, or catch naming $this binds nothing',
+        );
+        self::assertSame(
+            [],
+            array_keys(VariableBindings::visible(Scope::at($closure, $ast), $closure->getEndFilePos())),
+            'a parameter or use clause naming $this binds nothing',
+        );
     }
 
     /**

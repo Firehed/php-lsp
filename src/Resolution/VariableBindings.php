@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Resolution;
 
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\Variable;
@@ -12,22 +13,25 @@ use PhpParser\Node\Stmt;
 /**
  * The one place variable bindings visible in a scope are enumerated.
  *
- * A binding is a parameter, a closure `use` clause, an assignment target, a
- * foreach key/value, or a catch variable. The list is returned in source
- * order — the nearest binding is last. Nested function-like bodies are not
- * entered; control-flow bodies (if/while/for/foreach/try...) are.
+ * A binding code writes is a parameter, a closure `use` clause, an assignment
+ * target, a foreach key/value, or a catch variable, listed in source order —
+ * the nearest binding is last. Nested function-like bodies are not entered;
+ * control-flow bodies (if/while/for/foreach/try...) are. What a name refers to
+ * is decided in {@see self::visible()}, `$this` included.
  */
 final class VariableBindings
 {
     /**
-     * The nearest binding of each name visible at $offset, by name. An arrow
-     * function also sees what the scope around it binds before it (implicit
-     * capture); a binding in an inner scope shadows one in an outer.
+     * The binding each name visible at $offset refers to, by name: `$this`
+     * where the scope binds it, then the nearest binding of each other name.
+     * An arrow function also sees what the scope around it binds before it
+     * (implicit capture); a binding in an inner scope shadows one in an outer.
      *
      * @return array<string, VariableBinding>
      */
     public static function visible(Scope $scope, int $offset): array
     {
+        $innermost = $scope;
         $visible = [];
         while (true) {
             $nearest = [];
@@ -36,7 +40,7 @@ final class VariableBindings
             }
             $visible += $nearest;
             if (!$scope->allowsImplicitCapture()) {
-                return $visible;
+                break;
             }
             $sourceNode = $scope->getSourceNode();
             $outer = $scope->outer();
@@ -44,10 +48,18 @@ final class VariableBindings
             $scope = $outer;
             $offset = $sourceNode->getStartFilePos();
         }
+
+        // `$this` is what PHP binds, whatever code writes.
+        unset($visible['this']);
+        $thisClass = $innermost->getThisType();
+        return $thisClass === null
+            ? $visible
+            : ['this' => VariableBinding::implicit('this', new ClasslikeType($thisClass), $innermost)] + $visible;
     }
 
     /**
-     * The bindings visible strictly before $offset, in source order.
+     * The bindings code writes strictly before $offset, in source order: what
+     * the code says, `$this` included, not what a name refers to.
      *
      * @return list<VariableBinding>
      */
@@ -56,15 +68,11 @@ final class VariableBindings
         $bindings = [];
 
         foreach ($scope->getParams() as $param) {
-            if ($param->var instanceof Variable && is_string($param->var->name)) {
-                $bindings[] = new VariableBinding($param->var->name, $param->var, $scope);
-            }
+            self::bind($param->var, $scope, $bindings);
         }
 
         foreach ($scope->getUses() as $use) {
-            if (is_string($use->var->name)) {
-                $bindings[] = new VariableBinding($use->var->name, $use->var, $scope);
-            }
+            self::bind($use->var, $scope, $bindings);
         }
 
         self::walk($scope->getStatements(), $offset, $scope, $bindings);
@@ -87,24 +95,18 @@ final class VariableBindings
             }
 
             if ($stmt instanceof Stmt\Expression && $stmt->expr instanceof Assign) {
-                self::collectAssignTargets($stmt->expr, $scope, $bindings);
+                self::bind($stmt->expr->var, $scope, $bindings);
             }
 
             if ($stmt instanceof Stmt\Foreach_) {
-                if ($stmt->keyVar instanceof Variable && is_string($stmt->keyVar->name)) {
-                    $bindings[] = new VariableBinding($stmt->keyVar->name, $stmt->keyVar, $scope);
-                }
-                if ($stmt->valueVar instanceof Variable && is_string($stmt->valueVar->name)) {
-                    $bindings[] = new VariableBinding($stmt->valueVar->name, $stmt->valueVar, $scope);
-                }
+                self::bind($stmt->keyVar, $scope, $bindings);
+                self::bind($stmt->valueVar, $scope, $bindings);
             }
 
             if ($stmt instanceof Stmt\TryCatch) {
                 self::walk($stmt->stmts, $offset, $scope, $bindings);
                 foreach ($stmt->catches as $catch) {
-                    if ($catch->var !== null && is_string($catch->var->name)) {
-                        $bindings[] = new VariableBinding($catch->var->name, $catch->var, $scope);
-                    }
+                    self::bind($catch->var, $scope, $bindings);
                     self::walk($catch->stmts, $offset, $scope, $bindings);
                 }
                 if ($stmt->finally !== null) {
@@ -144,12 +146,14 @@ final class VariableBindings
     }
 
     /**
+     * Records $target when it names a variable.
+     *
      * @param list<VariableBinding> $bindings
      */
-    private static function collectAssignTargets(Assign $assign, Scope $scope, array &$bindings): void
+    private static function bind(?Node $target, Scope $scope, array &$bindings): void
     {
-        if ($assign->var instanceof Variable && is_string($assign->var->name)) {
-            $bindings[] = new VariableBinding($assign->var->name, $assign->var, $scope);
+        if ($target instanceof Variable && is_string($target->name)) {
+            $bindings[] = VariableBinding::written($target->name, $target, $scope);
         }
     }
 }

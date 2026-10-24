@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Tests\Resolution;
 
+use Firehed\PhpLsp\Domain\ClasslikeName;
+use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Resolution\VariableBinding;
 use PhpParser\Node\Expr\Variable;
@@ -17,10 +19,21 @@ final class VariableBindingTest extends TestCase
     {
         $node = new Variable('user');
         $scope = Scope::at(null, []);
-        $binding = new VariableBinding('user', $node, $scope);
+        $binding = VariableBinding::written('user', $node, $scope);
 
         self::assertSame('user', $binding->name, 'the name is kept');
         self::assertSame($node, $binding->node, 'the node to point at is kept');
         self::assertSame($scope, $binding->scope, 'the scope it binds in is kept');
+        self::assertNull($binding->type, 'code that binds it gives its type');
+    }
+
+    public function testABindingPhpMakesKeepsTheTypePhpGivesIt(): void
+    {
+        $type = new ClasslikeType(ClasslikeName::fromFullyQualified('Fixtures\ThisBinding\ThisBinding'));
+
+        $binding = VariableBinding::implicit('this', $type, Scope::at(null, []));
+
+        self::assertNull($binding->node, 'no code binds it');
+        self::assertSame($type, $binding->type, 'the type PHP gives it is kept');
     }
 }
