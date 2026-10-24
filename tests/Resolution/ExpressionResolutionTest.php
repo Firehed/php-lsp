@@ -549,6 +549,14 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testAMemberOfAnUntypedReceiverIsUnresolved(): void
+    {
+        self::assertNull(
+            $this->resolveSymbolAt(self::USER, 'untyped_property'),
+            'nothing names the class the receiver is',
+        );
+    }
+
     /**
      * @return iterable<string, array{string, string, ?MemberTarget}>
      */
