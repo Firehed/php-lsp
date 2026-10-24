@@ -13,10 +13,11 @@ use PhpParser\Node\Stmt;
 /**
  * The one place variable bindings visible in a scope are enumerated.
  *
- * A binding is a parameter, a closure `use` clause, an assignment target, a
- * foreach key/value, a catch variable, or `$this`. The list is returned in source
- * order — the nearest binding is last. Nested function-like bodies are not
- * entered; control-flow bodies (if/while/for/foreach/try...) are.
+ * A binding code writes is a parameter, a closure `use` clause, an assignment
+ * target, a foreach key/value, or a catch variable, listed in source order —
+ * the nearest binding is last. Nested function-like bodies are not entered;
+ * control-flow bodies (if/while/for/foreach/try...) are. PHP binds `$this`
+ * without code, so only what a name refers to includes it.
  */
 final class VariableBindings
 {
