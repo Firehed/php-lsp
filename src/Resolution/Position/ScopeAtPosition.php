@@ -20,14 +20,9 @@ final class ScopeAtPosition implements ScopeAtPositionInterface
     public function variablesAt(TextDocument $document, ByteOffset $offset): array
     {
         $located = $this->locator->locate($document, $offset);
-        $nearest = VariableBindings::visible($located->scope, $offset->value);
 
         $variables = [];
-        $thisVariable = $this->expressions->resolveThis($located->scope);
-        if ($thisVariable !== null) {
-            $variables[] = $thisVariable;
-        }
-        foreach ($nearest as $binding) {
+        foreach (VariableBindings::visible($located->scope, $offset->value) as $binding) {
             $variables[] = $this->expressions->resolveBinding($binding, $located->parsed);
         }
         return $variables;
