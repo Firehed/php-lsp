@@ -167,18 +167,13 @@ class VariableBindingsTest extends TestCase
 
         self::assertSame(
             ['items', 'closure'],
-            self::namesOf(VariableBindings::before(Scope::at($method, $ast), $method->getEndFilePos())),
+            array_keys(VariableBindings::visible(Scope::at($method, $ast), $method->getEndFilePos())),
             'an assignment, foreach, or catch naming $this binds nothing',
         );
         self::assertSame(
             [],
-            self::namesOf(VariableBindings::before(Scope::at($closure, $ast), $closure->getEndFilePos())),
+            array_keys(VariableBindings::visible(Scope::at($closure, $ast), $closure->getEndFilePos())),
             'a parameter or use clause naming $this binds nothing',
-        );
-        self::assertArrayNotHasKey(
-            'this',
-            VariableBindings::visible(Scope::at($method, $ast), $method->getEndFilePos()),
-            'a static method has no $this, however its code names one',
         );
     }
 
