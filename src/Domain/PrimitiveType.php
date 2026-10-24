@@ -24,6 +24,14 @@ enum PrimitiveType: string implements TypeInterface
     case True = 'true';
     case Void = 'void';
 
+    /**
+     * Matches case-insensitively, as PHP does.
+     */
+    public static function tryFromName(string $name): ?self
+    {
+        return self::tryFrom(NameCase::Insensitive->normalize($name));
+    }
+
     public function format(): string
     {
         return $this->value;
