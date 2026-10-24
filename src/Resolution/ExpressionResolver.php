@@ -305,7 +305,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $classNameNode,
-            $call,
             '__construct',
             $this->memberResolver->findMethod(...),
             $parsed,
@@ -319,7 +318,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->var,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findMethod(...),
             $parsed,
@@ -333,7 +331,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->class,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findMethod(...),
             $parsed,
@@ -370,7 +367,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->var,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findProperty(...),
             $parsed,
@@ -384,7 +380,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->class,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findProperty(...),
             $parsed,
@@ -393,11 +388,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
     /**
      * Access a member on the receiver, delegating the kind-specific lookup to
-     * `$find`. The receiver-to-ClasslikeName dance — an instance expression that
-     * resolves through `resolve()`, versus a class-name `Name` that resolves
-     * through the {@see Scope} — is here, so a new member-access node kind adds
-     * one call site rather than another copy of this dance. Only a member
-     * visible from where the access is written is found.
+     * `$find`. Only a member visible from where the access is written is found.
      *
      * @template T of MemberInfoInterface
      * @param callable(ClasslikeName, string, ?ClasslikeName, ?ClasslikeName): ?T $find
@@ -405,27 +396,16 @@ final class ExpressionResolver implements ExpressionResolverInterface
      */
     private function resolveMember(
         Expr|Name $receiver,
-        Node $context,
         string $memberName,
         callable $find,
         ParsedDocument $parsed,
     ): ?MemberInfoInterface {
-        $scope = Scope::at($context, $parsed->tree);
-        if ($receiver instanceof Name) {
-            $className = $scope->resolveClasslikeName($receiver);
-            if ($className === null) {
-                return null;
-            }
-            return $find(
-                $className,
-                $memberName,
-                $scope->getSelfName(),
-                $scope->staticFor($receiver),
-            );
+        $target = $this->memberTarget($receiver, $parsed);
+        if ($target === null) {
+            return null;
         }
-        $receiverType = $this->resolve($receiver, $parsed)?->getType();
-        foreach (self::receiverClasslikeNames($receiverType) as $className) {
-            $member = $find($className, $memberName, $scope->getSelfName(), null);
+        foreach ($target->type->getResolvableClasslikeNames() as $className) {
+            $member = $find($className, $memberName, $target->from, $target->static);
             if ($member !== null) {
                 return $member;
             }
