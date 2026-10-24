@@ -30,6 +30,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\MemberTarget;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
 use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
@@ -516,6 +517,80 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<string, array{string, string, ?MemberTarget}>
+     */
+    public static function memberTargets(): iterable
+    {
+        $procedural = 'src/Mixed/ProceduralWithClass.php';
+        $inMultiClass = self::className('Fixtures\Completion\ChildInMultiFile');
+        $inheritance = self::className('Fixtures\Completion\InheritanceCompletion');
+        yield '$this' => [
+            'MultiClass/MultiClass.php',
+            'this_in_second_class',
+            new MemberTarget(new ClasslikeType($inMultiClass), $inMultiClass, null),
+        ];
+        yield 'parent::' => [
+            'src/Completion/InheritanceCompletion.php',
+            'parent_access',
+            new MemberTarget(
+                new ClasslikeType(self::className('Fixtures\Inheritance\ChildClass')),
+                $inheritance,
+                $inheritance,
+            ),
+        ];
+        yield 'a class by name, outside any class' => [
+            $procedural,
+            'standalone_static_access',
+            new MemberTarget(new ClasslikeType(self::className('Fixtures\Completion\StaticAccess')), null, null),
+        ];
+        yield 'self:: outside a class' => [$procedural, 'self_outside_class', null];
+        yield 'an unbound variable' => [$procedural, 'unknown_var', null];
+    }
+
+    #[DataProvider('memberTargets')]
+    public function testAMemberIsLookedUpOnWhatItsReceiverNames(
+        string $fixture,
+        string $marker,
+        ?MemberTarget $expected,
+    ): void {
+        $expressions = self::expressionsOver(
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+            self::createStub(MemberResolverInterface::class),
+        );
+
+        self::assertEquals(
+            $expected,
+            $this->memberTargetAt(
+                $expressions,
+                $fixture,
+                fn (string $content): array => $this->locateCursor($content, $marker),
+            ),
+            'the type before the operator, seen from the class-like the access is written in',
+        );
+    }
+
+    public function testAReceiverOfAPrimitiveTypeHasNoMembers(): void
+    {
+        $types = self::createStub(TypeSourceInterface::class);
+        $types->method('forMethodParameter')->willReturn(new PrimitiveType('int'));
+        $expressions = self::expressionsOver(
+            self::createStub(SymbolSourceInterface::class),
+            $types,
+            self::createStub(MemberResolverInterface::class),
+        );
+
+        self::assertNull(
+            $this->memberTargetAt(
+                $expressions,
+                self::BUILTIN_TYPES,
+                fn (string $content): array => $this->locateHoverMarker($content, 'clone_receiver'),
+            ),
+            'an int names no class-like to look a member up on',
+        );
+    }
+
     private static function bindingAt(string $fixture, int $line, int $character): Location
     {
         return new Location(self::uri($fixture), $line, $character, $line, $character);
@@ -693,6 +768,19 @@ final class ExpressionResolutionTest extends TestCase
         [$document, $offset] = $this->positionIn($fixture, $locate);
 
         return $this->resolver->symbolAt($document, $offset);
+    }
+
+    /**
+     * @param \Closure(string): array{line: int, character: int} $locate Finds
+     *        a member access in the fixture's text.
+     */
+    private function memberTargetAt(ExpressionResolver $expressions, string $fixture, \Closure $locate): ?MemberTarget
+    {
+        $located = (new PositionLocator(ProductionSyntaxSource::create()->source))
+            ->locate(...$this->positionIn($fixture, $locate));
+        assert($located->receiver !== null, "a member is accessed at the position in {$fixture}");
+
+        return $expressions->memberTarget($located->receiver, $located->parsed);
     }
 
     /**
