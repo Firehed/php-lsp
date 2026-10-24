@@ -6,6 +6,8 @@ namespace Fixtures\LateBinding;
 
 class Base
 {
+    public const string NAME = 'base';
+
     public function copyInstance(): static
     {
         return $this;
