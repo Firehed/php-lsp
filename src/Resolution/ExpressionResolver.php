@@ -122,23 +122,14 @@ final class ExpressionResolver implements ExpressionResolverInterface
     }
 
     /**
-     * Resolve `$name` referenced at $offset in $scope: `$this` as the scope
-     * binds it, else the nearest binding {@see VariableBindings::visible()}
-     * there. Long closures are isolated: an uncaptured name returns null (#301).
+     * Resolve `$name` referenced at $offset in $scope: the binding
+     * {@see VariableBindings::visible()} there. Long closures are isolated: an
+     * uncaptured name returns null (#301).
      */
     public function resolveVariable(string $name, Scope $scope, int $offset, ParsedDocument $parsed): ?ResolvedVariable
     {
-        if ($name === 'this') {
-            return $this->resolveThis($scope);
-        }
         $binding = VariableBindings::visible($scope, $offset)[$name] ?? null;
         return $binding === null ? null : $this->resolveBinding($binding, $parsed);
-    }
-
-    public function resolveThis(Scope $scope): ?ResolvedVariable
-    {
-        $type = $scope->getThisType();
-        return $type === null ? null : new ResolvedVariable('this', new ClasslikeType($type));
     }
 
     /**
