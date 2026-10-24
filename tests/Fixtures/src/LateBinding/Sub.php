@@ -15,4 +15,9 @@ class Sub extends Base
     {
         parent::makeInstance(); //hover:parent_call_static
     }
+
+    public static function triggerParentConstant(): void
+    {
+        parent::NAME; //hover:parent_constant_static
+    }
 }

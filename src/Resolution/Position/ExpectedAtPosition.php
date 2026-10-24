@@ -7,13 +7,10 @@ namespace Firehed\PhpLsp\Resolution\Position;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Domain\ClassCandidateFilter;
-use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\KeywordGroup;
-use Firehed\PhpLsp\Domain\LateBindingKeyword;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\TypeHintContext;
 use Firehed\PhpLsp\Resolution\Expected;
-use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\NameQuery;
@@ -100,30 +97,19 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
     {
         // A static property's name is written with its `$`; a member's name is not.
         $prefix = ltrim($located->prefix, '$');
-        $from = $located->scope->getSelfName();
         $receiver = $located->receiver;
-
-        if ($located->slot === Slot::Member) {
-            assert($receiver !== null && !$receiver instanceof Name, 'an instance member is accessed on an expression');
-            $type = $this->expressions->resolve($receiver, $located->parsed)?->getType();
-            if ($type === null || ExpressionResolver::receiverClasslikeNames($type) === []) {
-                return null;
-            }
-            return MemberAccessContext::forInstance($type, $from, $prefix);
-        }
-
-        if (!$receiver instanceof Name) {
+        assert($receiver !== null, 'a member is accessed on something');
+        if ($located->slot === Slot::StaticMember && !$receiver instanceof Name) {
             return null;
         }
-        $keyword = LateBindingKeyword::tryFromName($receiver->toString());
-        $targetName = $located->scope->resolveClasslikeName($receiver);
-        if ($targetName === null) {
-            return null;
-        }
-        $target = new ClasslikeType($targetName);
-        return $keyword === LateBindingKeyword::Parent
-            ? MemberAccessContext::forParent($target, $from, $located->scope->staticFor($receiver), $prefix)
-            : MemberAccessContext::forStatic($target, $from, $prefix);
+
+        $target = $this->expressions->memberTarget($receiver, $located->parsed);
+        return match (true) {
+            $target === null => null,
+            $located->slot === Slot::Member => MemberAccessContext::forInstance($target->type, $target->from, $prefix),
+            $target->static === null => MemberAccessContext::forStatic($target->type, $target->from, $prefix),
+            default => MemberAccessContext::forParent($target->type, $target->from, $target->static, $prefix),
+        };
     }
 
     private static function type(Located $located, TypeHintContext $context): Expected

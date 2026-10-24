@@ -149,6 +149,24 @@ final class ExpressionResolver implements ExpressionResolverInterface
         return new ResolvedVariable($binding->name, $type, $location);
     }
 
+    public function memberTarget(Expr|Name $receiver, ParsedDocument $parsed): ?MemberTarget
+    {
+        $scope = Scope::at($receiver, $parsed->tree);
+        if ($receiver instanceof Name) {
+            $className = $scope->resolveClasslikeName($receiver);
+            return $className === null ? null : new MemberTarget(
+                new ClasslikeType($className),
+                $scope->getSelfName(),
+                $scope->staticFor($receiver),
+            );
+        }
+        $type = $this->resolve($receiver, $parsed)?->getType();
+        if ($type === null || $type->getResolvableClasslikeNames() === []) {
+            return null;
+        }
+        return new MemberTarget($type, $scope->getSelfName(), null);
+    }
+
     public function resolveParameter(Param $param, ParsedDocument $parsed): ParameterInfo
     {
         assert($param->var instanceof Variable && is_string($param->var->name), 'a declared parameter is named');
@@ -287,7 +305,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $classNameNode,
-            $call,
             '__construct',
             $this->memberResolver->findMethod(...),
             $parsed,
@@ -301,7 +318,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->var,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findMethod(...),
             $parsed,
@@ -315,7 +331,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->class,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findMethod(...),
             $parsed,
@@ -352,7 +367,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->var,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findProperty(...),
             $parsed,
@@ -366,7 +380,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
         }
         return $this->resolveMember(
             $expr->class,
-            $expr,
             $expr->name->toString(),
             $this->memberResolver->findProperty(...),
             $parsed,
@@ -375,11 +388,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
     /**
      * Access a member on the receiver, delegating the kind-specific lookup to
-     * `$find`. The receiver-to-ClasslikeName dance — an instance expression that
-     * resolves through `resolve()`, versus a class-name `Name` that resolves
-     * through the {@see Scope} — is here, so a new member-access node kind adds
-     * one call site rather than another copy of this dance. Only a member
-     * visible from where the access is written is found.
+     * `$find`. Only a member visible from where the access is written is found.
      *
      * @template T of MemberInfoInterface
      * @param callable(ClasslikeName, string, ?ClasslikeName, ?ClasslikeName): ?T $find
@@ -387,27 +396,16 @@ final class ExpressionResolver implements ExpressionResolverInterface
      */
     private function resolveMember(
         Expr|Name $receiver,
-        Node $context,
         string $memberName,
         callable $find,
         ParsedDocument $parsed,
     ): ?MemberInfoInterface {
-        $scope = Scope::at($context, $parsed->tree);
-        if ($receiver instanceof Name) {
-            $className = $scope->resolveClasslikeName($receiver);
-            if ($className === null) {
-                return null;
-            }
-            return $find(
-                $className,
-                $memberName,
-                $scope->getSelfName(),
-                $scope->staticFor($receiver),
-            );
+        $target = $this->memberTarget($receiver, $parsed);
+        if ($target === null) {
+            return null;
         }
-        $receiverType = $this->resolve($receiver, $parsed)?->getType();
-        foreach (self::receiverClasslikeNames($receiverType) as $className) {
-            $member = $find($className, $memberName, $scope->getSelfName(), null);
+        foreach ($target->type->getResolvableClasslikeNames() as $className) {
+            $member = $find($className, $memberName, $target->from, $target->static);
             if ($member !== null) {
                 return $member;
             }
@@ -415,29 +413,19 @@ final class ExpressionResolver implements ExpressionResolverInterface
         return null;
     }
 
-    /**
-     * @return list<ClasslikeName>
-     */
-    public static function receiverClasslikeNames(?TypeInterface $type): array
-    {
-        return $type?->getResolvableClasslikeNames() ?? [];
-    }
-
     private function resolveClassConstFetch(ClassConstFetch $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
     {
         if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
             return null;
         }
-        $scope = Scope::at($expr, $parsed->tree);
-        $className = $scope->resolveClasslikeName($expr->class);
-        if ($className === null) {
-            return null;
-        }
-        $enumCase = $this->memberResolver->findEnumCase($className, $expr->name->toString());
-        if ($enumCase !== null) {
-            return $enumCase;
-        }
-        return $this->memberResolver->findConstant($className, $expr->name->toString(), $scope->getSelfName());
+        return $this->resolveMember(
+            $expr->class,
+            $expr->name->toString(),
+            fn (ClasslikeName $class, string $name, ?ClasslikeName $from, ?ClasslikeName $static)
+                => $this->memberResolver->findEnumCase($class, $name)
+                    ?? $this->memberResolver->findConstant($class, $name, $from, $static),
+            $parsed,
+        );
     }
 
     private function resolveConstFetch(Expr\ConstFetch $expr, ParsedDocument $parsed): ?ConstantInfo
