@@ -136,7 +136,7 @@ class VariableBindingsTest extends TestCase
 
     public function testThisIsNeverABinding(): void
     {
-        $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
         $method = self::findMethodByName('rebindsThis', $ast);
         $closure = self::findFirst([$method], fn (Node $n) => $n instanceof Node\Expr\Closure);
         self::assertInstanceOf(Node\Expr\Closure::class, $closure);

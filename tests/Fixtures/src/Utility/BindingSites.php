@@ -38,19 +38,4 @@ class BindingSites
     {
         $arrow = fn(string $value) => $value;
     }
-
-    /**
-     * Binds `$this` every way a variable is bound, which PHP refuses to compile.
-     */
-    public static function rebindsThis(array $items): void
-    {
-        $this = null;
-        foreach ($items as $this => $this) {
-        }
-        try {
-        } catch (\Throwable $this) {
-        }
-        $closure = function ($this) use ($this) {
-        };
-    }
 }
