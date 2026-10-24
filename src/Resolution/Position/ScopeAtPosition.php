@@ -26,7 +26,6 @@ final class ScopeAtPosition implements ScopeAtPositionInterface
         $thisVariable = $this->expressions->resolveThis($located->scope);
         if ($thisVariable !== null) {
             $variables[] = $thisVariable;
-            unset($nearest['this']);
         }
         foreach ($nearest as $binding) {
             $variables[] = $this->expressions->resolveBinding($binding, $located->parsed);
