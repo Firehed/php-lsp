@@ -32,6 +32,15 @@ enum PrimitiveType: string implements TypeInterface
         return self::tryFrom(NameCase::Insensitive->normalize($name));
     }
 
+    public function validIn(TypeHintContext $context): bool
+    {
+        return match ($this) {
+            self::Void, self::Never => $context === TypeHintContext::ReturnType,
+            self::Callable => $context !== TypeHintContext::Property,
+            default => true,
+        };
+    }
+
     public function format(): string
     {
         return $this->value;
