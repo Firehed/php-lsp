@@ -35,7 +35,6 @@ use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberTarget;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
-use Firehed\PhpLsp\Resolution\ResolvedTypeOnly;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
 use Firehed\PhpLsp\Resolution\TypeSource\NativeTypeSource;
 use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
@@ -223,9 +222,9 @@ final class ExpressionResolutionTest extends TestCase
     public function testThisIsTheEnclosingClass(): void
     {
         self::assertEquals(
-            new ResolvedTypeOnly(new ClasslikeType(self::className('Fixtures\Definition\VariableBindings'))),
+            new ResolvedVariable('this', new ClasslikeType(self::className('Fixtures\Definition\VariableBindings'))),
             $this->resolveVariableAt(self::BINDINGS, 'this_usage'),
-            '$this is typed by the class it appears in',
+            '$this is a variable typed by the class it appears in, as completion offers it',
         );
     }
 
