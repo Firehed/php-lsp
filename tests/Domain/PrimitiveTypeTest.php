@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(PrimitiveType::class)]
@@ -53,5 +54,23 @@ class PrimitiveTypeTest extends TestCase
     {
         $other = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
         self::assertFalse(PrimitiveType::Object->equals($other), 'a primitive is never equal to a class-like type');
+    }
+
+    /**
+     * @return iterable<string, array{string, ?PrimitiveType}>
+     */
+    public static function names(): iterable
+    {
+        yield 'lowercase' => ['int', PrimitiveType::Int];
+        yield 'uppercase' => ['INT', PrimitiveType::Int];
+        yield 'mixed case' => ['Iterable', PrimitiveType::Iterable];
+        yield 'a late-binding keyword' => ['self', null];
+        yield 'a class name' => ['Integer', null];
+    }
+
+    #[DataProvider('names')]
+    public function testTryFromName(string $name, ?PrimitiveType $expected): void
+    {
+        self::assertSame($expected, PrimitiveType::tryFromName($name), 'PHP matches type names case-insensitively');
     }
 }
