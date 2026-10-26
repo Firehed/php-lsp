@@ -45,11 +45,11 @@ final class CallContextTest extends TestCase
     {
         return new FunctionInfo(
             name: FunctionName::fromFullyQualified('testFunc'),
-            returnType: new PrimitiveType('void'),
+            returnType: PrimitiveType::Void,
             parameters: [
                 new ParameterInfo(
                     name: 'name',
-                    type: new PrimitiveType('string'),
+                    type: PrimitiveType::String,
                     defaultValue: null,
                     position: 0,
                     isVariadic: false,
@@ -57,7 +57,7 @@ final class CallContextTest extends TestCase
                 ),
                 new ParameterInfo(
                     name: 'age',
-                    type: new PrimitiveType('int'),
+                    type: PrimitiveType::Int,
                     defaultValue: '0',
                     position: 1,
                     isVariadic: false,

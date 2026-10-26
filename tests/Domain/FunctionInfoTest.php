@@ -18,7 +18,7 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: FunctionName::fromFullyQualified('myFunction'),
             parameters: [],
-            returnType: new PrimitiveType('void'),
+            returnType: PrimitiveType::Void,
             docblock: '/** Does something */',
             file: '/path/to/file.php',
             line: 10,
@@ -51,7 +51,7 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: FunctionName::fromFullyQualified('getName'),
             parameters: [],
-            returnType: new PrimitiveType('string'),
+            returnType: PrimitiveType::String,
             docblock: null,
             file: null,
             line: null,
@@ -65,7 +65,7 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: FunctionName::fromFullyQualified('greet'),
             parameters: [
-                new ParameterInfo('name', new PrimitiveType('string'), null, 0, false, false),
+                new ParameterInfo('name', PrimitiveType::String, null, 0, false, false),
             ],
             returnType: null,
             docblock: null,
@@ -81,10 +81,10 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: FunctionName::fromFullyQualified('add'),
             parameters: [
-                new ParameterInfo('a', new PrimitiveType('int'), null, 0, false, false),
-                new ParameterInfo('b', new PrimitiveType('int'), null, 1, false, false),
+                new ParameterInfo('a', PrimitiveType::Int, null, 0, false, false),
+                new ParameterInfo('b', PrimitiveType::Int, null, 1, false, false),
             ],
-            returnType: new PrimitiveType('int'),
+            returnType: PrimitiveType::Int,
             docblock: null,
             file: null,
             line: null,
@@ -98,7 +98,7 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: FunctionName::fromFullyQualified('greet'),
             parameters: [
-                new ParameterInfo('name', new PrimitiveType('string'), "'world'", 0, false, false),
+                new ParameterInfo('name', PrimitiveType::String, "'world'", 0, false, false),
             ],
             returnType: null,
             docblock: null,
@@ -118,9 +118,9 @@ class FunctionInfoTest extends TestCase
         $func = new FunctionInfo(
             name: FunctionName::fromFullyQualified('sum'),
             parameters: [
-                new ParameterInfo('numbers', new PrimitiveType('int'), null, 0, true, false),
+                new ParameterInfo('numbers', PrimitiveType::Int, null, 0, true, false),
             ],
-            returnType: new PrimitiveType('int'),
+            returnType: PrimitiveType::Int,
             docblock: null,
             file: null,
             line: null,
@@ -143,7 +143,7 @@ class FunctionInfoTest extends TestCase
         return new FunctionInfo(
             name: FunctionName::fromFullyQualified('myFunction'),
             parameters: [],
-            returnType: new PrimitiveType('int'),
+            returnType: PrimitiveType::Int,
             docblock: $docblock,
             file: $file,
             line: $line,

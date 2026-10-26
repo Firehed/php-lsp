@@ -63,7 +63,7 @@ class ClasslikeTypeTest extends TestCase
     public function testEqualsFalseAgainstDifferentTypeKind(): void
     {
         $a = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        $b = new PrimitiveType('object');
+        $b = PrimitiveType::Object;
         self::assertFalse($a->equals($b), 'a class-like type is never equal to a primitive');
     }
 }

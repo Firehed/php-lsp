@@ -493,24 +493,16 @@ final class BuiltinBackend implements SymbolSourceInterface
 
             // Reflection reports `static` and `self` as class names.
             $keyword = LateBindingKeyword::tryFromName($name);
-            if ($keyword !== null) {
-                $late = new LateStaticType($keyword);
-                return $type->allowsNull() ? new UnionType([$late, new PrimitiveType('null')]) : $late;
-            }
+            $named = match (true) {
+                $keyword !== null => new LateStaticType($keyword),
+                $type->isBuiltin() => PrimitiveType::from($name),
+                default => new ClasslikeType(ClasslikeName::fromFullyQualified($name)),
+            };
 
-            if ($type->isBuiltin()) {
-                $primitive = new PrimitiveType($name);
-                if ($type->allowsNull() && $name !== 'null' && $name !== 'mixed') {
-                    return new UnionType([$primitive, new PrimitiveType('null')]);
-                }
-                return $primitive;
-            }
-
-            $classType = new ClasslikeType(ClasslikeName::fromFullyQualified($name));
-            if ($type->allowsNull()) {
-                return new UnionType([$classType, new PrimitiveType('null')]);
-            }
-            return $classType;
+            // `null` and `mixed` already hold null.
+            return $type->allowsNull() && $named !== PrimitiveType::Null && $named !== PrimitiveType::Mixed
+                ? new UnionType([$named, PrimitiveType::Null])
+                : $named;
         }
 
         if ($type instanceof ReflectionUnionType || $type instanceof ReflectionIntersectionType) {

@@ -17,7 +17,7 @@ class ConstantInfoTest extends TestCase
     {
         $constant = new ConstantInfo(
             name: ConstantName::fromFullyQualified('APP\\DEBUG'),
-            type: new PrimitiveType('bool'),
+            type: PrimitiveType::Bool,
             docblock: '/** Debug flag */',
             file: '/path/to/file.php',
             line: 5,
@@ -34,7 +34,7 @@ class ConstantInfoTest extends TestCase
     {
         $typed = new ConstantInfo(
             name: ConstantName::fromFullyQualified('MAX_SIZE'),
-            type: new PrimitiveType('int'),
+            type: PrimitiveType::Int,
             docblock: null,
             file: null,
             line: null,
@@ -68,7 +68,7 @@ class ConstantInfoTest extends TestCase
     {
         $constant = new ConstantInfo(
             name: ConstantName::fromFullyQualified('MAX_SIZE'),
-            type: new PrimitiveType('int'),
+            type: PrimitiveType::Int,
             docblock: null,
             file: null,
             line: null,
@@ -84,7 +84,7 @@ class ConstantInfoTest extends TestCase
     ): ConstantInfo {
         return new ConstantInfo(
             name: ConstantName::fromFullyQualified('APP\\LIMIT'),
-            type: new PrimitiveType('int'),
+            type: PrimitiveType::Int,
             docblock: $docblock,
             file: $file,
             line: $line,

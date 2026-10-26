@@ -39,8 +39,8 @@ final class VariableCandidatesTest extends TestCase
     {
         $scope = self::createStub(ScopeAtPositionInterface::class);
         $scope->method('variablesAt')->willReturn([
-            new ResolvedVariable('name', new PrimitiveType('string')),
-            new ResolvedVariable('age', new PrimitiveType('int')),
+            new ResolvedVariable('name', PrimitiveType::String),
+            new ResolvedVariable('age', PrimitiveType::Int),
             new ResolvedVariable('untyped', null),
         ]);
         $document = new TextDocument('file:///t.php', 'php', 0, '');

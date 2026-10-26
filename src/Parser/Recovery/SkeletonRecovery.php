@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Parser\Recovery;
 
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Parser\BuildsWrittenNamesTrait;
 use Firehed\PhpLsp\Parser\SyntaxSource\ParseAttempt;
 use PhpParser\Modifiers;
@@ -387,23 +388,14 @@ final class SkeletonRecovery implements RecoveryInterface
         }
         $nameEnd = $nameStart + strlen($first);
         $attrs = self::positions($positions, $nameStart, $nameEnd);
-        // Primitive type names are compared verbatim: parameter types in PHP
-        // source are conventionally lowercase, and the fallback path — treating
-        // an unrecognised token as a class name — is safe when the file's
-        // actual type resolution rejects it downstream.
-        $node = in_array($first, self::PRIMITIVE_TYPES, true)
-            ? new Node\Identifier($first, $attrs)
-            : self::nameAsWritten($first, $attrs);
+        $primitive = PrimitiveType::tryFromName($first);
+        $node = $primitive === null
+            ? self::nameAsWritten($first, $attrs)
+            : new Node\Identifier($primitive->value, $attrs);
         return $nullable
             ? new Node\NullableType($node, self::positions($positions, $typeStart, $nameEnd))
             : $node;
     }
-
-    private const array PRIMITIVE_TYPES = [
-        'int', 'float', 'string', 'bool', 'void', 'mixed', 'array',
-        'object', 'callable', 'iterable', 'self', 'static', 'never',
-        'false', 'true', 'null',
-    ];
 
     /**
      * @param PositionMap $positions

@@ -47,10 +47,10 @@ final class NamedArgumentCandidatesTest extends TestCase
     ): void {
         $callable = self::createStub(ResolvedCallableInterface::class);
         $callable->method('getParameters')->willReturn([
-            self::parameterInfo('name', new PrimitiveType('string'), 0),
-            self::parameterInfo('count', new PrimitiveType('int'), 1),
-            self::parameterInfo('active', new PrimitiveType('bool'), 2),
-            new ParameterInfo('values', new PrimitiveType('string'), null, 3, true, false),
+            self::parameterInfo('name', PrimitiveType::String, 0),
+            self::parameterInfo('count', PrimitiveType::Int, 1),
+            self::parameterInfo('active', PrimitiveType::Bool, 2),
+            new ParameterInfo('values', PrimitiveType::String, null, 3, true, false),
         ]);
         $items = (new NamedArgumentCandidates(new CompletionItemFormatter(new ResolvedSymbolPresenter())))
             ->find(new CallContext($callable, 0, $usedNames, $positionallyFilled), $prefix);

@@ -75,7 +75,7 @@ class LateStaticTypeTest extends TestCase
 
     public function testEqualsFalseAgainstDifferentTypeKind(): void
     {
-        self::assertFalse((new LateStaticType(LateBindingKeyword::Static))->equals(new PrimitiveType('object')));
+        self::assertFalse((new LateStaticType(LateBindingKeyword::Static))->equals(PrimitiveType::Object));
     }
 
     private static function binding(): LateBinding

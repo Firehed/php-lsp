@@ -99,8 +99,8 @@ class SignatureHelpHandlerTest extends TestCase
         $callable->method('format')->willReturn('signatureHelpAdd(int $a, int $b): int');
         $callable->method('getDocumentation')->willReturn('Adds two numbers together.');
         $callable->method('getParameters')->willReturn([
-            self::parameterInfo('a', new PrimitiveType('int'), 0),
-            self::parameterInfo('b', new PrimitiveType('int'), 1),
+            self::parameterInfo('a', PrimitiveType::Int, 0),
+            self::parameterInfo('b', PrimitiveType::Int, 1),
         ]);
         $context = new CallContext($callable, activeParameterIndex: 1, usedParameterNames: []);
 

@@ -7,12 +7,12 @@ namespace Firehed\PhpLsp\Tests\EndToEnd;
 $hints = 'src/Completion/TypeHints.php';
 $imports = 'Namespacing/ImportCompletion.php';
 
-$common = [
+$propertyTypes = [
     'string', 'int', 'float', 'bool', 'array', 'object',
-    'mixed', 'iterable', 'callable', 'null', 'true', 'false',
+    'mixed', 'iterable', 'null', 'true', 'false', 'self', 'parent',
 ];
-$parameterTypes = [...$common, 'self', 'parent'];
-$returnTypes = [...$common, 'void', 'never', 'self', 'static', 'parent'];
+$parameterTypes = [...$propertyTypes, 'callable'];
+$returnTypes = [...$parameterTypes, 'void', 'never', 'static'];
 
 $typeThenComplete = fn (
     string $file,
@@ -80,13 +80,23 @@ return [
         '(Countable&Iterator)|',
         new Expectation\Offers('int', 'null', 'self'),
     ),
-    'property type after ?' => $typeThenComplete($hints, 'nullable_property', '', new Expectation\Offers(...$common)),
-    'property type after |' => $typeThenComplete($hints, 'property_type', 'int|', new Expectation\Offers(...$common)),
+    'property type after ?' => $typeThenComplete(
+        $hints,
+        'nullable_property',
+        '',
+        new Expectation\Offers(...$propertyTypes),
+    ),
+    'property type after |' => $typeThenComplete(
+        $hints,
+        'property_type',
+        'int|',
+        new Expectation\Offers(...$propertyTypes),
+    ),
     'property type after &' => $typeThenComplete(
         $hints,
         'property_type',
         'Countable&',
-        new Expectation\Offers(...$common),
+        new Expectation\Offers(...$propertyTypes),
     ),
     'imported class in a type position' => $typeThenComplete(
         $imports,

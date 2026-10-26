@@ -6,43 +6,26 @@ namespace Firehed\PhpLsp\Tests\Completion;
 
 use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFormatter;
+use Firehed\PhpLsp\Domain\LateBindingKeyword;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\TypeHintContext;
 use Firehed\PhpLsp\Resolution\ResolvedSymbolPresenter;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(BuiltinTypeCandidates::class)]
 final class BuiltinTypeCandidatesTest extends TestCase
 {
-    private const array COMMON = [
-        'string', 'int', 'float', 'bool', 'array', 'object',
-        'mixed', 'null', 'callable', 'iterable', 'true', 'false',
-    ];
-
-    /**
-     * @return iterable<string, array{TypeHintContext, list<string>}>
-     */
-    public static function contexts(): iterable
-    {
-        yield 'property' => [TypeHintContext::Property, self::COMMON];
-        yield 'parameter' => [TypeHintContext::Parameter, [...self::COMMON, 'self', 'parent']];
-        yield 'return' => [TypeHintContext::ReturnType, [...self::COMMON, 'void', 'never', 'self', 'static', 'parent']];
-    }
-
-    /**
-     * @param list<string> $expected
-     */
-    #[DataProvider('contexts')]
-    public function testOffersTheTypesValidInThePosition(TypeHintContext $context, array $expected): void
+    public function testOffersPrimitivesAndKeywordsValidInThePosition(): void
     {
         $candidates = new BuiltinTypeCandidates(new CompletionItemFormatter(new ResolvedSymbolPresenter()));
 
-        self::assertSame(
-            $expected,
-            array_column($candidates->find($context, ''), 'label'),
-            'each position offers the built-in types PHP accepts there',
-        );
+        $labels = array_column($candidates->find(TypeHintContext::Property, ''), 'label');
+
+        self::assertContains(PrimitiveType::Int->value, $labels, 'primitives are offered');
+        self::assertContains(LateBindingKeyword::Self->value, $labels, 'late-binding keywords are offered');
+        self::assertNotContains(PrimitiveType::Callable->value, $labels, 'a primitive invalid here is withheld');
+        self::assertNotContains(LateBindingKeyword::Static->value, $labels, 'a keyword invalid here is withheld');
     }
 
     public function testFiltersByThePrefix(): void

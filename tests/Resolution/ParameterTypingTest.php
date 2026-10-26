@@ -34,7 +34,7 @@ final class ParameterTypingTest extends TestCase
     {
         $ast = self::parseWithParents('<?php class C { public function m(string $x): void {} }');
         $param = self::findNode($ast, Param::class);
-        $expected = new PrimitiveType('string');
+        $expected = PrimitiveType::String;
 
         $typeSource = self::createStub(TypeSourceInterface::class);
         $typeSource
@@ -50,7 +50,7 @@ final class ParameterTypingTest extends TestCase
     {
         $ast = self::parseWithParents('<?php function fn1(string $x): void {}');
         $param = self::findNode($ast, Param::class);
-        $expected = new PrimitiveType('string');
+        $expected = PrimitiveType::String;
 
         $typeSource = self::createStub(TypeSourceInterface::class);
         $typeSource
@@ -137,7 +137,7 @@ final class ParameterTypingTest extends TestCase
         yield 'nullable parent in an arrow function' => [
             $closures,
             'inherited',
-            new UnionType([$parentClass, new PrimitiveType('null')]),
+            new UnionType([$parentClass, PrimitiveType::Null]),
         ];
         yield 'parent in an anonymous class' => [
             'src/Resolution/AnonymousParent.php',

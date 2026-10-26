@@ -4,38 +4,46 @@ declare(strict_types=1);
 
 namespace Firehed\PhpLsp\Domain;
 
-final readonly class PrimitiveType implements TypeInterface
+/**
+ * PHP's built-in and pseudo type names that are not class-like.
+ */
+enum PrimitiveType: string implements TypeInterface
 {
-    /**
-     * PHP built-in and pseudo type names that are not class-like.
-     *
-     * @var list<string>
-     */
-    public const NAMES = [
-        'string',
-        'int',
-        'float',
-        'bool',
-        'array',
-        'object',
-        'callable',
-        'iterable',
-        'void',
-        'never',
-        'mixed',
-        'null',
-        'true',
-        'false',
-    ];
+    case Array = 'array';
+    case Bool = 'bool';
+    case Callable = 'callable';
+    case False = 'false';
+    case Float = 'float';
+    case Int = 'int';
+    case Iterable = 'iterable';
+    case Mixed = 'mixed';
+    case Never = 'never';
+    case Null = 'null';
+    case Object = 'object';
+    case String = 'string';
+    case True = 'true';
+    case Void = 'void';
 
-    public function __construct(
-        private string $name,
-    ) {
+    /**
+     * Matches case-insensitively, as PHP does.
+     */
+    public static function tryFromName(string $name): ?self
+    {
+        return self::tryFrom(NameCase::Insensitive->normalize($name));
+    }
+
+    public function validIn(TypeHintContext $context): bool
+    {
+        return match ($this) {
+            self::Void, self::Never => $context === TypeHintContext::ReturnType,
+            self::Callable => $context !== TypeHintContext::Property,
+            default => true,
+        };
     }
 
     public function format(): string
     {
-        return $this->name;
+        return $this->value;
     }
 
     /**
@@ -48,7 +56,7 @@ final readonly class PrimitiveType implements TypeInterface
 
     public function isNullable(): bool
     {
-        return $this->name === 'null';
+        return $this === self::Null;
     }
 
     public function resolveLateBound(LateBinding $binding): TypeInterface
@@ -58,7 +66,6 @@ final readonly class PrimitiveType implements TypeInterface
 
     public function equals(TypeInterface $other): bool
     {
-        return $other instanceof self
-            && $this->name === $other->name;
+        return $this === $other;
     }
 }

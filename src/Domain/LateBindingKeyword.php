@@ -29,6 +29,11 @@ enum LateBindingKeyword: string
         return self::tryFrom(NameCase::Insensitive->normalize($name));
     }
 
+    public function validIn(TypeHintContext $context): bool
+    {
+        return $this !== self::Static || $context === TypeHintContext::ReturnType;
+    }
+
     /**
      * Resolve this keyword to the concrete class name in the context of an
      * enclosing class-like node.

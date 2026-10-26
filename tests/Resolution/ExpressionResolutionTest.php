@@ -344,7 +344,7 @@ final class ExpressionResolutionTest extends TestCase
     public function testAPropertyHooksParameterIsABindingInTheHook(): void
     {
         self::assertEquals(
-            new PrimitiveType('int'),
+            PrimitiveType::Int,
             $this->resolveVariableAt('TopLevel/this_binding.php', 'hook_parameter')?->getType(),
             'a set hook\'s parameter binds in the hook, typed as declared',
         );
@@ -352,10 +352,10 @@ final class ExpressionResolutionTest extends TestCase
 
     public function testAStaticMethodsParameterIsTypedByItsMethod(): void
     {
-        $this->typeEveryParameterAs(new PrimitiveType('int'));
+        $this->typeEveryParameterAs(PrimitiveType::Int);
 
         self::assertEquals(
-            new PrimitiveType('int'),
+            PrimitiveType::Int,
             $this->resolveVariableAt('TopLevel/this_binding.php', 'static_method_param')?->getType(),
             'the method\'s parameter types are looked up by its class, which a static method still has',
         );
@@ -372,10 +372,10 @@ final class ExpressionResolutionTest extends TestCase
 
     public function testAParameterIsWhatItsDeclarationDeclares(): void
     {
-        $this->typeEveryParameterAs(new PrimitiveType('int'));
+        $this->typeEveryParameterAs(PrimitiveType::Int);
 
         self::assertEquals(
-            new ParameterInfo('count', new PrimitiveType('int'), '1', 1, false, false),
+            new ParameterInfo('count', PrimitiveType::Int, '1', 1, false, false),
             $this->resolveAt(
                 'src/Position/Symbols.php',
                 fn (string $content): array => $this->locateCursor($content, 'second_parameter'),
@@ -438,7 +438,7 @@ final class ExpressionResolutionTest extends TestCase
 
     public function testAnArgumentsNameIsAParameterOfTheFunctionCalled(): void
     {
-        $parameter = self::parameterInfo('stri', new PrimitiveType('string'));
+        $parameter = self::parameterInfo('stri', PrimitiveType::String);
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('lookupFunction')->willReturn(
             self::functionInfo(QualifiedName::fromFullyQualified('str_repeat'), parameters: [$parameter]),
@@ -461,7 +461,7 @@ final class ExpressionResolutionTest extends TestCase
 
     public function testAnArgumentsNameIsAParameterOfTheConstructorRun(): void
     {
-        $parameter = self::parameterInfo('name', new PrimitiveType('string'));
+        $parameter = self::parameterInfo('name', PrimitiveType::String);
         $members = self::createStub(MemberResolverInterface::class);
         $members->method('findMethod')->willReturnCallback(
             static fn (ClasslikeName $class, string $name): ?MethodInfo => self::isUser($class)
@@ -613,7 +613,7 @@ final class ExpressionResolutionTest extends TestCase
     public function testAReceiverOfAPrimitiveTypeHasNoMembers(): void
     {
         $types = self::createStub(TypeSourceInterface::class);
-        $types->method('forMethodParameter')->willReturn(new PrimitiveType('int'));
+        $types->method('forMethodParameter')->willReturn(PrimitiveType::Int);
         $expressions = new ExpressionResolver(
             self::createStub(MemberResolverInterface::class),
             self::createStub(SymbolSourceInterface::class),

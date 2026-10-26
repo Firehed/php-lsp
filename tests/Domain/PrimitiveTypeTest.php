@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Domain;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(PrimitiveType::class)]
@@ -12,53 +13,92 @@ class PrimitiveTypeTest extends TestCase
 {
     public function testFormatReturnsName(): void
     {
-        $type = new PrimitiveType('string');
-        self::assertSame('string', $type->format());
+        self::assertSame('string', PrimitiveType::String->format());
     }
 
     public function testGetResolvableClasslikeNamesReturnsEmptyList(): void
     {
-        $type = new PrimitiveType('int');
-        self::assertSame([], $type->getResolvableClasslikeNames());
+        self::assertSame([], PrimitiveType::Int->getResolvableClasslikeNames());
     }
 
     public function testNullIsNullable(): void
     {
-        $type = new PrimitiveType('null');
-        self::assertTrue($type->isNullable());
+        self::assertTrue(PrimitiveType::Null->isNullable());
     }
 
     public function testNonNullIsNotNullable(): void
     {
-        $type = new PrimitiveType('string');
-        self::assertFalse($type->isNullable());
+        self::assertFalse(PrimitiveType::String->isNullable());
     }
 
     public function testResolveLateBoundReturnsSelf(): void
     {
-        $type = new PrimitiveType('string');
         $called = ClasslikeName::fromFullyQualified(\ArrayIterator::class);
-        self::assertSame($type, $type->resolveLateBound(new LateBinding($called, $called, null)));
+        self::assertSame(
+            PrimitiveType::String,
+            PrimitiveType::String->resolveLateBound(new LateBinding($called, $called, null)),
+        );
     }
 
     public function testEqualsSameName(): void
     {
-        $a = new PrimitiveType('array');
-        $b = new PrimitiveType('array');
-        self::assertTrue($a->equals($b));
+        self::assertTrue(PrimitiveType::Array->equals(PrimitiveType::Array));
     }
 
     public function testEqualsFalseWhenNameDiffers(): void
     {
-        $a = new PrimitiveType('string');
-        $b = new PrimitiveType('int');
-        self::assertFalse($a->equals($b));
+        self::assertFalse(PrimitiveType::String->equals(PrimitiveType::Int));
     }
 
     public function testEqualsFalseAgainstDifferentTypeKind(): void
     {
-        $a = new PrimitiveType('object');
-        $b = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
-        self::assertFalse($a->equals($b), 'a primitive is never equal to a class-like type');
+        $other = new ClasslikeType(ClasslikeName::fromFullyQualified(\stdClass::class));
+        self::assertFalse(PrimitiveType::Object->equals($other), 'a primitive is never equal to a class-like type');
+    }
+
+    /**
+     * @return iterable<string, array{string, ?PrimitiveType}>
+     */
+    public static function names(): iterable
+    {
+        yield 'lowercase' => ['int', PrimitiveType::Int];
+        yield 'uppercase' => ['INT', PrimitiveType::Int];
+        yield 'mixed case' => ['Iterable', PrimitiveType::Iterable];
+        yield 'a late-binding keyword' => ['self', null];
+        yield 'a class name' => ['Integer', null];
+    }
+
+    #[DataProvider('names')]
+    public function testTryFromName(string $name, ?PrimitiveType $expected): void
+    {
+        self::assertSame($expected, PrimitiveType::tryFromName($name), 'PHP matches type names case-insensitively');
+    }
+
+    /**
+     * @return iterable<string, array{PrimitiveType, TypeHintContext, bool}>
+     */
+    public static function positions(): iterable
+    {
+        foreach ([PrimitiveType::Void, PrimitiveType::Never] as $type) {
+            yield "{$type->value} as a ReturnType type" => [$type, TypeHintContext::ReturnType, true];
+            yield "{$type->value} as a Parameter type" => [$type, TypeHintContext::Parameter, false];
+            yield "{$type->value} as a Property type" => [$type, TypeHintContext::Property, false];
+        }
+        yield 'callable as a ReturnType type' => [PrimitiveType::Callable, TypeHintContext::ReturnType, true];
+        yield 'callable as a Parameter type' => [PrimitiveType::Callable, TypeHintContext::Parameter, true];
+        yield 'callable as a Property type' => [PrimitiveType::Callable, TypeHintContext::Property, false];
+        foreach (TypeHintContext::cases() as $context) {
+            yield "int as a {$context->name} type" => [PrimitiveType::Int, $context, true];
+        }
+    }
+
+    #[DataProvider('positions')]
+    public function testValidIn(PrimitiveType $type, TypeHintContext $context, bool $expected): void
+    {
+        self::assertSame(
+            $expected,
+            $type->validIn($context),
+            'void and never are return types only, and a property cannot be callable',
+        );
     }
 }
