@@ -80,6 +80,14 @@ Read it before committing it, and review every later change to it as a diff.
 Scripts are behavior checks, not coverage.
 Every test here is `#[CoversNothing]`, and coverage cannot see the child process anyway.
 
+## Known defects
+
+A script in `defects/` reproduces a defect: its expectations are the behavior the server should have, and it must fail ([ADR 0008](../../docs/adrs/0008-known-defects-are-tests.md)).
+A wrong answer or a server that dies reproduces the defect; any other failure, such as a missing marker, is an error in the script.
+A defect script that passes fails the suite until its case moves into `scripts/`.
+Move only the cases that pass; the rest stay.
+Name a defect script for its issue when there is one, such as `722-self-assigned-variable.php`.
+
 ## Constraints
 
 - Built-in symbols come from the PHP running the server (#401), so they can differ across the CI matrix.
@@ -93,6 +101,7 @@ Every test here is `#[CoversNothing]`, and coverage cannot see the child process
 ## Where a test belongs
 
 - Behavior of the composed server, as an editor sees it: a script here.
+- A defect in that behavior, before it is fixed: a script in `defects/`.
 - Behavior of one composite: a unit test that constructs the composite and its members directly.
 - Anything else: a unit test that constructs what it needs directly.
 
