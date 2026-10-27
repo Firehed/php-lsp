@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\EndToEnd;
 use FilesystemIterator;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\FrameNotReceivedException;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\LspClient;
+use Firehed\PhpLsp\Tests\EndToEnd\Client\ServerProcess;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\StartsServerTrait;
 use Firehed\PhpLsp\Tests\EndToEnd\Session\Script;
 use Firehed\PhpLsp\Tests\EndToEnd\Session\Session;
@@ -44,19 +45,25 @@ final class ScriptTest extends TestCase
     }
 
     /**
-     * A wrong answer or a dead server reproduces the defect; any other failure
-     * is a broken script, and is not caught.
+     * A wrong answer or no answer to a step reproduces the defect; any other
+     * failure, including one after the steps, is a broken script or a new
+     * defect, and is not caught.
      */
     #[DataProvider('defects')]
     public function testDefectStillReproduces(Script $script): void
     {
+        ['server' => $server, 'session' => $session] = $this->startScript($script);
         try {
-            $this->runScript($script);
+            $this->runSteps($script, $session);
         } catch (ExpectationFailedException | FrameNotReceivedException) {
             $this->addToAssertionCount(1);
             return;
         }
-        self::fail('This defect no longer reproduces. Move the case into scripts/, where it binds.');
+        $this->endScript($server, $session);
+        self::fail(
+            'This defect no longer reproduces. Move the case into scripts/, where it binds, '
+                . 'or delete it if scripts/ already has the same case.',
+        );
     }
 
     #[DataProvider('transcripts')]
@@ -100,6 +107,7 @@ final class ScriptTest extends TestCase
     {
         return self::casesIn(self::DEFECTS);
     }
+
     /**
      * @return iterable<string, array{string}>
      */
@@ -171,12 +179,30 @@ final class ScriptTest extends TestCase
      */
     private function runScript(Script $script): array
     {
+        ['client' => $client, 'projectRoot' => $projectRoot, 'server' => $server, 'session' => $session]
+            = $this->startScript($script);
+        $this->runSteps($script, $session);
+        $this->endScript($server, $session);
+
+        return ['client' => $client, 'projectRoot' => $projectRoot];
+    }
+
+    /**
+     * @return array{client: LspClient, projectRoot: string, server: ServerProcess, session: Session}
+     */
+    private function startScript(Script $script): array
+    {
         $projectRoot = $this->copyProject($script->project);
         $server = $this->startServer($projectRoot);
         $client = new LspClient($server);
         $session = new Session($client, $projectRoot);
-
         $session->start($script->capabilities);
+
+        return ['client' => $client, 'projectRoot' => $projectRoot, 'server' => $server, 'session' => $session];
+    }
+
+    private function runSteps(Script $script, Session $session): void
+    {
         foreach ($script->steps as $index => $step) {
             try {
                 $step->run($session);
@@ -189,12 +215,14 @@ final class ScriptTest extends TestCase
                 );
             }
         }
+    }
+
+    private function endScript(ServerProcess $server, Session $session): void
+    {
         $session->end();
 
         self::assertSame(0, $server->waitForExit(), 'the session ends cleanly');
         self::assertSame('', $server->stderr(), 'the server writes nothing to stderr');
-
-        return ['client' => $client, 'projectRoot' => $projectRoot];
     }
 
     /**

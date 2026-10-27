@@ -5,9 +5,9 @@ Status: accepted.
 ## Decision
 
 A defect reproduced through the end-to-end tier is kept as a script in `tests/EndToEnd/defects/`, written as the behavior it should have.
-The suite requires each defect script to fail by a wrong answer or by the server dying.
-A defect script that passes fails the suite until it moves to `tests/EndToEnd/scripts/`, where it binds like any other script.
-A defect script that fails any other way, such as a missing marker, is an error in the script.
+The suite requires each defect script to fail at a step, by a wrong answer or no answer.
+A defect script that passes fails the suite until it moves to `tests/EndToEnd/scripts/`, where it binds like any other script, or is deleted if a script there already covers it.
+A defect script that fails any other way, such as a missing marker or output on stderr once its steps pass, is an error.
 
 Cases move one at a time, so a partial fix promotes only what it fixes.
 A defect script is named for its issue when one exists.
