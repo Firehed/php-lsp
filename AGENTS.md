@@ -129,6 +129,7 @@ When a tool such as PHPStan or deptrac blocks a change, the intent of its rule m
 
 - GitHub issues are the source of truth for feature specs. Confirm a feature is not already built, and resolve every open question before writing code.
 - A good issue states which service owns each fact and how the work separates concerns. Adding a feature extends the existing route for its fact, or adds the first one; it never adds a second.
+- A fact read from syntax gets its first route in the one walker that reads the syntax tree, never in a feature.
 - Debug through the test suite. Do not write ad hoc PHP scripts.
 - When creating a new issue, add the `ai-authored` label.
 

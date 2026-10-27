@@ -9,7 +9,7 @@ Review one pull request (by number, or the current branch against `main`) and re
 
 ## Before reviewing
 
-1. Read `AGENTS.md` (especially Design and Staying on track) and `CONTRIBUTING.md`.
+1. Read `AGENTS.md` (especially Design and Staying on track), `CONTRIBUTING.md`, and the ADRs in `docs/adrs`.
 2. Read the pull request description and every issue it says it closes, with `gh`.
 3. Get the full diff against its base branch.
 
@@ -21,6 +21,8 @@ Run all three and report each separately.
 2. **Correctness.** Run the `code-review` skill on the pull request at high effort, reporting only.
 3. **Design intent.** For each piece of new code that answers a question (what a symbol is, where it is declared, what type an expression has, what is at a position), search the codebase for a place that already answers that question. Report:
    - **Second routes:** the existing place, the new one, and how they could disagree.
+   - **Syntax reads:** new code outside the one walker that walks the syntax tree or reads facts from syntax nodes, whether or not another route exists.
+   - **Deferrals:** a comment or pull request text that knowingly leaves a structural problem in place for later.
    - **Tool workarounds:** code shaped to get past PHPStan, deptrac, or a failing test rather than to solve the problem.
    - **Scope:** changes that do not serve the issues the pull request closes, and "Done when" criteria it does not meet.
 
