@@ -152,7 +152,11 @@ class VariableBindingsTest extends TestCase
         $insideRight = VariableBindings::visible($scope, $assign->expr->getStartFilePos());
         $afterward = VariableBindings::visible($scope, $method->getEndFilePos());
 
-        self::assertSame($method->params[0]->var, $insideRight['reassigned']->node ?? null, 'the right side reads the parameter');
+        self::assertSame(
+            $method->params[0]->var,
+            $insideRight['reassigned']->node ?? null,
+            'the right side reads the parameter',
+        );
         self::assertSame($target, $afterward['reassigned']->node ?? null, 'later code reads the assignment');
     }
 
