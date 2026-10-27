@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\EndToEnd;
 
 use FilesystemIterator;
+use Firehed\PhpLsp\Tests\EndToEnd\Client\FrameNotReceivedException;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\LspClient;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\StartsServerTrait;
 use Firehed\PhpLsp\Tests\EndToEnd\Session\Script;
@@ -28,6 +29,8 @@ final class ScriptTest extends TestCase
 {
     use StartsServerTrait;
 
+    private const string DEFECTS = __DIR__ . '/defects';
+
     private const string SCRIPTS = __DIR__ . '/scripts';
 
     private const string TRANSCRIPTS = __DIR__ . '/transcripts';
@@ -38,6 +41,22 @@ final class ScriptTest extends TestCase
     public function testScriptMeetsItsExpectations(Script $script): void
     {
         $this->runScript($script);
+    }
+
+    /**
+     * A wrong answer or a dead server reproduces the defect; any other failure
+     * is a broken script, and is not caught.
+     */
+    #[DataProvider('defects')]
+    public function testDefectStillReproduces(Script $script): void
+    {
+        try {
+            $this->runScript($script);
+        } catch (ExpectationFailedException | FrameNotReceivedException) {
+            $this->addToAssertionCount(1);
+            return;
+        }
+        self::fail('This defect no longer reproduces. Move the case into scripts/, where it binds.');
     }
 
     #[DataProvider('transcripts')]
@@ -72,6 +91,14 @@ final class ScriptTest extends TestCase
     public static function scripts(): iterable
     {
         return self::casesIn(self::SCRIPTS);
+    }
+
+    /**
+     * @return iterable<string, array{Script}>
+     */
+    public static function defects(): iterable
+    {
+        return self::casesIn(self::DEFECTS);
     }
     /**
      * @return iterable<string, array{string}>
