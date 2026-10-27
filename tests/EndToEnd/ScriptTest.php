@@ -49,7 +49,9 @@ final class ScriptTest extends TestCase
      * failure, including one after the steps, is a broken script or a new
      * defect, and is not caught.
      */
-    #[DataProvider('defects')]
+    // Arguments: validate argument count, skip when empty. The last defect's
+    // promotion leaves defects/ empty, and git does not keep an empty directory.
+    #[DataProvider('defects', true, true)]
     public function testDefectStillReproduces(Script $script): void
     {
         ['server' => $server, 'session' => $session] = $this->startScript($script);
