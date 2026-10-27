@@ -94,7 +94,12 @@ final class VariableBindings
                 continue;
             }
 
-            if ($stmt instanceof Stmt\Expression && $stmt->expr instanceof Assign) {
+            // PHP assigns after evaluating the right side, which may read the earlier binding.
+            if (
+                $stmt instanceof Stmt\Expression
+                && $stmt->expr instanceof Assign
+                && $stmt->expr->getEndFilePos() < $offset
+            ) {
                 self::bind($stmt->expr->var, $scope, $bindings);
             }
 
