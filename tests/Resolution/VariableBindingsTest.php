@@ -140,6 +140,22 @@ class VariableBindingsTest extends TestCase
         self::assertSame($arrow, $visible['value']->scope->getSourceNode(), 'bound in the arrow function\'s scope');
     }
 
+    public function testAnAssignmentBindsOnlyOnceItIsEvaluated(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
+        $method = self::findMethodByName('reassignFromItself', $ast);
+        $scope = Scope::at($method, $ast);
+        $target = self::findAssignmentTarget('reassigned', $ast);
+        $assign = $target->getAttribute('parent');
+        self::assertInstanceOf(Node\Expr\Assign::class, $assign);
+
+        $insideRight = VariableBindings::visible($scope, $assign->expr->getStartFilePos());
+        $afterward = VariableBindings::visible($scope, $method->getEndFilePos());
+
+        self::assertSame($method->params[0]->var, $insideRight['reassigned']->node ?? null, 'the right side reads the parameter');
+        self::assertSame($target, $afterward['reassigned']->node ?? null, 'later code reads the assignment');
+    }
+
     public function testThisIsBoundWherePhpBindsIt(): void
     {
         $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));

@@ -38,4 +38,9 @@ class BindingSites
     {
         $arrow = fn(string $value) => $value;
     }
+
+    public function reassignFromItself(int $reassigned): void
+    {
+        $reassigned = $reassigned + 1;
+    }
 }

@@ -29,6 +29,12 @@ return [
         'param_access',
         new Expectation\Offers('getName', 'setName', 'active', 'secretMethod', 'hiddenMethod'),
     ),
+    'variable reassigned from itself' => $complete(
+        'src/Completion/SelfAssign.php',
+        'self_assigned',
+        new Expectation\Offers('toUpper'),
+        new Expectation\Withholds('getName'),
+    ),
     'variable from new' => $complete($methodAccess, 'var_empty', new Expectation\Offers('getName', 'setName')),
     'variable with a prefix' => $complete(
         $methodAccess,
