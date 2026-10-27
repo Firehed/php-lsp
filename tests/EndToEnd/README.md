@@ -82,7 +82,7 @@ Every test here is `#[CoversNothing]`, and coverage cannot see the child process
 
 ## Known defects
 
-A script in `defects/` reproduces a defect: its expectations are the behavior the server should have, and it must fail ([ADR 0008](../../docs/adrs/0008-known-defects-are-tests.md)).
+A script in `defects/` reproduces a defect: its expectations are the behavior the server should have, and it must fail ([ADR 000x](../../docs/adrs/000x-known-defects-are-tests.md)).
 A wrong answer or no answer at a step reproduces the defect; any other failure, such as a missing marker or output on stderr once the steps pass, is an error.
 A defect script that passes fails the suite until its case moves into `scripts/`, or is deleted if `scripts/` already has the same case.
 Move only the cases that pass; the rest stay.

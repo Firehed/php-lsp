@@ -1,4 +1,4 @@
-# 0008: Known Defects Are Tests
+# 000x: Known Defects Are Tests
 
 Status: accepted.
 
