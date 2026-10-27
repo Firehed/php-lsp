@@ -67,26 +67,12 @@ final class ScriptTest extends TestCase
     }
 
     /**
-     * A file returns one Script, or several keyed by case name.
-     *
      * @return iterable<string, array{Script}>
      */
     public static function scripts(): iterable
     {
-        foreach (self::namesIn(self::SCRIPTS) as $name) {
-            $loaded = self::load(self::SCRIPTS . "/{$name}.php");
-            if ($loaded instanceof Script) {
-                yield $name => [$loaded];
-                continue;
-            }
-            assert(is_array($loaded) && $loaded !== [], "{$name} returns a Script or a non-empty array of them");
-            foreach ($loaded as $case => $script) {
-                assert(is_string($case) && $script instanceof Script, "{$name} keys each Script by case name");
-                yield "{$name}: {$case}" => [$script];
-            }
-        }
+        return self::casesIn(self::SCRIPTS);
     }
-
     /**
      * @return iterable<string, array{string}>
      */
@@ -111,6 +97,27 @@ final class ScriptTest extends TestCase
             $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
         }
         rmdir($this->copy);
+    }
+
+    /**
+     * A file returns one Script, or several keyed by case name.
+     *
+     * @return iterable<string, array{Script}>
+     */
+    private static function casesIn(string $directory): iterable
+    {
+        foreach (self::namesIn($directory) as $name) {
+            $loaded = self::load("{$directory}/{$name}.php");
+            if ($loaded instanceof Script) {
+                yield $name => [$loaded];
+                continue;
+            }
+            assert(is_array($loaded) && $loaded !== [], "{$name} returns a Script or a non-empty array of them");
+            foreach ($loaded as $case => $script) {
+                assert(is_string($case) && $script instanceof Script, "{$name} keys each Script by case name");
+                yield "{$name}: {$case}" => [$script];
+            }
+        }
     }
 
     /**
