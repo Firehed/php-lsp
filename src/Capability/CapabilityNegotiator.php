@@ -62,7 +62,7 @@ final class CapabilityNegotiator implements SessionCapabilitiesProviderInterface
         return new SessionCapabilities(
             hoverMarkupKind: self::negotiateHoverMarkupKind(self::readMap($textDocument, 'hover')),
             snippetSupport: ($completionItem['snippetSupport'] ?? false) === true,
-            positionEncoding: self::negotiatePositionEncoding(self::readMap($params, 'general')),
+            positionEncoding: self::negotiatePositionEncoding(self::readMap($capabilities, 'general')),
             watchedFilesDynamicRegistration: self::readsWatchedFileEvents($workspace),
         );
     }
@@ -84,7 +84,7 @@ final class CapabilityNegotiator implements SessionCapabilitiesProviderInterface
     }
 
     /**
-     * Per [LSP] `InitializeParams`, `general.positionEncodings` lists the
+     * Per [LSP] `ClientCapabilities`, `general.positionEncodings` lists the
      * encodings the client supports; the server returns the first of its own
      * supported encodings the client offered. UTF-16 is always assumable, so a
      * client that offers nothing the server supports still resolves to it.
