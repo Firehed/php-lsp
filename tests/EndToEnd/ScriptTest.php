@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Tests\EndToEnd;
 
 use FilesystemIterator;
+use Firehed\PhpLsp\Tests\EndToEnd\Client\FrameNotReceivedException;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\LspClient;
+use Firehed\PhpLsp\Tests\EndToEnd\Client\ServerProcess;
 use Firehed\PhpLsp\Tests\EndToEnd\Client\StartsServerTrait;
 use Firehed\PhpLsp\Tests\EndToEnd\Session\Script;
 use Firehed\PhpLsp\Tests\EndToEnd\Session\Session;
@@ -28,6 +30,8 @@ final class ScriptTest extends TestCase
 {
     use StartsServerTrait;
 
+    private const string DEFECTS = __DIR__ . '/defects';
+
     private const string SCRIPTS = __DIR__ . '/scripts';
 
     private const string TRANSCRIPTS = __DIR__ . '/transcripts';
@@ -38,6 +42,30 @@ final class ScriptTest extends TestCase
     public function testScriptMeetsItsExpectations(Script $script): void
     {
         $this->runScript($script);
+    }
+
+    /**
+     * A wrong answer or no answer to a step reproduces the defect; any other
+     * failure, including one after the steps, is a broken script or a new
+     * defect, and is not caught.
+     */
+    // Arguments: validate argument count, skip when empty. The last defect's
+    // promotion leaves defects/ empty, and git does not keep an empty directory.
+    #[DataProvider('defects', true, true)]
+    public function testDefectStillReproduces(Script $script): void
+    {
+        ['server' => $server, 'session' => $session] = $this->startScript($script);
+        try {
+            $this->runSteps($script, $session);
+        } catch (ExpectationFailedException | FrameNotReceivedException) {
+            $this->addToAssertionCount(1);
+            return;
+        }
+        $this->endScript($server, $session);
+        self::fail(
+            'This defect no longer reproduces. Move the case into scripts/, where it binds, '
+                . 'or delete it if scripts/ already has the same case.',
+        );
     }
 
     #[DataProvider('transcripts')]
@@ -67,24 +95,19 @@ final class ScriptTest extends TestCase
     }
 
     /**
-     * A file returns one Script, or several keyed by case name.
-     *
      * @return iterable<string, array{Script}>
      */
     public static function scripts(): iterable
     {
-        foreach (self::namesIn(self::SCRIPTS) as $name) {
-            $loaded = self::load(self::SCRIPTS . "/{$name}.php");
-            if ($loaded instanceof Script) {
-                yield $name => [$loaded];
-                continue;
-            }
-            assert(is_array($loaded) && $loaded !== [], "{$name} returns a Script or a non-empty array of them");
-            foreach ($loaded as $case => $script) {
-                assert(is_string($case) && $script instanceof Script, "{$name} keys each Script by case name");
-                yield "{$name}: {$case}" => [$script];
-            }
-        }
+        return self::casesIn(self::SCRIPTS);
+    }
+
+    /**
+     * @return iterable<string, array{Script}>
+     */
+    public static function defects(): iterable
+    {
+        return self::casesIn(self::DEFECTS);
     }
 
     /**
@@ -114,6 +137,27 @@ final class ScriptTest extends TestCase
     }
 
     /**
+     * A file returns one Script, or several keyed by case name.
+     *
+     * @return iterable<string, array{Script}>
+     */
+    private static function casesIn(string $directory): iterable
+    {
+        foreach (self::namesIn($directory) as $name) {
+            $loaded = self::load("{$directory}/{$name}.php");
+            if ($loaded instanceof Script) {
+                yield $name => [$loaded];
+                continue;
+            }
+            assert(is_array($loaded) && $loaded !== [], "{$name} returns a Script or a non-empty array of them");
+            foreach ($loaded as $case => $script) {
+                assert(is_string($case) && $script instanceof Script, "{$name} keys each Script by case name");
+                yield "{$name}: {$case}" => [$script];
+            }
+        }
+    }
+
+    /**
      * Loaded in its own scope: a script file may define variables of its own.
      */
     private static function load(string $path): mixed
@@ -137,12 +181,30 @@ final class ScriptTest extends TestCase
      */
     private function runScript(Script $script): array
     {
+        ['client' => $client, 'projectRoot' => $projectRoot, 'server' => $server, 'session' => $session]
+            = $this->startScript($script);
+        $this->runSteps($script, $session);
+        $this->endScript($server, $session);
+
+        return ['client' => $client, 'projectRoot' => $projectRoot];
+    }
+
+    /**
+     * @return array{client: LspClient, projectRoot: string, server: ServerProcess, session: Session}
+     */
+    private function startScript(Script $script): array
+    {
         $projectRoot = $this->copyProject($script->project);
         $server = $this->startServer($projectRoot);
         $client = new LspClient($server);
         $session = new Session($client, $projectRoot);
-
         $session->start($script->capabilities);
+
+        return ['client' => $client, 'projectRoot' => $projectRoot, 'server' => $server, 'session' => $session];
+    }
+
+    private function runSteps(Script $script, Session $session): void
+    {
         foreach ($script->steps as $index => $step) {
             try {
                 $step->run($session);
@@ -155,12 +217,14 @@ final class ScriptTest extends TestCase
                 );
             }
         }
+    }
+
+    private function endScript(ServerProcess $server, Session $session): void
+    {
         $session->end();
 
         self::assertSame(0, $server->waitForExit(), 'the session ends cleanly');
         self::assertSame('', $server->stderr(), 'the server writes nothing to stderr');
-
-        return ['client' => $client, 'projectRoot' => $projectRoot];
     }
 
     /**
