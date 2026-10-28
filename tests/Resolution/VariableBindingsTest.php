@@ -179,6 +179,19 @@ class VariableBindingsTest extends TestCase
         self::assertSame($foreach->valueVar, $afterward['rebound']->node ?? null, 'later code reads the loop value');
     }
 
+    public function testACatchBindsOnlyInsideItsBlock(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
+        $method = self::findMethodByName('method', $ast);
+        $scope = Scope::at($method, $ast);
+
+        $inTry = VariableBindings::visible($scope, self::findAssignmentTarget('inTry', $ast)->getStartFilePos());
+        $inCatch = VariableBindings::visible($scope, self::findAssignmentTarget('inCatch', $ast)->getStartFilePos());
+
+        self::assertArrayNotHasKey('caught', $inTry, 'the try body runs before anything is caught');
+        self::assertArrayHasKey('caught', $inCatch, 'the catch block reads what it caught');
+    }
+
     public function testThisIsBoundWherePhpBindsIt(): void
     {
         $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
