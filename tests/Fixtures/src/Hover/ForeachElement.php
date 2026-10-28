@@ -171,12 +171,4 @@ class ForeachElement
             $user->getName(); //hover:foreach_const_fetch
         }
     }
-
-    public function iterateIntoItsOwnSubject(UserCollection $collection): void
-    {
-        $users = $collection->all();
-        foreach ($users as $users) {
-            $users->getName(); //hover:foreach_rebinds_subject
-        }
-    }
 }
