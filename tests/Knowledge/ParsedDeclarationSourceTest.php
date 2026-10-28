@@ -39,7 +39,7 @@ final class ParsedDeclarationSourceTest extends TestCase
 
     private const array IMMUTABLE = ['src/Utility/ClassModifiers.php', 'Fixtures\Utility\ImmutableClass'];
 
-    private const array PARENT_CLASS =['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
+    private const array PARENT_CLASS = ['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
 
     private const array USER = ['src/Domain/User.php', 'Fixtures\Domain\User'];
 
