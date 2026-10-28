@@ -6,12 +6,9 @@ Status: accepted
 
 If there is more than one implementation of a service, logic for which one to use and/or how to combine their results is to be done in a Composite service.
 
-There are **never** to be exactly two implementations of an interface (exception: decorators).
-Either there is a single implementation (wired directly in the container), or there are multiple implementations and a composite to dispatch the logic.
-A composite is not added proactively when there is a single implementation.
-
-A composite is the **only** place outside of implementations that holds switching or combining logic.
-It is the only place outside of the DI container that directly names concrete implementations, and **must** do so in its constructor.
+A composite is the **only** place outside of implementations that holds switching or combining logic of which implemention to apply.
+It is the **only** place outside of the DI container that directly names concrete implementations, **must** do so in its constructor, and **must** name all of the concrete implementations directly.
+There MUST be more than one concrete implementation named by the composite, therefore a composite **must not** be created until multiple implementations exist.
 
 It is permissible to apply the decorator pattern to any implementation inclduing a composite; this should also be done in the container.
 
