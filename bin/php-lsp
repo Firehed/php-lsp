@@ -7,7 +7,8 @@ declare(strict_types=1);
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
 
-require __DIR__ . '/../vendor/autoload.php';
+// Composer's vendor/bin proxy sets this when the package is installed as a dependency.
+require $GLOBALS['_composer_autoload_path'] ?? __DIR__ . '/../vendor/autoload.php';
 
 use Firehed\Container\AutoDetect;
 use Firehed\PhpLsp\Server;
