@@ -94,11 +94,13 @@ final class VariableBindings
                 continue;
             }
 
-            // PHP assigns after evaluating the right side, which may read the earlier binding.
+            // File positions are inclusive, while a cursor offset is between characters.
+            // A cursor immediately after the expression can still be in its right-hand side,
+            // so the assignment only binds once it is beyond the expression's end position.
             if (
                 $stmt instanceof Stmt\Expression
                 && $stmt->expr instanceof Assign
-                && $stmt->expr->getEndFilePos() < $offset
+                && $stmt->expr->getEndFilePos() + 1 < $offset
             ) {
                 self::bind($stmt->expr->var, $scope, $bindings);
             }
