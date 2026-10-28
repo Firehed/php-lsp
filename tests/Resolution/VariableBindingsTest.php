@@ -78,11 +78,11 @@ class VariableBindingsTest extends TestCase
 
         $names = self::namesOf(VariableBindings::before($scope, $method->getEndFilePos()));
 
-        self::assertContains('inTry', $names, 'try body binding is enumerated');
-        self::assertContains('inFinally', $names, 'finally body binding is enumerated');
-        self::assertContains('inIf', $names, 'if body binding is enumerated');
-        self::assertContains('inElseIf', $names, 'elseif body binding is enumerated');
-        self::assertContains('inCase', $names, 'switch case body binding is enumerated');
+        self::assertSame(
+            ['inTry', 'inUnnamedCatch', 'inFinally', 'inIf', 'inElseIf', 'inCase'],
+            $names,
+            'every branch body is enumerated; a catch without a variable binds nothing itself',
+        );
     }
 
     public function testArrowFunctionScopeExposesOnlyItsParams(): void
