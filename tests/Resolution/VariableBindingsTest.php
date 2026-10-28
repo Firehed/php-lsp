@@ -160,6 +160,25 @@ class VariableBindingsTest extends TestCase
         self::assertSame($target, $afterward['reassigned']->node ?? null, 'later code reads the assignment');
     }
 
+    public function testAForeachBindsOnlyOnceItsSubjectIsEvaluated(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
+        $method = self::findMethodByName('iterateIntoItself', $ast);
+        $scope = Scope::at($method, $ast);
+        $foreach = self::findFirst([$method], fn (Node $n) => $n instanceof Stmt\Foreach_);
+        self::assertInstanceOf(Stmt\Foreach_::class, $foreach);
+
+        $inSubject = VariableBindings::visible($scope, $foreach->expr->getStartFilePos());
+        $afterward = VariableBindings::visible($scope, $method->getEndFilePos());
+
+        self::assertSame(
+            $method->params[0]->var,
+            $inSubject['rebound']->node ?? null,
+            'the subject reads the parameter',
+        );
+        self::assertSame($foreach->valueVar, $afterward['rebound']->node ?? null, 'later code reads the loop value');
+    }
+
     public function testThisIsBoundWherePhpBindsIt(): void
     {
         $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
