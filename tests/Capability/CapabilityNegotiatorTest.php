@@ -120,7 +120,7 @@ class CapabilityNegotiatorTest extends TestCase
     #[DataProvider('positionEncodingCases')]
     public function testPositionEncodingIsNegotiated(array $general, PositionEncoding $expected): void
     {
-        $message = new RequestMessage(id: 1, method: 'initialize', params: ['general' => $general]);
+        $message = new RequestMessage(id: 1, method: 'initialize', params: ['capabilities' => ['general' => $general]]);
 
         self::assertSame(
             $expected,
