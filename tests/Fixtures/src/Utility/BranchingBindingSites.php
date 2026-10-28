@@ -10,6 +10,8 @@ class BranchingBindingSites
     {
         try {
             $inTry = 1;
+        } catch (\RuntimeException) {
+            $inUnnamedCatch = 7;
         } finally {
             $inFinally = 2;
         }

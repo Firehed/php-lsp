@@ -43,4 +43,13 @@ class BindingSites
     {
         $reassigned = $reassigned + 1;
     }
+
+    /**
+     * @param list<int> $rebound
+     */
+    public function iterateIntoItself(array $rebound): void
+    {
+        foreach ($rebound as $rebound) {
+        }
+    }
 }

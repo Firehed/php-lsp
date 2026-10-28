@@ -78,11 +78,11 @@ class VariableBindingsTest extends TestCase
 
         $names = self::namesOf(VariableBindings::before($scope, $method->getEndFilePos()));
 
-        self::assertContains('inTry', $names, 'try body binding is enumerated');
-        self::assertContains('inFinally', $names, 'finally body binding is enumerated');
-        self::assertContains('inIf', $names, 'if body binding is enumerated');
-        self::assertContains('inElseIf', $names, 'elseif body binding is enumerated');
-        self::assertContains('inCase', $names, 'switch case body binding is enumerated');
+        self::assertSame(
+            ['inTry', 'inUnnamedCatch', 'inFinally', 'inIf', 'inElseIf', 'inCase'],
+            $names,
+            'every branch body is enumerated; a catch without a variable binds nothing itself',
+        );
     }
 
     public function testArrowFunctionScopeExposesOnlyItsParams(): void
@@ -158,6 +158,38 @@ class VariableBindingsTest extends TestCase
             'the right side reads the parameter',
         );
         self::assertSame($target, $afterward['reassigned']->node ?? null, 'later code reads the assignment');
+    }
+
+    public function testAForeachBindsOnlyOnceItsSubjectIsEvaluated(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
+        $method = self::findMethodByName('iterateIntoItself', $ast);
+        $scope = Scope::at($method, $ast);
+        $foreach = self::findFirst([$method], fn (Node $n) => $n instanceof Stmt\Foreach_);
+        self::assertInstanceOf(Stmt\Foreach_::class, $foreach);
+
+        $inSubject = VariableBindings::visible($scope, $foreach->expr->getStartFilePos());
+        $afterward = VariableBindings::visible($scope, $method->getEndFilePos());
+
+        self::assertSame(
+            $method->params[0]->var,
+            $inSubject['rebound']->node ?? null,
+            'the subject reads the parameter',
+        );
+        self::assertSame($foreach->valueVar, $afterward['rebound']->node ?? null, 'later code reads the loop value');
+    }
+
+    public function testACatchBindsOnlyInsideItsBlock(): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('src/Utility/BindingSites.php'));
+        $method = self::findMethodByName('method', $ast);
+        $scope = Scope::at($method, $ast);
+
+        $inTry = VariableBindings::visible($scope, self::findAssignmentTarget('inTry', $ast)->getStartFilePos());
+        $inCatch = VariableBindings::visible($scope, self::findAssignmentTarget('inCatch', $ast)->getStartFilePos());
+
+        self::assertArrayNotHasKey('caught', $inTry, 'the try body runs before anything is caught');
+        self::assertArrayHasKey('caught', $inCatch, 'the catch block reads what it caught');
     }
 
     public function testThisIsBoundWherePhpBindsIt(): void
