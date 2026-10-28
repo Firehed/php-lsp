@@ -1,4 +1,4 @@
-# 0004: Use php-parser for Document Structure
+# 4: Use php-parser for Document Structure
 
 Status: accepted
 
@@ -7,7 +7,7 @@ Status: accepted
 Parsed file structure is to use `nikic/php-parser`'s Abstract Syntax Tree (AST) and data types, regardless of the parsing mechanism.
 Parsers, including syntax-invalid file recovery, are to convert into it if necessary.
 
-Walking the AST (recovered or otherwise) to extract other facts is still to be centralized per ADR 0001.
+Walking the AST (recovered or otherwise) to extract other facts is still to be centralized per ADR 1.
 
 ## Context
 

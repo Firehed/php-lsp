@@ -1,4 +1,4 @@
-# 0006: The Domain Holds Facts
+# 6: The Domain Holds Facts
 
 Status: accepted
 
@@ -13,6 +13,6 @@ A local workaround is not a fix, and neither is a comment deferring one.
 
 ## Context
 
-ADR 0001 forbids a second route to a fact, but a gap in the domain leaves no first route to compare against.
+ADR 1 forbids a second route to a fact, but a gap in the domain leaves no first route to compare against.
 The gap shows up as missing structure rather than as a duplicate route, so it is easy to work around without noticing.
 One structure per declaration, regardless of origin, is what lets every feature see the same facts.
