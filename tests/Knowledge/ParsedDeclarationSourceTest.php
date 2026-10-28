@@ -37,7 +37,9 @@ final class ParsedDeclarationSourceTest extends TestCase
     /** Declares all three kinds, so a lookup reading the wrong list is visible. */
     private const string FIXTURE = 'AutoloadFiles/helpers.php';
 
-    private const array PARENT_CLASS = ['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
+    private const array IMMUTABLE = ['src/Utility/ClassModifiers.php', 'Fixtures\Utility\ImmutableClass'];
+
+    private const array PARENT_CLASS =['src/Inheritance/ParentClass.php', 'Fixtures\Inheritance\ParentClass'];
 
     private const array USER = ['src/Domain/User.php', 'Fixtures\Domain\User'];
 
@@ -721,6 +723,8 @@ final class ParsedDeclarationSourceTest extends TestCase
         ];
         yield 'public static' => [...self::PARENT_CLASS, 'staticProperty', Visibility::Public, true, false, $string];
         yield 'protected' => [...self::PARENT_CLASS, 'protectedProperty', Visibility::Protected, false, false, $int];
+        yield 'declared in readonly class' => [...self::IMMUTABLE, 'count', Visibility::Public, false, true, $int];
+        yield 'promoted in readonly class' => [...self::IMMUTABLE, 'value', Visibility::Public, false, true, $string];
     }
 
     #[DataProvider('properties')]
