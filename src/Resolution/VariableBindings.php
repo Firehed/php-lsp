@@ -94,25 +94,21 @@ final class VariableBindings
                 continue;
             }
 
-            // PHP assigns after evaluating the right side, which may read the earlier binding.
-            if (
-                $stmt instanceof Stmt\Expression
-                && $stmt->expr instanceof Assign
-                && $stmt->expr->getEndFilePos() < $offset
-            ) {
-                self::bind($stmt->expr->var, $scope, $bindings);
+            if ($stmt instanceof Stmt\Expression && $stmt->expr instanceof Assign) {
+                self::bindOnceRun($stmt->expr->var, $stmt->expr, $offset, $scope, $bindings);
             }
 
-            // PHP evaluates the subject once, before assigning the key and value.
-            if ($stmt instanceof Stmt\Foreach_ && $stmt->expr->getEndFilePos() < $offset) {
-                self::bind($stmt->keyVar, $scope, $bindings);
-                self::bind($stmt->valueVar, $scope, $bindings);
+            if ($stmt instanceof Stmt\Foreach_) {
+                self::bindOnceRun($stmt->keyVar, $stmt->expr, $offset, $scope, $bindings);
+                self::bindOnceRun($stmt->valueVar, $stmt->expr, $offset, $scope, $bindings);
             }
 
             if ($stmt instanceof Stmt\TryCatch) {
                 self::walk($stmt->stmts, $offset, $scope, $bindings);
                 foreach ($stmt->catches as $catch) {
-                    self::bind($catch->var, $scope, $bindings);
+                    if ($catch->var !== null) {
+                        self::bindOnceRun($catch->var, $catch->var, $offset, $scope, $bindings);
+                    }
                     self::walk($catch->stmts, $offset, $scope, $bindings);
                 }
                 if ($stmt->finally !== null) {
@@ -148,6 +144,25 @@ final class VariableBindings
             ) {
                 self::walk($stmt->stmts, $offset, $scope, $bindings);
             }
+        }
+    }
+
+    /**
+     * Records $target once the code PHP runs before assigning it, which ends
+     * with $runFirst, is complete before $offset. That code may read an
+     * earlier binding of the same name.
+     *
+     * @param list<VariableBinding> $bindings
+     */
+    private static function bindOnceRun(
+        ?Node $target,
+        Node $runFirst,
+        int $offset,
+        Scope $scope,
+        array &$bindings,
+    ): void {
+        if ($runFirst->getEndFilePos() < $offset) {
+            self::bind($target, $scope, $bindings);
         }
     }
 
