@@ -18,6 +18,8 @@ final class SealedClass
 
 readonly class ImmutableClass
 {
+    public int $count;
+
     public function __construct(
         public string $value,
     ) {
