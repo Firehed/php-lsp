@@ -741,7 +741,7 @@ final class ParsedDeclarationSourceTest extends TestCase
 
         self::assertSame($visibility, $info->visibility, 'the visibility keyword decides visibility');
         self::assertSame($isStatic, $info->isStatic, 'only a static property is static');
-        self::assertSame($isReadonly, $info->isReadonly, 'only a readonly property is readonly');
+        self::assertSame($isReadonly, $info->isReadonly, 'a property is readonly by its own modifier or its class\'s');
         self::assertEquals($type, $info->type, 'the declared type is carried');
     }
 
