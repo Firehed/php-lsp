@@ -120,11 +120,9 @@ class CapabilityNegotiatorTest extends TestCase
     #[DataProvider('positionEncodingCases')]
     public function testPositionEncodingIsNegotiated(array $general, PositionEncoding $expected): void
     {
-        $message = new RequestMessage(id: 1, method: 'initialize', params: ['capabilities' => ['general' => $general]]);
-
         self::assertSame(
             $expected,
-            self::resolve($message)->positionEncoding,
+            self::resolve(self::initializeWith(['general' => $general]))->positionEncoding,
             'the server selects a supported encoding the client offered, else the [LSP] mandatory UTF-16',
         );
     }
