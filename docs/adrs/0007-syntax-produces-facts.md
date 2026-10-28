@@ -1,6 +1,6 @@
-# 0007: Syntax Produces Facts
+# 7: Syntax Produces Facts
 
-Status: accepted, supplements 0004.
+Status: accepted, supplements 4.
 
 ## Decision
 
@@ -15,4 +15,4 @@ Code that needed a closure's parameter types read them from the syntax tree beca
 Recovered trees can make this worse: each walker tolerates broken code differently, so a feature can work on half-typed code while another does not.
 Note: walkers must not attempt to work around broken code themselves; that's an issue with the recovery tool.
 
-ADR 0004 requires walking the tree to be centralized; this decision is how.
+ADR 4 requires walking the tree to be centralized; this decision is how.

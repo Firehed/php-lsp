@@ -1,4 +1,4 @@
-# 0003: Composite Services
+# 3: Composite Services
 
 Status: accepted
 
