@@ -103,7 +103,8 @@ final class VariableBindings
                 self::bind($stmt->expr->var, $scope, $bindings);
             }
 
-            if ($stmt instanceof Stmt\Foreach_) {
+            // PHP evaluates the subject once, before assigning the key and value.
+            if ($stmt instanceof Stmt\Foreach_ && $stmt->expr->getEndFilePos() < $offset) {
                 self::bind($stmt->keyVar, $scope, $bindings);
                 self::bind($stmt->valueVar, $scope, $bindings);
             }
