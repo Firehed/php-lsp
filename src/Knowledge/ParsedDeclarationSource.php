@@ -95,7 +95,7 @@ final readonly class ParsedDeclarationSource implements DeclarationSourceInterfa
             kind: $this->determineKind($node),
             isAbstract: $node instanceof Stmt\Class_ && $node->isAbstract(),
             isFinal: $node instanceof Stmt\Class_ && $node->isFinal(),
-            isReadonly: $node instanceof Stmt\Class_ && $node->isReadonly(),
+            isReadonly: $this->isReadonlyClass($node),
             isAttribute: $this->isAttributeNode($node),
             parent: $this->resolveParent($node),
             interfaces: $this->extractInterfaces($node),
@@ -298,6 +298,7 @@ final readonly class ParsedDeclarationSource implements DeclarationSourceInterfa
     private function extractProperties(Stmt\ClassLike $node, ClasslikeName $className, string $filePath): array
     {
         $properties = [];
+        $classIsReadonly = $this->isReadonlyClass($node);
 
         if ($node instanceof Stmt\Enum_) {
             $properties = EnumImplicits::properties($className, $this->enumScalarType($node));
@@ -314,7 +315,7 @@ final readonly class ParsedDeclarationSource implements DeclarationSourceInterfa
                         name: new PropertyName($className, $name),
                         visibility: $this->visibilityFromFlags($stmt->flags),
                         isStatic: $stmt->isStatic(),
-                        isReadonly: $stmt->isReadonly(),
+                        isReadonly: $classIsReadonly || $stmt->isReadonly(),
                         isPromoted: false,
                         type: TypeFactory::fromNode($stmt->type),
                         docblock: $stmt->getDocComment()?->getText(),
@@ -338,7 +339,7 @@ final readonly class ParsedDeclarationSource implements DeclarationSourceInterfa
                         name: new PropertyName($className, $name),
                         visibility: $this->visibilityFromFlags($param->flags),
                         isStatic: false,
-                        isReadonly: $param->isReadonly(),
+                        isReadonly: $classIsReadonly || $param->isReadonly(),
                         isPromoted: true,
                         type: TypeFactory::fromNode($param->type),
                         docblock: $param->getDocComment()?->getText(),
@@ -441,6 +442,11 @@ final readonly class ParsedDeclarationSource implements DeclarationSourceInterfa
         }
 
         return false;
+    }
+
+    private function isReadonlyClass(Stmt\ClassLike $node): bool
+    {
+        return $node instanceof Stmt\Class_ && $node->isReadonly();
     }
 
     private function parameterFromNode(Param $param, int $position): ?ParameterInfo
