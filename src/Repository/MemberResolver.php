@@ -396,8 +396,9 @@ final class MemberResolver implements MemberResolverInterface
 
     /**
      * The traits a class-like uses, each with the method names an `insteadof`
-     * clause excludes from it. PHP rejects `use` naming anything but a trait,
-     * and an interface using traits (`zend_do_bind_traits` in php-src).
+     * clause excludes from it. PHP rejects `use` naming anything but a trait
+     * (`zend_do_link_class` in php-src), and an interface using traits
+     * (`zend_compile.c`).
      *
      * @return list<array{ClassInfo, list<string>}>
      */
