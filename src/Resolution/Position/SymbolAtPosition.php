@@ -35,7 +35,8 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
         return match ($located->slot) {
             Slot::NotCode, Slot::InterpolatedString, Slot::ClassMember => null,
             Slot::Variable => $this->variable($written, $located->parsed),
-            Slot::Member, Slot::CalledName => $this->usedBy($written, $located->parsed),
+            Slot::Member => $this->member($located),
+            Slot::CalledName => $this->calledBy($written, $located->parsed),
             Slot::ArgumentName => $this->parameterNamed($located),
             Slot::DeclaredName => $parent instanceof Node\Param
                 ? $this->expressions->resolveParameter($parent, $located->parsed)
@@ -62,15 +63,27 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
     }
 
     /**
-     * What the expression a member or called name is part of resolves to.
+     * What the access a written member name is part of resolves to.
      */
-    private function usedBy(?Node $written, ParsedDocument $parsed): ?ResolvedSymbolInterface
+    private function member(Located $located): ?ResolvedSymbolInterface
+    {
+        if ($located->written === null) {
+            return null;
+        }
+        assert($located->access !== null, 'a member name is part of the access that uses it');
+        return $this->expressions->resolve($located->access->node, $located->parsed);
+    }
+
+    /**
+     * What the call a called name is part of resolves to.
+     */
+    private function calledBy(?Node $written, ParsedDocument $parsed): ?ResolvedSymbolInterface
     {
         if ($written === null) {
             return null;
         }
         $expression = $written->getAttribute('parent');
-        assert($expression instanceof Expr, 'a member or called name is part of the expression that uses it');
+        assert($expression instanceof Expr, 'a called name is part of the call that uses it');
         return $this->expressions->resolve($expression, $parsed);
     }
 
