@@ -231,16 +231,33 @@ final class MemberResolver implements MemberResolverInterface
      * first, each paired with the class that declares it — the class using a
      * trait for a member the trait brings in. Only $wanted's when given.
      *
+     * @param list<string> $composing Traits whose own members are being
+     *        resolved, which bring in nothing more; PHP rejects a trait cycle
      * @return list<non-empty-list<array{MemberInfoInterface, ClassInfo}>>
      */
-    private function declarations(ClassInfo $origin, MemberKind $kind, ?string $wanted): array
+    private function declarations(ClassInfo $origin, MemberKind $kind, ?string $wanted, array $composing = []): array
     {
         $byKey = [];
         $seen = [];
+        $traitMembers = [];
+        // Entries are numbered as they are added; a class's level starts at its own number.
+        $added = 0;
+        $levelStart = [];
+        $lastAdded = [];
         foreach ($this->descend($origin, $origin, [], $seen) as [$classInfo, $declaringClass, $exclusions, $binding]) {
-            $members = $binding === null
-                ? $kind->membersOf($classInfo)
-                : $this->traitMembers($classInfo, $kind, $binding);
+            $level = NameKind::ClassLike->normalize($declaringClass->name->qualifiedName);
+            if ($binding === null) {
+                $levelStart[$level] = $added;
+                $members = $kind->membersOf($classInfo);
+            } else {
+                $trait = NameKind::ClassLike->normalize($classInfo->name->qualifiedName);
+                $traitMembers[$trait] ??= $this->traitMembers($classInfo, $kind, $wanted, $composing);
+                $members = array_filter(
+                    $traitMembers[$trait],
+                    static fn (MemberInfoInterface $member): bool => $kind->bindsBeforeInheritance($member)
+                        === ($binding === TraitBinding::BeforeInheritance),
+                );
+            }
             foreach ($members as $name => $member) {
                 $key = $kind->keyFor($name);
                 if ($wanted !== null && $key !== $wanted) {
@@ -249,7 +266,13 @@ final class MemberResolver implements MemberResolverInterface
                 if ($kind->isMethod() && in_array($name, $exclusions, true)) {
                     continue;
                 }
+                // A trait member bound after inheritance that meets one this class
+                // already has only has its signature checked (`zend_add_trait_method`).
+                if ($binding === TraitBinding::AfterInheritance && ($lastAdded[$key] ?? -1) >= $levelStart[$level]) {
+                    continue;
+                }
                 $byKey[$key][] = [$member, $declaringClass];
+                $lastAdded[$key] = $added++;
             }
         }
 
@@ -257,20 +280,22 @@ final class MemberResolver implements MemberResolverInterface
     }
 
     /**
-     * The members a trait brings in at one binding: what each name resolves
-     * to within the trait itself, where its own members win over those of the
-     * traits it uses.
+     * What each name resolves to within a trait itself, where its own members
+     * win over those of the traits it uses.
      *
+     * @param list<string> $composing
      * @return array<string, MemberInfoInterface>
      */
-    private function traitMembers(ClassInfo $trait, MemberKind $kind, TraitBinding $binding): array
+    private function traitMembers(ClassInfo $trait, MemberKind $kind, ?string $wanted, array $composing): array
     {
+        $key = NameKind::ClassLike->normalize($trait->name->qualifiedName);
+        if (in_array($key, $composing, true)) {
+            return [];
+        }
         $members = [];
-        foreach ($this->declarations($trait, $kind, null) as $declarations) {
+        foreach ($this->declarations($trait, $kind, $wanted, [...$composing, $key]) as $declarations) {
             $member = $declarations[0][0];
-            if ($kind->bindsBeforeInheritance($member) === ($binding === TraitBinding::BeforeInheritance)) {
-                $members[$member->getName()->name] = $member;
-            }
+            $members[$member->getName()->name] = $member;
         }
 
         return $members;
@@ -409,29 +434,28 @@ final class MemberResolver implements MemberResolverInterface
     {
         $traits = [];
         foreach ($classInfo->traits as $trait) {
-            $key = NameKind::ClassLike->normalize($trait->qualifiedName);
-            $traits[] = [$trait, $classInfo->traitExclusions[$key] ?? []];
+            $info = $this->source->lookupClassLike($trait);
+            if ($info !== null) {
+                $key = NameKind::ClassLike->normalize($trait->qualifiedName);
+                $traits[] = [$info, $classInfo->traitExclusions[$key] ?? []];
+            }
         }
-
-        $names = [];
-        foreach ($traits as [$trait, $exclusions]) {
-            $names[] = [$trait, TraitBinding::BeforeInheritance, $exclusions];
-        }
-        if ($classInfo->parent !== null) {
-            $names[] = [$classInfo->parent, null, []];
-        }
-        foreach ($traits as [$trait, $exclusions]) {
-            $names[] = [$trait, TraitBinding::AfterInheritance, $exclusions];
-        }
-        foreach ($classInfo->interfaces as $interface) {
-            $names[] = [$interface, null, []];
-        }
+        $parent = $classInfo->parent === null ? null : $this->source->lookupClassLike($classInfo->parent);
 
         $supertypes = [];
-        foreach ($names as [$name, $binding, $exclusions]) {
-            $info = $this->source->lookupClassLike($name);
+        foreach ($traits as [$info, $exclusions]) {
+            $supertypes[] = [$info, TraitBinding::BeforeInheritance, $exclusions];
+        }
+        if ($parent !== null) {
+            $supertypes[] = [$parent, null, []];
+        }
+        foreach ($traits as [$info, $exclusions]) {
+            $supertypes[] = [$info, TraitBinding::AfterInheritance, $exclusions];
+        }
+        foreach ($classInfo->interfaces as $interface) {
+            $info = $this->source->lookupClassLike($interface);
             if ($info !== null) {
-                $supertypes[] = [$info, $binding, $exclusions];
+                $supertypes[] = [$info, null, []];
             }
         }
 
