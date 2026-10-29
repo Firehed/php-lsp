@@ -1543,15 +1543,18 @@ final class MemberResolverTest extends TestCase
             ),
         ));
 
-        $listed = $resolver->getMembersOfKind($className, MemberKind::Method, null);
+        $listed = [];
+        foreach ($resolver->getMembersOfKind($className, MemberKind::Method, null) as $member) {
+            $listed[$member->getName()->name] = $member;
+        }
 
         self::assertCount(2, $listed, 'the trait method is listed under its own name and its alias');
-        self::assertSame($helper, $listed[0], 'the trait method keeps its own name');
-        self::assertInstanceOf(MethodInfo::class, $listed[1]);
-        self::assertSame('exposedName', $listed[1]->getName()->name, 'the alias is listed under its new name');
+        self::assertSame($helper, $listed['helper'] ?? null, 'the trait method keeps its own name');
+        $alias = $listed['exposedName'] ?? null;
+        self::assertInstanceOf(MethodInfo::class, $alias, 'the alias is listed under its new name');
         self::assertSame(
             $traitName->qualifiedName->fullyQualifiedName(),
-            $listed[1]->aliasedFrom?->owner->qualifiedName->fullyQualifiedName(),
+            $alias->aliasedFrom?->owner->qualifiedName->fullyQualifiedName(),
             'the listed alias points back at the trait',
         );
     }
@@ -2388,6 +2391,177 @@ final class MemberResolverTest extends TestCase
         ));
 
         self::assertNull($resolver->findMethod($origin, 'go', $origin), 'an alias needs the trait to be used');
+    }
+
+    /**
+     * Code being edited can use traits in a cycle, which PHP rejects; the
+     * lookup still ends, and each trait brings in its own members.
+     */
+    public function testATraitCycleEnds(): void
+    {
+        $first = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $second = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $user = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $first,
+                kind: ClassKind::Trait_,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $first)],
+                traits: [$second],
+            ),
+            $this->createClassInfo(
+                $second,
+                kind: ClassKind::Trait_,
+                methods: ['stop' => $this->createMethodInfo('stop', Visibility::Public, $second)],
+                traits: [$first],
+            ),
+            $this->createClassInfo($user, traits: [$first]),
+        ));
+
+        self::assertSame($first, $resolver->findMethod($user, 'run', null)?->getName()->owner, 'the first trait\'s');
+        self::assertSame($second, $resolver->findMethod($user, 'stop', null)?->getName()->owner, 'the second\'s');
+    }
+
+    /**
+     * An alias that only changes visibility adapts the method under its own
+     * name.
+     */
+    public function testAnAliasChangingOnlyVisibilityAdaptsTheMethod(): void
+    {
+        $trait = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $user = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $trait,
+                kind: ClassKind::Trait_,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $trait)],
+            ),
+            $this->createClassInfo(
+                $user,
+                traits: [$trait],
+                traitAliases: [
+                    new TraitAlias(trait: null, method: 'run', newName: null, newVisibility: Visibility::Protected),
+                ],
+            ),
+        ));
+
+        self::assertNull($resolver->findMethod($user, 'run', null), 'protected from outside the class');
+        self::assertSame(
+            Visibility::Protected,
+            $resolver->findMethod($user, 'run', $user)?->visibility,
+            'protected inside it',
+        );
+    }
+
+    /**
+     * PHP does not inherit a private constant,
+     * so it is undefined on a subclass even from the class declaring it.
+     */
+    public function testAPrivateConstantIsNotInherited(): void
+    {
+        $parent = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $child = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $parent,
+                constants: ['SECRET' => $this->createConstantInfo('SECRET', Visibility::Private, $parent)],
+            ),
+            $this->createClassInfo($child, parent: $parent),
+        ));
+
+        self::assertNull($resolver->findConstant($child, 'SECRET', $parent), 'the subclass has no such constant');
+        self::assertNotNull($resolver->findConstant($parent, 'SECRET', $parent), 'its declaring class still has it');
+    }
+
+    /**
+     * An overriding constructor takes no prototype from a constructor that is
+     * not abstract, so protected access to
+     * it is checked against its own class.
+     */
+    public function testAProtectedConstructorIsCheckedAgainstItsOwnClass(): void
+    {
+        $base = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $overriding = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $sibling = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $base,
+                methods: ['__construct' => $this->createMethodInfo('__construct', Visibility::Protected, $base)],
+            ),
+            $this->createClassInfo(
+                $overriding,
+                parent: $base,
+                methods: [
+                    '__construct' => $this->createMethodInfo('__construct', Visibility::Protected, $overriding),
+                ],
+            ),
+            $this->createClassInfo($sibling, parent: $base),
+        ));
+
+        self::assertNull(
+            $resolver->findMethod($overriding, '__construct', $sibling),
+            'a sibling is not related to the overriding constructor\'s class',
+        );
+        self::assertNotNull(
+            $resolver->findMethod($base, '__construct', $sibling),
+            'it is related to the class of the constructor it inherits',
+        );
+    }
+
+    /**
+     * Code in a class reaches its own private property on an instance of a
+     * subclass, unless that property is static and the subclass has an
+     * instance property of the name.
+     */
+    public function testAPrivateStaticPropertyYieldsToAnInstanceOne(): void
+    {
+        $scope = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $sub = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $scope,
+                properties: ['x' => $this->createPropertyInfo('x', Visibility::Private, $scope, isStatic: true)],
+            ),
+            $this->createClassInfo(
+                $sub,
+                parent: $scope,
+                properties: ['x' => $this->createPropertyInfo('x', Visibility::Public, $sub)],
+            ),
+        ));
+
+        self::assertSame(
+            $sub,
+            $resolver->findProperty($sub, 'x', $scope)?->getName()->owner,
+            'the subclass\'s instance property',
+        );
+    }
+
+    /**
+     * A trait's static property declares the property again on the class
+     * using it, replacing a compatible one.
+     */
+    public function testATraitStaticPropertyReplacesTheClasssOwn(): void
+    {
+        $trait = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $user = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $trait,
+                kind: ClassKind::Trait_,
+                properties: ['x' => $this->createPropertyInfo('x', Visibility::Public, $trait, isStatic: true)],
+            ),
+            $this->createClassInfo(
+                $user,
+                properties: ['x' => $this->createPropertyInfo('x', Visibility::Public, $user, isStatic: true)],
+                traits: [$trait],
+            ),
+        ));
+
+        self::assertSame(
+            $trait,
+            $resolver->findProperty($user, 'x', $user)?->getName()->owner,
+            'the trait\'s declaration',
+        );
     }
 
     /**

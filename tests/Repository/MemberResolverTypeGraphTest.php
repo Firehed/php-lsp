@@ -15,6 +15,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use ReflectionMethod;
 use ReflectionProperty;
 
 /**
@@ -62,6 +63,10 @@ final class MemberResolverTypeGraphTest extends TestCase
             'trait alias whose new name collides with an inherited method'
                 => ['Fixtures\Hierarchy\TraitAliasCollidingUser'],
             'trait alias without an explicit source trait' => ['Fixtures\Hierarchy\TraitNamelessAliasUser'],
+            'abstract trait methods beside inherited and trait methods'
+                => ['Fixtures\Hierarchy\AbstractRequirementsUser'],
+            'aliases and insteadof across nested traits' => ['Fixtures\Hierarchy\TraitCompositionUser'],
+            'inherited aliases beside an abstract trait method' => ['Fixtures\Hierarchy\AliasInheritedUser'],
             'enum implementing interface' => ['Fixtures\Hierarchy\EnumWithInterface'],
             'constructor promotion by every modifier' => ['Fixtures\Utility\PromotedModifiers'],
         ];
@@ -88,6 +93,41 @@ final class MemberResolverTypeGraphTest extends TestCase
             self::normalize($this->publicMemberNames($fqcn, MemberKind::Method)),
             'resolved public methods should match the methods available at runtime',
         );
+    }
+
+    /**
+     * Each method name means the declaration PHP links for it: its file,
+     * line, and whether it is abstract identify which one.
+     *
+     * @param class-string $fqcn
+     */
+    #[DataProvider('hierarchyTypes')]
+    public function testPublicMethodsAreTheDeclarationsLinkedAtRuntime(string $fqcn): void
+    {
+        $expected = [];
+        foreach ((new ReflectionClass($fqcn))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            // A method PHP itself provides, such as an enum's `cases()`, has no source line.
+            $line = $method->getStartLine();
+            $expected[strtolower($method->getName())] = [
+                $method->isAbstract(),
+                basename((string) $method->getFileName()),
+                $line === false ? null : $line,
+            ];
+        }
+        $resolved = [];
+        $class = ClasslikeName::fromFullyQualified($fqcn);
+        foreach ($this->resolver->getMembersOfKind($class, MemberKind::Method, null) as $method) {
+            assert($method instanceof MethodInfo, 'a method kind lists methods');
+            $resolved[strtolower($method->getName()->name)] = [
+                $method->isAbstract,
+                basename((string) $method->file),
+                $method->line,
+            ];
+        }
+        ksort($expected);
+        ksort($resolved);
+
+        self::assertSame($expected, $resolved, 'each method is the declaration PHP links for its name');
     }
 
     /**
