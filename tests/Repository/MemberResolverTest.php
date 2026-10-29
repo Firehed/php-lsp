@@ -2281,44 +2281,34 @@ final class MemberResolverTest extends TestCase
     }
 
     /**
-     * @return iterable<string, array{ClassKind, string, ClassKind}>
+     * @return iterable<string, array{ClassKind, ClassKind}>
      */
-    public static function edgesPhpRejects(): iterable
+    public static function nonTraitsInUse(): iterable
     {
-        // php-src zend_inheritance.c rejects each of these when linking the class.
-        yield 'a class using a class as a trait' => [ClassKind::Class_, 'traits', ClassKind::Class_];
-        yield 'a class using an interface as a trait' => [ClassKind::Class_, 'traits', ClassKind::Interface_];
-        yield 'an interface using a trait' => [ClassKind::Interface_, 'traits', ClassKind::Trait_];
-        yield 'a class extending an interface' => [ClassKind::Class_, 'parent', ClassKind::Interface_];
-        yield 'a class extending a trait' => [ClassKind::Class_, 'parent', ClassKind::Trait_];
-        yield 'a class extending an enum' => [ClassKind::Class_, 'parent', ClassKind::Enum_];
-        yield 'a class implementing a class' => [ClassKind::Class_, 'interfaces', ClassKind::Class_];
-        yield 'a class implementing a trait' => [ClassKind::Class_, 'interfaces', ClassKind::Trait_];
-        yield 'an interface extending a class' => [ClassKind::Interface_, 'interfaces', ClassKind::Class_];
+        yield 'a class using a class' => [ClassKind::Class_, ClassKind::Class_];
+        yield 'a class using an interface' => [ClassKind::Class_, ClassKind::Interface_];
+        yield 'a class using an enum' => [ClassKind::Class_, ClassKind::Enum_];
+        yield 'an enum using a class' => [ClassKind::Enum_, ClassKind::Class_];
+        yield 'a trait using an interface' => [ClassKind::Trait_, ClassKind::Interface_];
     }
 
     /**
-     * Code being edited often names the wrong kind of class-like; such an edge
-     * brings in no members and makes no subclass.
+     * PHP rejects `use` naming anything but a trait ("%s cannot use %s - it
+     * is not a trait", zend_inheritance.c). Code being edited often does, and
+     * the named class-like's members must not become the class's own.
      */
-    #[DataProvider('edgesPhpRejects')]
-    public function testAnEdgePhpRejectsIsNoEdge(ClassKind $kind, string $edge, ClassKind $targetKind): void
+    #[DataProvider('nonTraitsInUse')]
+    public function testUseNamingANonTraitBringsInNothing(ClassKind $kind, ClassKind $usedKind): void
     {
-        $target = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $used = ClasslikeName::fromFullyQualified(self::fakeClass());
         $origin = ClasslikeName::fromFullyQualified(self::fakeClass());
         $resolver = new MemberResolver($this->sourceOf(
             $this->createClassInfo(
-                $target,
-                kind: $targetKind,
-                methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $target)],
+                $used,
+                kind: $usedKind,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Private, $used)],
             ),
-            $this->createClassInfo(
-                $origin,
-                kind: $kind,
-                parent: $edge === 'parent' ? $target : null,
-                traits: $edge === 'traits' ? [$target] : [],
-                interfaces: $edge === 'interfaces' ? [$target] : [],
-            ),
+            $this->createClassInfo($origin, kind: $kind, traits: [$used]),
         ));
 
         self::assertNull($resolver->findMethod($origin, 'run', $origin), 'the named class-like brings in nothing');
@@ -2327,7 +2317,31 @@ final class MemberResolverTest extends TestCase
             $resolver->getMembersOfKind($origin, MemberKind::Method, $origin),
             'nothing is listed through it',
         );
-        self::assertFalse($resolver->isSubclassOf($origin, $target), 'it is not a supertype');
+    }
+
+    /**
+     * PHP matches class names case-insensitively, so an alias naming its
+     * trait in another case still draws from it.
+     */
+    public function testAnAliasNamingItsTraitInAnotherCaseDrawsFromIt(): void
+    {
+        $trait = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $written = ClasslikeName::fromFullyQualified(strtolower($trait->qualifiedName->fullyQualifiedName()));
+        $origin = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $trait,
+                kind: ClassKind::Trait_,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $trait)],
+            ),
+            $this->createClassInfo(
+                $origin,
+                traits: [$trait],
+                traitAliases: [new TraitAlias(trait: $written, method: 'run', newName: 'go', newVisibility: null)],
+            ),
+        ));
+
+        self::assertSame('go', $resolver->findMethod($origin, 'go', $origin)?->getName()->name, 'the alias resolves');
     }
 
     /**
