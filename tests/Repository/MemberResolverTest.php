@@ -2454,7 +2454,7 @@ final class MemberResolverTest extends TestCase
     }
 
     /**
-     * PHP does not inherit a private constant (`do_inherit_class_constant`),
+     * PHP does not inherit a private constant,
      * so it is undefined on a subclass even from the class declaring it.
      */
     public function testAPrivateConstantIsNotInherited(): void
@@ -2475,7 +2475,7 @@ final class MemberResolverTest extends TestCase
 
     /**
      * An overriding constructor takes no prototype from a constructor that is
-     * not abstract (`do_inheritance_check_on_method`), so protected access to
+     * not abstract, so protected access to
      * it is checked against its own class.
      */
     public function testAProtectedConstructorIsCheckedAgainstItsOwnClass(): void
@@ -2511,7 +2511,7 @@ final class MemberResolverTest extends TestCase
     /**
      * Code in a class reaches its own private property on an instance of a
      * subclass, unless that property is static and the subclass has an
-     * instance property of the name (`zend_get_property_offset`).
+     * instance property of the name.
      */
     public function testAPrivateStaticPropertyYieldsToAnInstanceOne(): void
     {
@@ -2538,7 +2538,7 @@ final class MemberResolverTest extends TestCase
 
     /**
      * A trait's static property declares the property again on the class
-     * using it, replacing a compatible one (`zend_do_traits_property_binding`).
+     * using it, replacing a compatible one.
      */
     public function testATraitStaticPropertyReplacesTheClasssOwn(): void
     {

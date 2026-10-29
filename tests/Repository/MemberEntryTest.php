@@ -19,7 +19,7 @@ final class MemberEntryTest extends TestCase
 {
     /**
      * PHP checks protected access against the prototype's class, else the
-     * member's own (`zend_get_function_root_class`).
+     * member's own.
      */
     public function testTheRootIsThePrototypesDeclarerElseItsOwn(): void
     {

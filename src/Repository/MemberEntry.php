@@ -32,8 +32,7 @@ final readonly class MemberEntry
     }
 
     /**
-     * The class a protected member is checked against
-     * (`zend_get_function_root_class` in php-src).
+     * The class protected access to the member is checked against.
      */
     public function root(): ClasslikeName
     {
