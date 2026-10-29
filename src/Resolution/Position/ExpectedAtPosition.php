@@ -99,12 +99,7 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
         assert($located->access !== null, 'a member is accessed on something');
 
         $target = $this->expressions->memberTarget($located->access, $located->parsed);
-        return match (true) {
-            $target === null => null,
-            $located->slot === Slot::Member => MemberAccessContext::forInstance($target->type, $target->from, $prefix),
-            $target->static() === null => MemberAccessContext::forStatic($target->type, $target->from, $prefix),
-            default => MemberAccessContext::forParent($target->type, $target->from, $target->static(), $prefix),
-        };
+        return $target === null ? null : new MemberAccessContext($target, $prefix);
     }
 
     private static function type(Located $located, TypeHintContext $context): Expected

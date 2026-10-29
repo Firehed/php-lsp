@@ -29,10 +29,10 @@ final class MemberCandidates
     public function find(MemberAccessContext $context): array
     {
         $members = $this->symbols->getAccessibleMembers(
-            $context->type,
-            $context->from,
-            $context->memberFilter,
-            $context->static,
+            $context->target->type,
+            $context->target->from,
+            $context->memberFilter(),
+            $context->target->static(),
         );
 
         $snippetSupport = $this->capabilities->getSessionCapabilities()->snippetSupport;
@@ -44,7 +44,7 @@ final class MemberCandidates
             }
         }
 
-        if ($context->offersClassConstant && PrefixMatcher::matches('class', $context->prefix)) {
+        if ($context->offersClassConstant() && PrefixMatcher::matches('class', $context->prefix)) {
             $items[] = $this->itemFormatter->forClassConstant();
         }
 

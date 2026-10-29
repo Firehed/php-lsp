@@ -98,17 +98,17 @@ final class ThisTypingParityTest extends TestCase
 
         self::assertSame(
             $hover->getType()?->format(),
-            $access->type->format(),
+            $access->target->type->format(),
             'hover on $this and completion on $this-> must resolve to the same enclosing class',
         );
         self::assertSame(
             $expectedClass,
-            $access->type->format(),
+            $access->target->type->format(),
             'the shared helper resolves the enclosing class in the fixture',
         );
         self::assertSame(
             $expectedClass,
-            $access->from?->qualifiedName->fullyQualifiedName(),
+            $access->target->from?->qualifiedName->fullyQualifiedName(),
             'the access is written in the enclosing class, so `$this->` reaches its private members',
         );
     }

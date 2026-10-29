@@ -315,7 +315,7 @@ final class ExpectedAtPositionTest extends TestCase
     {
         $result = $this->membersAtMarker('src/IncompleteCode/AliasedImports.php', 'colliding_static');
         self::assertNotNull($result, 'the access resolves');
-        self::assertSame('Fixtures\Namespacing\Models\Widget', $result->type->format());
+        self::assertSame('Fixtures\Namespacing\Models\Widget', $result->target->type->format());
     }
 
     /**
@@ -377,7 +377,7 @@ final class ExpectedAtPositionTest extends TestCase
     ): void {
         self::assertSame(
             $class,
-            $this->membersAt($fixture, $line, $character)?->type->format(),
+            $this->membersAt($fixture, $line, $character)?->target->type->format(),
             'the name resolves through the namespace and imports in effect',
         );
     }
@@ -389,7 +389,7 @@ final class ExpectedAtPositionTest extends TestCase
 
         $result = $this->membersAt('TopLevel/multibyte_static.php', $line, $character);
         self::assertNotNull($result, 'the access resolves');
-        self::assertSame('Fixtures\\Domain\\User', $result->type->format());
+        self::assertSame('Fixtures\\Domain\\User', $result->target->type->format());
         self::assertSame('fromArray', $result->prefix, 'the position is converted to bytes once');
     }
 
