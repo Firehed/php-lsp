@@ -2394,6 +2394,66 @@ final class MemberResolverTest extends TestCase
     }
 
     /**
+     * Code being edited can use traits in a cycle, which PHP rejects; the
+     * lookup still ends, and each trait brings in its own members.
+     */
+    public function testATraitCycleEnds(): void
+    {
+        $first = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $second = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $user = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $first,
+                kind: ClassKind::Trait_,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $first)],
+                traits: [$second],
+            ),
+            $this->createClassInfo(
+                $second,
+                kind: ClassKind::Trait_,
+                methods: ['stop' => $this->createMethodInfo('stop', Visibility::Public, $second)],
+                traits: [$first],
+            ),
+            $this->createClassInfo($user, traits: [$first]),
+        ));
+
+        self::assertSame($first, $resolver->findMethod($user, 'run', null)?->getName()->owner, 'the first trait\'s');
+        self::assertSame($second, $resolver->findMethod($user, 'stop', null)?->getName()->owner, 'the second\'s');
+    }
+
+    /**
+     * An alias that only changes visibility adapts the method under its own
+     * name.
+     */
+    public function testAnAliasChangingOnlyVisibilityAdaptsTheMethod(): void
+    {
+        $trait = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $user = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $trait,
+                kind: ClassKind::Trait_,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $trait)],
+            ),
+            $this->createClassInfo(
+                $user,
+                traits: [$trait],
+                traitAliases: [
+                    new TraitAlias(trait: null, method: 'run', newName: null, newVisibility: Visibility::Protected),
+                ],
+            ),
+        ));
+
+        self::assertNull($resolver->findMethod($user, 'run', null), 'protected from outside the class');
+        self::assertSame(
+            Visibility::Protected,
+            $resolver->findMethod($user, 'run', $user)?->visibility,
+            'protected inside it',
+        );
+    }
+
+    /**
      * PHP does not inherit a private constant (`do_inherit_class_constant`),
      * so it is undefined on a subclass even from the class declaring it.
      */
