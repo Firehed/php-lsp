@@ -174,7 +174,11 @@ class MemberKindTest extends TestCase
         MemberInfoInterface $root,
         bool $expected,
     ): void {
-        self::assertSame($expected, $kind->inheritsPrototype($inherited, $root), 'whether the override has a prototype');
+        self::assertSame(
+            $expected,
+            $kind->inheritsPrototype($inherited, $root),
+            'whether the override has a prototype',
+        );
     }
 
     /**

@@ -2497,7 +2497,11 @@ final class MemberResolverTest extends TestCase
             ),
         ));
 
-        self::assertSame($trait, $resolver->findProperty($user, 'x', $user)?->getName()->owner, 'the trait\'s declaration');
+        self::assertSame(
+            $trait,
+            $resolver->findProperty($user, 'x', $user)?->getName()->owner,
+            'the trait\'s declaration',
+        );
     }
 
     /**
