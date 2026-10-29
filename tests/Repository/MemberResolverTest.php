@@ -2283,6 +2283,64 @@ final class MemberResolverTest extends TestCase
     /**
      * @return class-string
      */
+    /**
+     * Code being edited can use traits in a cycle, which PHP rejects; the
+     * lookup must still end.
+     */
+    public function testATraitCycleEnds(): void
+    {
+        $a = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $b = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $user = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $a,
+                kind: ClassKind::Trait_,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $a)],
+                traits: [$a, $b],
+            ),
+            $this->createClassInfo($b, kind: ClassKind::Trait_, traits: [$a]),
+            $this->createClassInfo($user, traits: [$a]),
+        ));
+
+        self::assertSame(
+            'run',
+            $resolver->findMethod($user, 'run', null)?->getName()->name,
+            'a trait using itself or a trait that uses it back still brings in its own members',
+        );
+    }
+
+    /**
+     * An abstract trait method meeting an inherited one only has its signature
+     * checked (`zend_add_trait_method`), so protected access is still checked
+     * against the class that first declared the method.
+     */
+    public function testAnAbstractTraitMethodLeavesProtectedAccessToTheInheritedOne(): void
+    {
+        $parent = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $trait = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $user = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $sibling = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $parent,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Protected, $parent)],
+            ),
+            $this->createClassInfo(
+                $trait,
+                kind: ClassKind::Trait_,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Protected, $trait, isAbstract: true)],
+            ),
+            $this->createClassInfo($user, parent: $parent, traits: [$trait]),
+            $this->createClassInfo($sibling, parent: $parent),
+        ));
+
+        $found = $resolver->findMethod($user, 'run', $sibling);
+
+        self::assertNotNull($found, 'a sibling of the using class shares the protected method\'s first declarer');
+        self::assertSame($parent, $found->getName()->owner, 'the inherited method stays');
+    }
+
     private static function fakeClass(): string
     {
         // @phpstan-ignore return.type
@@ -2350,12 +2408,13 @@ final class MemberResolverTest extends TestCase
         Visibility $visibility,
         ClasslikeName $declaringClass,
         bool $isStatic = false,
+        bool $isAbstract = false,
     ): MethodInfo {
         return new MethodInfo(
             name: new MethodName($declaringClass, $name),
             visibility: $visibility,
             isStatic: $isStatic,
-            isAbstract: false,
+            isAbstract: $isAbstract,
             isFinal: false,
             parameters: [],
             returnType: null,
