@@ -33,7 +33,10 @@ use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\NullsafePropertyFetch;
+use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Expr\Ternary;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
@@ -311,7 +314,9 @@ final class ExpressionResolver implements ExpressionResolverInterface
                     => $this->memberResolver->findMethod($class, $name, $target->from, $target->static()),
                 $node instanceof ClassConstFetch => $this->memberResolver->findEnumCase($class, $name)
                     ?? $this->memberResolver->findConstant($class, $name, $target->from, $target->static()),
-                default => $this->memberResolver->findProperty($class, $name, $target->from, $target->static()),
+                $node instanceof PropertyFetch, $node instanceof NullsafePropertyFetch,
+                $node instanceof StaticPropertyFetch
+                    => $this->memberResolver->findProperty($class, $name, $target->from, $target->static()),
             };
             if ($member !== null) {
                 return $member;

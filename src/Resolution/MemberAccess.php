@@ -17,10 +17,11 @@ use PhpParser\Node\Name;
 final readonly class MemberAccess
 {
     private function __construct(
-        public Expr $node,
+        public Expr\MethodCall|Expr\NullsafeMethodCall|Expr\PropertyFetch|Expr\NullsafePropertyFetch
+        |Expr\StaticCall|Expr\StaticPropertyFetch|Expr\ClassConstFetch $node,
         public Expr|Name $receiver,
         public Identifier|Expr $name,
-        private bool $static,
+        public bool $doubleColon,
     ) {
     }
 
@@ -46,7 +47,7 @@ final readonly class MemberAccess
      */
     public function kind(): ?MemberAccessKind
     {
-        if (!$this->static) {
+        if (!$this->doubleColon) {
             return MemberAccessKind::Instance;
         }
         if (!$this->receiver instanceof Name) {

@@ -10,7 +10,6 @@ use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
 use Firehed\PhpLsp\Resolution\MemberAccess;
-use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\Scope;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
@@ -287,7 +286,7 @@ final class PositionLocator implements PositionLocatorInterface
         if ($access?->name === $name) {
             return [Slot::Member, $access];
         }
-        if ($access !== null && $access->kind() !== MemberAccessKind::Instance && $access->receiver === $name) {
+        if ($access?->doubleColon === true && $access->receiver === $name) {
             return [Slot::StaticReceiver, null];
         }
         if ($parent instanceof Arg && $parent->name === $name) {
