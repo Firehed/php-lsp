@@ -362,7 +362,10 @@ final class MemberResolver implements MemberResolverInterface
      * The types to search after a class's own members, in PHP's resolution order:
      * used traits, then the parent chain, then interfaces. A trait edge may carry
      * the method names excluded from that trait by an `insteadof` clause on this
-     * class. Unresolvable types are skipped.
+     * class. Unresolvable types are skipped, and so is an edge naming a kind of
+     * class-like PHP rejects there: a class extends only a class, and
+     * `implements` or an interface's `extends` names only interfaces
+     * (`zend_do_inheritance_ex` and `zend_do_implement_interfaces` in php-src).
      *
      * Every member lookup walks the type graph through this one method, so all
      * member kinds see the same hierarchy.
@@ -373,27 +376,46 @@ final class MemberResolver implements MemberResolverInterface
      */
     private function supertypes(ClassInfo $classInfo): array
     {
-        $names = [];
-        foreach ($classInfo->traits as $trait) {
-            $key = NameKind::ClassLike->normalize($trait->qualifiedName);
-            $names[] = [$trait, true, $classInfo->traitExclusions[$key] ?? []];
-        }
-        if ($classInfo->parent !== null) {
-            $names[] = [$classInfo->parent, false, []];
-        }
-        foreach ($classInfo->interfaces as $interface) {
-            $names[] = [$interface, false, []];
-        }
-
         $supertypes = [];
-        foreach ($names as [$name, $isOriginClass, $exclusions]) {
-            $info = $this->source->lookupClassLike($name);
-            if ($info !== null) {
-                $supertypes[] = [$info, $isOriginClass, $exclusions];
+        foreach ($this->usedTraits($classInfo) as [$trait, $exclusions]) {
+            $supertypes[] = [$trait, true, $exclusions];
+        }
+        $parent = $classInfo->parent === null ? null : $this->source->lookupClassLike($classInfo->parent);
+        if ($parent?->isClass() === true) {
+            $supertypes[] = [$parent, false, []];
+        }
+        foreach ($classInfo->interfaces as $name) {
+            $interface = $this->source->lookupClassLike($name);
+            if ($interface?->isInterface() === true) {
+                $supertypes[] = [$interface, false, []];
             }
         }
 
         return $supertypes;
+    }
+
+    /**
+     * The traits a class-like uses, each with the method names an `insteadof`
+     * clause excludes from it. PHP rejects `use` naming anything but a trait,
+     * and an interface using traits (`zend_do_bind_traits` in php-src).
+     *
+     * @return list<array{ClassInfo, list<string>}>
+     */
+    private function usedTraits(ClassInfo $classInfo): array
+    {
+        if ($classInfo->isInterface()) {
+            return [];
+        }
+        $traits = [];
+        foreach ($classInfo->traits as $name) {
+            $trait = $this->source->lookupClassLike($name);
+            if ($trait?->isTrait() === true) {
+                $key = NameKind::ClassLike->normalize($name->qualifiedName);
+                $traits[] = [$trait, $classInfo->traitExclusions[$key] ?? []];
+            }
+        }
+
+        return $traits;
     }
 
     /**
@@ -507,14 +529,20 @@ final class MemberResolver implements MemberResolverInterface
         );
     }
 
+    /**
+     * The trait method an alias names, from the traits $origin uses: the one
+     * the alias names, which PHP requires to be used ("Required Trait %s
+     * wasn't added to %s", zend_inheritance.c), else the first that declares
+     * the method.
+     */
     private function findAliasSource(ClassInfo $origin, TraitAlias $alias): ?MethodInfo
     {
-        if ($alias->trait !== null) {
-            return $this->traitMethod($alias->trait, $alias->method);
-        }
-        foreach ($origin->traits as $trait) {
+        foreach ($this->usedTraits($origin) as [$trait]) {
+            if ($alias->trait !== null && !$alias->trait->equals($trait->name)) {
+                continue;
+            }
             $method = $this->traitMethod($trait, $alias->method);
-            if ($method !== null) {
+            if ($method !== null || $alias->trait !== null) {
                 return $method;
             }
         }
@@ -526,10 +554,9 @@ final class MemberResolver implements MemberResolverInterface
      * A trait's method as declared, so an alias of it binds `self` to the
      * class using the trait.
      */
-    private function traitMethod(ClasslikeName $trait, string $name): ?MethodInfo
+    private function traitMethod(ClassInfo $trait, string $name): ?MethodInfo
     {
-        $origin = $this->source->lookupClassLike($trait);
-        return $origin === null ? null : ($this->declaredMethod($origin, $name, $trait)[0] ?? null);
+        return $this->declaredMethod($trait, $name, $trait->name)[0] ?? null;
     }
 
     /**
