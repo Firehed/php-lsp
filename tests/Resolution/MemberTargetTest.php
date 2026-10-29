@@ -26,8 +26,9 @@ final class MemberTargetTest extends TestCase
     }
 
     /**
-     * Only `parent::` forwards late static binding (PHP manual, Late Static
-     * Bindings): `static` is then the class the access is written in.
+     * `parent::`, `self::`, and `static::` all forward late static binding
+     * (PHP manual, Late Static Bindings), but seen from where the code is
+     * written only `parent::` names a class other than the one looked up.
      */
     #[DataProvider('kinds')]
     public function testOnlyAParentAccessNamesStatic(MemberAccessKind $kind, bool $forwards): void
