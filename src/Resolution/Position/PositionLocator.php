@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
 use Firehed\PhpLsp\Resolution\Scope;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
@@ -29,8 +30,7 @@ use PhpParser\NodeFinder;
  * punctuation of a declaration's header, and whether a call's closing
  * parenthesis is written.
  *
- * @phpstan-type MemberAccess Expr\MethodCall|Expr\NullsafeMethodCall|Expr\PropertyFetch
- *     |Expr\NullsafePropertyFetch|Expr\StaticCall|Expr\StaticPropertyFetch|Expr\ClassConstFetch
+ * @phpstan-import-type MemberAccess from ExpressionResolverInterface
  */
 final class PositionLocator implements PositionLocatorInterface
 {

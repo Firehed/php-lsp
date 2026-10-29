@@ -23,6 +23,9 @@ use PhpParser\Node\Param;
 
 /**
  * What an expression in a parsed document resolves to, its type included.
+ *
+ * @phpstan-type MemberAccess MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch
+ *     |StaticCall|StaticPropertyFetch|ClassConstFetch
  */
 interface ExpressionResolverInterface
 {
