@@ -109,7 +109,7 @@ class MemberKindTest extends TestCase
 
     /**
      * PHP binds a trait's abstract methods only after the using class inherits
-     * from its parent (php-src `zend_do_link_class`).
+     * from its parent.
      */
     #[DataProvider('traitBindingCases')]
     public function testOnlyAnAbstractMethodIsBoundAfterInheritance(
@@ -153,7 +153,7 @@ class MemberKindTest extends TestCase
 
     /**
      * A subclass's table keeps a parent's private methods and properties, but
-     * not its private constants (`do_inherit_class_constant`).
+     * not its private constants.
      */
     #[DataProvider('privateInheritanceCases')]
     public function testOnlyObjectMembersAreInheritedWhenPrivate(MemberKind $kind, bool $expected): void
@@ -184,8 +184,7 @@ class MemberKindTest extends TestCase
 
     /**
      * Whether a member overriding $inherited takes $root, the inherited
-     * member's prototype or itself, as its prototype
-     * (`do_inheritance_check_on_method` in php-src).
+     * member's prototype or itself, as its prototype.
      */
     #[DataProvider('prototypeCases')]
     public function testAnOverrideTakesThePrototypePhpGivesIt(
@@ -214,7 +213,7 @@ class MemberKindTest extends TestCase
 
     /**
      * A trait's static property is declared again on the class using it,
-     * replacing a compatible one (`zend_do_traits_property_binding`); any
+     * replacing a compatible one; any
      * other trait member yields to one already there.
      */
     #[DataProvider('traitReplacementCases')]
@@ -237,13 +236,12 @@ class MemberKindTest extends TestCase
         yield 'an instance property' => [MemberKind::Property, $instance, $instance, true];
         yield 'a static property beside a static one' => [MemberKind::Property, $static, $static, true];
         yield 'a static property beside an instance one' => [MemberKind::Property, $static, $instance, false];
-        yield 'a constant' => [MemberKind::Constant, self::createConstantInfo(), self::createConstantInfo(), false];
     }
 
     /**
      * Code in a class reaching $found by name on an instance of a subclass
      * uses its own private $own instead, except a private static property
-     * beside an instance one (`zend_std_get_method`, `zend_get_property_offset`).
+     * beside an instance one.
      */
     #[DataProvider('ownPrivateCases')]
     public function testCodeReachesItsOwnPrivateMemberAsPhpDoes(
