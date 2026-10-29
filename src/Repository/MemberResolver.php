@@ -183,11 +183,8 @@ final class MemberResolver implements MemberResolverInterface
 
     /**
      * The entry a name reaches on $class, if code in $from may use it (PHP
-     * manual, Visibility; `zend_std_get_method`, `zend_check_protected` and
-     * `zend_verify_const_access` in php-src). A private member is usable only
-     * from the class holding it; a protected one from classes related to its
-     * root or, for kinds {@see MemberKind::checksAccessByFirstDeclaration()}
-     * excludes, to the class holding it.
+     * manual, Visibility). A private member is usable only from the class
+     * holding it; a protected one from classes related to its root.
      *
      * @param array<string, array<string, MemberEntry>> $built
      */
@@ -203,7 +200,7 @@ final class MemberResolver implements MemberResolverInterface
         if ($entry === null) {
             return null;
         }
-        if ($from !== null && !$from->equals($entry->declaring->name)) {
+        if ($from !== null && $kind->checksAccessByFirstDeclaration() && !$from->equals($entry->declaring->name)) {
             $entry = $this->ownPrivate($class, $kind, $key, $from, $entry, $built) ?? $entry;
         }
         if (!$this->passes($entry->member, $filter)) {
@@ -212,10 +209,7 @@ final class MemberResolver implements MemberResolverInterface
         $usable = match ($entry->member->getVisibility()) {
             Visibility::Public => true,
             Visibility::Private => $from !== null && $from->equals($entry->declaring->name),
-            Visibility::Protected => $from !== null && $this->isRelated(
-                $from,
-                $kind->checksAccessByFirstDeclaration() ? $entry->root() : $entry->declaring->name,
-            ),
+            Visibility::Protected => $from !== null && $this->isRelated($from, $entry->root()),
         };
 
         return $usable ? $entry : null;
@@ -237,19 +231,17 @@ final class MemberResolver implements MemberResolverInterface
         array &$built,
     ): ?MemberEntry {
         $scope = $this->source->lookupClassLike($from);
-        if ($scope === null || !$this->isSubclassOf($class->name, $from)) {
-            return null;
-        }
-        $own = $this->table($scope, $kind, $built)[$key] ?? null;
+        $own = $scope === null ? null : ($this->table($scope, $kind, $built)[$key] ?? null);
         if (
             $own === null
             || $own->member->getVisibility() !== Visibility::Private
             || !$own->declaring->name->equals($from)
+            || !$kind->prefersOwnPrivate($own->member, $found->member)
         ) {
             return null;
         }
 
-        return $kind->prefersOwnPrivate($own->member, $found->member) ? $own : null;
+        return $this->isSubclassOf($class->name, $from) ? $own : null;
     }
 
     private function isRelated(ClasslikeName $a, ClasslikeName $b): bool
@@ -272,11 +264,10 @@ final class MemberResolver implements MemberResolverInterface
 
     /**
      * $class's table of $kind members, keyed by {@see MemberKind::keyFor()},
-     * built in the order PHP links the class (`zend_do_link_class` in
-     * php-src, as of PHP 8.5): its own members, then what its traits bring in
-     * before inheritance, then what it inherits from its parent, then its
-     * traits' abstract methods, then what its interfaces declare that it
-     * lacks.
+     * built in the order PHP (as of 8.5) adds members when it loads a class:
+     * its own members, then what its traits bring in before inheritance, then
+     * what it inherits from its parent, then its traits' abstract methods,
+     * then what its interfaces declare that it lacks.
      *
      * @param array<string, array<string, MemberEntry>> $built The tables already
      *        built for this lookup, so each class-like's is built once
@@ -304,12 +295,13 @@ final class MemberResolver implements MemberResolverInterface
         foreach ($this->usedTraits($class) as [$trait, $exclusions]) {
             $traits[] = [$trait, $exclusions, $this->table($trait, $kind, $built, $building)];
         }
-        $this->bindTraits($table, $class, $kind, $traits, beforeInheritance: true);
+        $aliases = $kind->takesTraitAdaptations() ? $this->aliasesByTrait($class, $traits) : [];
+        $this->bindTraits($table, $class, $kind, $traits, $aliases, beforeInheritance: true);
         $parent = $this->parentOf($class);
         if ($parent !== null) {
             $this->inherit($table, $this->table($parent, $kind, $built, $building), $kind);
         }
-        $this->bindTraits($table, $class, $kind, $traits, beforeInheritance: false);
+        $this->bindTraits($table, $class, $kind, $traits, $aliases, beforeInheritance: false);
         foreach ($this->interfacesOf($class) as $interface) {
             $table += $this->table($interface, $kind, $built, $building);
         }
@@ -319,26 +311,26 @@ final class MemberResolver implements MemberResolverInterface
 
     /**
      * Binds the members $class's traits bring in, at one of PHP's two passes
-     * (`zend_do_traits_method_binding` and `zend_traits_copy_functions` in
-     * php-src). Each trait brings in what its own table holds. For a method,
-     * every alias naming it is added first under the alias's name; then the
-     * method itself, unless an `insteadof` excludes it from that trait, which
-     * happens only before inheritance.
+     * around inheritance. Each trait brings in what its own table holds. For
+     * a method, every alias naming it is added first under the alias's name;
+     * then the method itself, unless an `insteadof` excludes it from that
+     * trait, which PHP applies only before inheritance.
      *
      * @param array<string, MemberEntry> $table
      * @param list<array{ClassInfo, list<string>, array<string, MemberEntry>}> $traits
+     * @param array<int, list<TraitAlias>> $aliases
      */
     private function bindTraits(
         array &$table,
         ClassInfo $class,
         MemberKind $kind,
         array $traits,
+        array $aliases,
         bool $beforeInheritance,
     ): void {
-        $aliases = $kind->isMethod() ? $this->aliasesByTrait($class, $traits) : [];
         foreach ($traits as $index => [, $exclusions, $traitTable]) {
             $excluded = [];
-            if ($kind->isMethod() && $beforeInheritance) {
+            if ($kind->takesTraitAdaptations() && $beforeInheritance) {
                 foreach ($exclusions as $name) {
                     $excluded[$kind->keyFor($name)] = true;
                 }
@@ -374,8 +366,7 @@ final class MemberResolver implements MemberResolverInterface
      * $class's aliases grouped by the used trait each draws from, by its index
      * in $traits: the trait it names, else the first whose table has the
      * method (PHP rejects one found in several). One naming a trait $class
-     * does not use draws from none ("Required Trait %s wasn't added to %s",
-     * zend_inheritance.c).
+     * does not use draws from none, as PHP rejects it.
      *
      * @param list<array{ClassInfo, list<string>, array<string, MemberEntry>}> $traits
      * @return array<int, list<TraitAlias>>
@@ -400,8 +391,7 @@ final class MemberResolver implements MemberResolverInterface
 
     /**
      * Adds a member a trait brings in, keeping one $class already has unless
-     * {@see MemberKind::traitReplacesExisting()} says otherwise
-     * (`zend_add_trait_method` in php-src).
+     * {@see MemberKind::traitReplacesExisting()} says otherwise.
      *
      * @param array<string, MemberEntry> $table
      */
@@ -441,8 +431,8 @@ final class MemberResolver implements MemberResolverInterface
     }
 
     /**
-     * Adds what $class inherits from its parent's table (`zend_do_inheritance`
-     * in php-src): each member it lacks, unless {@see MemberKind::inheritsPrivate()}
+     * Adds what $class inherits from its parent's table: each member it
+     * lacks, unless {@see MemberKind::inheritsPrivate()}
      * drops a private one; a member it has takes the inherited one's root as
      * its prototype, as {@see MemberKind::inheritsPrototype()} allows.
      *
