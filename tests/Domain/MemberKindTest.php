@@ -96,6 +96,31 @@ class MemberKindTest extends TestCase
     }
 
     /**
+     * @return iterable<string, array{MemberKind, MemberInfoInterface, bool}>
+     */
+    public static function traitBindingCases(): iterable
+    {
+        yield 'a concrete method' => [MemberKind::Method, self::createMethodInfo(), true];
+        yield 'an abstract method' => [MemberKind::Method, self::createMethodInfo(isAbstract: true), false];
+        yield 'a property' => [MemberKind::Property, self::createPropertyInfo(), true];
+        yield 'a constant' => [MemberKind::Constant, self::createConstantInfo(), true];
+        yield 'an enum case' => [MemberKind::EnumCase, self::createEnumCaseInfo(), true];
+    }
+
+    /**
+     * PHP binds a trait's abstract methods only after the using class inherits
+     * from its parent (php-src `zend_do_link_class`).
+     */
+    #[DataProvider('traitBindingCases')]
+    public function testOnlyAnAbstractMethodIsBoundAfterInheritance(
+        MemberKind $kind,
+        MemberInfoInterface $member,
+        bool $expected,
+    ): void {
+        self::assertSame($expected, $kind->bindsBeforeInheritance($member), "when a trait's {$kind->name} is bound");
+    }
+
+    /**
      * @return iterable<string, array{MemberKind}>
      */
     public static function caseSensitiveKinds(): iterable
@@ -155,13 +180,13 @@ class MemberKindTest extends TestCase
         );
     }
 
-    private static function createMethodInfo(): MethodInfo
+    private static function createMethodInfo(bool $isAbstract = false): MethodInfo
     {
         return new MethodInfo(
             name: new MethodName(ClasslikeName::fromFullyQualified(self::class), 'run'),
             visibility: Visibility::Public,
             isStatic: false,
-            isAbstract: false,
+            isAbstract: $isAbstract,
             isFinal: false,
             parameters: [],
             returnType: null,
