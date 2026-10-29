@@ -373,27 +373,44 @@ final class MemberResolver implements MemberResolverInterface
      */
     private function supertypes(ClassInfo $classInfo): array
     {
-        $names = [];
-        foreach ($classInfo->traits as $trait) {
-            $key = NameKind::ClassLike->normalize($trait->qualifiedName);
-            $names[] = [$trait, true, $classInfo->traitExclusions[$key] ?? []];
-        }
-        if ($classInfo->parent !== null) {
-            $names[] = [$classInfo->parent, false, []];
-        }
-        foreach ($classInfo->interfaces as $interface) {
-            $names[] = [$interface, false, []];
-        }
-
         $supertypes = [];
-        foreach ($names as [$name, $isOriginClass, $exclusions]) {
+        foreach ($this->usedTraits($classInfo) as [$trait, $exclusions]) {
+            $supertypes[] = [$trait, true, $exclusions];
+        }
+        $names = $classInfo->interfaces;
+        if ($classInfo->parent !== null) {
+            array_unshift($names, $classInfo->parent);
+        }
+        foreach ($names as $name) {
             $info = $this->source->lookupClassLike($name);
             if ($info !== null) {
-                $supertypes[] = [$info, $isOriginClass, $exclusions];
+                $supertypes[] = [$info, false, []];
             }
         }
 
         return $supertypes;
+    }
+
+    /**
+     * The traits a class-like uses, each with the method names an `insteadof`
+     * clause excludes from it. PHP rejects `use` naming anything but a trait
+     * (`zend_do_link_class` in php-src), so a name that is not one brings in
+     * nothing.
+     *
+     * @return list<array{ClassInfo, list<string>}>
+     */
+    private function usedTraits(ClassInfo $classInfo): array
+    {
+        $traits = [];
+        foreach ($classInfo->traits as $name) {
+            $trait = $this->source->lookupClassLike($name);
+            if ($trait?->isTrait() === true) {
+                $key = NameKind::ClassLike->normalize($name->qualifiedName);
+                $traits[] = [$trait, $classInfo->traitExclusions[$key] ?? []];
+            }
+        }
+
+        return $traits;
     }
 
     /**
@@ -507,15 +524,21 @@ final class MemberResolver implements MemberResolverInterface
         );
     }
 
+    /**
+     * An alias naming its trait draws only from that trait, which PHP requires
+     * $origin to use ("Required Trait %s wasn't added to %s",
+     * zend_inheritance.c).
+     */
     private function findAliasSource(ClassInfo $origin, TraitAlias $alias): ?MethodInfo
     {
-        if ($alias->trait !== null) {
-            return $this->traitMethod($alias->trait, $alias->method);
-        }
-        foreach ($origin->traits as $trait) {
-            $method = $this->traitMethod($trait, $alias->method);
-            if ($method !== null) {
-                return $method;
+        foreach ($this->usedTraits($origin) as [$trait]) {
+            if ($alias->trait === null) {
+                $method = $this->traitMethod($trait, $alias->method);
+                if ($method !== null) {
+                    return $method;
+                }
+            } elseif ($alias->trait->equals($trait->name)) {
+                return $this->traitMethod($trait, $alias->method);
             }
         }
 
@@ -526,10 +549,9 @@ final class MemberResolver implements MemberResolverInterface
      * A trait's method as declared, so an alias of it binds `self` to the
      * class using the trait.
      */
-    private function traitMethod(ClasslikeName $trait, string $name): ?MethodInfo
+    private function traitMethod(ClassInfo $trait, string $name): ?MethodInfo
     {
-        $origin = $this->source->lookupClassLike($trait);
-        return $origin === null ? null : ($this->declaredMethod($origin, $name, $trait)[0] ?? null);
+        return $this->declaredMethod($trait, $name, $trait->name)[0] ?? null;
     }
 
     /**

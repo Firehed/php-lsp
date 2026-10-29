@@ -2281,6 +2281,116 @@ final class MemberResolverTest extends TestCase
     }
 
     /**
+     * @return iterable<string, array{ClassKind, ClassKind}>
+     */
+    public static function nonTraitsInUse(): iterable
+    {
+        yield 'a class using a class' => [ClassKind::Class_, ClassKind::Class_];
+        yield 'a class using an interface' => [ClassKind::Class_, ClassKind::Interface_];
+        yield 'a class using an enum' => [ClassKind::Class_, ClassKind::Enum_];
+        yield 'an enum using a class' => [ClassKind::Enum_, ClassKind::Class_];
+        yield 'a trait using an interface' => [ClassKind::Trait_, ClassKind::Interface_];
+    }
+
+    /**
+     * PHP rejects `use` naming anything but a trait ("%s cannot use %s - it
+     * is not a trait", zend_inheritance.c). Code being edited often does, and
+     * the named class-like's members must not become the class's own.
+     */
+    #[DataProvider('nonTraitsInUse')]
+    public function testUseNamingANonTraitBringsInNothing(ClassKind $kind, ClassKind $usedKind): void
+    {
+        $used = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $origin = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $used,
+                kind: $usedKind,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Private, $used)],
+            ),
+            $this->createClassInfo($origin, kind: $kind, traits: [$used]),
+        ));
+
+        self::assertNull($resolver->findMethod($origin, 'run', $origin), 'the named class-like brings in nothing');
+        self::assertSame(
+            [],
+            $resolver->getMembersOfKind($origin, MemberKind::Method, $origin),
+            'nothing is listed through it',
+        );
+    }
+
+    /**
+     * A class naming itself in `use` uses no trait, so an alias adapting its
+     * own method finds no source rather than looking itself up again.
+     */
+    public function testAClassAliasingFromItselfResolvesItsOwnMethod(): void
+    {
+        $origin = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf($this->createClassInfo(
+            $origin,
+            methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $origin)],
+            traits: [$origin],
+            traitAliases: [
+                new TraitAlias(trait: null, method: 'run', newName: null, newVisibility: Visibility::Protected),
+            ],
+        )));
+
+        self::assertSame(
+            Visibility::Public,
+            $resolver->findMethod($origin, 'run', $origin)?->visibility,
+            'the class\'s own method, unadapted',
+        );
+    }
+
+    /**
+     * PHP matches class names case-insensitively, so an alias naming its
+     * trait in another case still draws from it.
+     */
+    public function testAnAliasNamingItsTraitInAnotherCaseDrawsFromIt(): void
+    {
+        $trait = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $written = ClasslikeName::fromFullyQualified(strtolower($trait->qualifiedName->fullyQualifiedName()));
+        $origin = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $trait,
+                kind: ClassKind::Trait_,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $trait)],
+            ),
+            $this->createClassInfo(
+                $origin,
+                traits: [$trait],
+                traitAliases: [new TraitAlias(trait: $written, method: 'run', newName: 'go', newVisibility: null)],
+            ),
+        ));
+
+        self::assertSame('go', $resolver->findMethod($origin, 'go', $origin)?->getName()->name, 'the alias resolves');
+    }
+
+    /**
+     * PHP rejects an alias naming a trait the class does not use ("Required
+     * Trait %s wasn't added to %s", zend_inheritance.c).
+     */
+    public function testAnAliasOfATraitTheClassDoesNotUseIsInvisible(): void
+    {
+        $trait = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $origin = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $trait,
+                kind: ClassKind::Trait_,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $trait)],
+            ),
+            $this->createClassInfo(
+                $origin,
+                traitAliases: [new TraitAlias(trait: $trait, method: 'run', newName: 'go', newVisibility: null)],
+            ),
+        ));
+
+        self::assertNull($resolver->findMethod($origin, 'go', $origin), 'an alias needs the trait to be used');
+    }
+
+    /**
      * @return class-string
      */
     private static function fakeClass(): string
