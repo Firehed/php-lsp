@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Resolution\Position;
 use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Parser\ParsedDocument;
+use Firehed\PhpLsp\Resolution\MemberAccess;
 use Firehed\PhpLsp\Resolution\Position\CallSite;
 use Firehed\PhpLsp\Resolution\Position\Located;
 use Firehed\PhpLsp\Resolution\Position\Slot;
@@ -26,7 +27,7 @@ final class LocatedTest extends TestCase
         $parsed = new ParsedDocument(new TextDocument('file:///t.php', 'php', 1, '<?php '), []);
         $offset = new ByteOffset(6);
         $written = new Variable('user');
-        $access = new PropertyFetch(new Variable('this'), 'user');
+        $access = MemberAccess::of(new PropertyFetch(new Variable('this'), 'user'));
         $scope = Scope::at(null, []);
         $call = new CallSite(new FuncCall(new Name('run')), 0, [], 0);
 
