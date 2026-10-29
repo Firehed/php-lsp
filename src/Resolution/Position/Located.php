@@ -6,22 +6,13 @@ namespace Firehed\PhpLsp\Resolution\Position;
 
 use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Parser\ParsedDocument;
-use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
+use Firehed\PhpLsp\Resolution\MemberAccess;
 use Firehed\PhpLsp\Resolution\Scope;
 use PhpParser\Node;
-use PhpParser\Node\Expr\ClassConstFetch;
-use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Expr\NullsafeMethodCall;
-use PhpParser\Node\Expr\NullsafePropertyFetch;
-use PhpParser\Node\Expr\PropertyFetch;
-use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Expr\StaticPropertyFetch;
 
 /**
  * What a document's structure has at a position, read once, for the position
  * services in this namespace to answer from. It does not leave this namespace.
- *
- * @phpstan-import-type MemberAccess from ExpressionResolverInterface
  */
 final readonly class Located
 {
@@ -37,8 +28,7 @@ final readonly class Located
         public Slot $slot,
         public string $prefix,
         public ?Node $written,
-        public MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch
-        |StaticCall|StaticPropertyFetch|ClassConstFetch|null $access,
+        public ?MemberAccess $access,
         public Scope $scope,
         public ?CallSite $call,
     ) {

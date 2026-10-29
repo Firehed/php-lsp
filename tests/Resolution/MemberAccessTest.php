@@ -46,8 +46,12 @@ final class MemberAccessTest extends TestCase
     }
 
     #[DataProvider('accesses')]
-    public function testReadsTheAccessWritten(Expr $node, Expr|Name $receiver, Node $name, ?MemberAccessKind $kind): void
-    {
+    public function testReadsTheAccessWritten(
+        Expr $node,
+        Expr|Name $receiver,
+        Node $name,
+        ?MemberAccessKind $kind,
+    ): void {
         $access = MemberAccess::of($node);
 
         self::assertNotNull($access, 'the node is a member access');

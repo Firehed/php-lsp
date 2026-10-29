@@ -10,22 +10,15 @@ use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr;
-use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
-use PhpParser\Node\Expr\NullsafePropertyFetch;
-use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Expr\StaticPropertyFetch;
 use PhpParser\Node\Param;
 
 /**
  * What an expression in a parsed document resolves to, its type included.
- *
- * @phpstan-type MemberAccess MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch
- *     |StaticCall|StaticPropertyFetch|ClassConstFetch
  */
 interface ExpressionResolverInterface
 {
@@ -45,11 +38,7 @@ interface ExpressionResolverInterface
      * on names no class-like or is an expression before `::`. A class named
      * as written resolves where it is written.
      */
-    public function memberTarget(
-        MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch
-        |StaticCall|StaticPropertyFetch|ClassConstFetch $access,
-        ParsedDocument $parsed,
-    ): ?MemberTarget;
+    public function memberTarget(MemberAccess $access, ParsedDocument $parsed): ?MemberTarget;
 
     /**
      * A parameter as its declaration declares it.
