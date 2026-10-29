@@ -259,7 +259,7 @@ final readonly class ParsedDeclarationSource implements DeclarationSourceInterfa
                 name: new MethodName($className, $name),
                 visibility: $this->visibilityFromFlags($stmt->flags),
                 isStatic: $stmt->isStatic(),
-                isAbstract: $stmt->isAbstract(),
+                isAbstract: $stmt->isAbstract() || $node instanceof Stmt\Interface_,
                 isFinal: $stmt->isFinal(),
                 parameters: $this->extractParameters($stmt->params),
                 returnType: TypeFactory::fromNode($stmt->returnType),
