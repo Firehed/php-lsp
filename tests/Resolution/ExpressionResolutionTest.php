@@ -497,6 +497,25 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testAConstructorOfAKeywordOutsideAClassIsUnresolved(): void
+    {
+        $members = $this->createMock(MemberResolverInterface::class);
+        $members->expects(self::never())->method('findMethod');
+        $this->resolver = self::resolverOver(
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+            $members,
+        );
+
+        self::assertNull(
+            $this->resolveAt(
+                'src/Mixed/ProceduralWithClass.php',
+                fn (string $content): array => $this->locateCursor($content, 'new_self_outside_class'),
+            ),
+            'self names no class outside one, so there is no constructor to look up',
+        );
+    }
+
     /**
      * `new parent()` makes an instance of the parent, so `static` in its
      * constructor is the parent itself, not the class it is written in.

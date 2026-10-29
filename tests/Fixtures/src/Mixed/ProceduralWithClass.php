@@ -85,3 +85,8 @@ function processArrayObject(\ArrayObject $obj): void
 {
     $obj->/*|array_object_access*/
 }
+
+function triggerNewSelfOutsideClass(): void
+{
+    new self(name/*|new_self_outside_class*/: 'x');
+}
