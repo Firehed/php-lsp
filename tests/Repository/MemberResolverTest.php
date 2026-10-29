@@ -2281,9 +2281,6 @@ final class MemberResolverTest extends TestCase
     }
 
     /**
-     * @return class-string
-     */
-    /**
      * Code being edited can use traits in a cycle, which PHP rejects; the
      * lookup must still end.
      */
@@ -2341,6 +2338,9 @@ final class MemberResolverTest extends TestCase
         self::assertSame($parent, $found->getName()->owner, 'the inherited method stays');
     }
 
+    /**
+     * @return class-string
+     */
     private static function fakeClass(): string
     {
         // @phpstan-ignore return.type
