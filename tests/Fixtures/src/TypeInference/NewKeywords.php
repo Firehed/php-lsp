@@ -20,7 +20,7 @@ class NewKeywords extends ParentClass
 
     public function createParent(): ParentClass
     {
-        return new parent();
+        return new parent(/*|parent_constructor*/);
     }
 
     public static function getInstance(): self

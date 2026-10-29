@@ -522,13 +522,10 @@ final class ExpressionResolutionTest extends TestCase
      */
     public function testAConstructorIsLookedUpWithoutForwardingStatic(): void
     {
-        $fixture = 'src/TypeInference/NewKeywords.php';
-        $content = $this->loadFixture($fixture);
-        $document = new TextDocument(self::uri($fixture), 'php', 1, $content);
-        $at = strpos($content, 'new parent(');
-        assert(is_int($at), "{$fixture} constructs its parent");
-        $located = (new PositionLocator(ProductionSyntaxSource::create()->source))
-            ->locate($document, new ByteOffset($at + strlen('new parent(')));
+        $located = (new PositionLocator(ProductionSyntaxSource::create()->source))->locate(...$this->positionIn(
+            'src/TypeInference/NewKeywords.php',
+            fn (string $content): array => $this->locateCursor($content, 'parent_constructor'),
+        ));
         assert($located->call !== null, 'the position is in the constructor\'s argument list');
 
         $members = $this->createMock(MemberResolverInterface::class);
