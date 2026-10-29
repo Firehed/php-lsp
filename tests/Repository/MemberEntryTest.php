@@ -30,6 +30,8 @@ final class MemberEntryTest extends TestCase
         $own = new MemberEntry(self::method($sub), $sub);
         $overriding = $own->withPrototype($inherited);
 
+        self::assertSame($own, $own->rootEntry(), 'no prototype: itself');
+        self::assertSame($inherited, $overriding->rootEntry(), 'its prototype');
         self::assertSame($sub->name, $own->root(), 'no prototype: its own class');
         self::assertSame($base->name, $overriding->root(), 'the prototype\'s class');
         self::assertSame($own->member, $overriding->member, 'the member is unchanged');
