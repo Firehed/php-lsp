@@ -41,6 +41,20 @@ enum MemberKind
     }
 
     /**
+     * Whether PHP binds $member, brought in by a trait, before the using class
+     * inherits from its parent. A trait's abstract methods are bound after, so
+     * they only fill a name nothing else provides (`zend_do_link_class` and
+     * `zend_add_trait_method` in php-src).
+     */
+    public function bindsBeforeInheritance(MemberInfoInterface $member): bool
+    {
+        return match ($this) {
+            self::Method => $member instanceof MethodInfo && !$member->isAbstract,
+            self::Constant, self::EnumCase, self::Property => true,
+        };
+    }
+
+    /**
      * Where a class-like holds the members of this kind, keyed by declared name.
      *
      * @return array<string, MemberInfoInterface>
