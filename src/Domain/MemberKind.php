@@ -48,10 +48,11 @@ enum MemberKind
      */
     public function bindsBeforeInheritance(MemberInfoInterface $member): bool
     {
-        return match ($this) {
-            self::Method => $member instanceof MethodInfo && !$member->isAbstract,
-            self::Constant, self::EnumCase, self::Property => true,
-        };
+        if ($this !== self::Method) {
+            return true;
+        }
+        assert($member instanceof MethodInfo, 'a method is described by a MethodInfo');
+        return !$member->isAbstract;
     }
 
     /**
