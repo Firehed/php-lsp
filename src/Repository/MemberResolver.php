@@ -237,8 +237,11 @@ final class MemberResolver implements MemberResolverInterface
     {
         $byKey = [];
         $seen = [];
-        foreach ($this->descend($origin, $origin, [], $seen) as [$classInfo, $declaringClass, $exclusions]) {
-            foreach ($kind->membersOf($classInfo) as $name => $member) {
+        foreach ($this->descend($origin, $origin, [], $seen) as [$classInfo, $declaringClass, $exclusions, $binding]) {
+            $members = $binding === null
+                ? $kind->membersOf($classInfo)
+                : $this->traitMembers($classInfo, $kind, $binding);
+            foreach ($members as $name => $member) {
                 $key = $kind->keyFor($name);
                 if ($wanted !== null && $key !== $wanted) {
                     continue;
@@ -251,6 +254,26 @@ final class MemberResolver implements MemberResolverInterface
         }
 
         return array_values($byKey);
+    }
+
+    /**
+     * The members a trait brings in at one binding: what each name resolves
+     * to within the trait itself, where its own members win over those of the
+     * traits it uses.
+     *
+     * @return array<string, MemberInfoInterface>
+     */
+    private function traitMembers(ClassInfo $trait, MemberKind $kind, TraitBinding $binding): array
+    {
+        $members = [];
+        foreach ($this->declarations($trait, $kind, null) as $declarations) {
+            $member = $declarations[0][0];
+            if ($kind->bindsBeforeInheritance($member) === ($binding === TraitBinding::BeforeInheritance)) {
+                $members[$member->getName()->name] = $member;
+            }
+        }
+
+        return $members;
     }
 
     /**
@@ -321,10 +344,14 @@ final class MemberResolver implements MemberResolverInterface
     }
 
     /**
+     * A used trait is yielded at each binding without descending into it;
+     * {@see self::traitMembers()} resolves what it brings in.
+     *
      * @param list<string> $exclusions
      * @param array<string, true> $seen
-     * @return iterable<array{ClassInfo, ClassInfo, list<string>}> Each class-like
-     *         with the class its members are declared in, and its excluded methods
+     * @return iterable<array{ClassInfo, ClassInfo, list<string>, ?TraitBinding}> Each
+     *         class-like with the class its members are declared in, its excluded
+     *         methods, and, for a used trait, when its members are bound
      */
     private function descend(
         ClassInfo $classInfo,
@@ -338,10 +365,14 @@ final class MemberResolver implements MemberResolverInterface
         }
         $seen[$key] = true;
 
-        yield [$classInfo, $declaring, $exclusions];
+        yield [$classInfo, $declaring, $exclusions, null];
 
-        foreach ($this->supertypes($classInfo) as [$superInfo, $isTrait, $superExclusions]) {
-            yield from $this->descend($superInfo, $isTrait ? $declaring : $superInfo, $superExclusions, $seen);
+        foreach ($this->supertypes($classInfo) as [$superInfo, $binding, $superExclusions]) {
+            if ($binding === null) {
+                yield from $this->descend($superInfo, $superInfo, $superExclusions, $seen);
+            } else {
+                yield [$superInfo, $declaring, $superExclusions, $binding];
+            }
         }
     }
 
@@ -359,37 +390,48 @@ final class MemberResolver implements MemberResolverInterface
     }
 
     /**
-     * The types to search after a class's own members, in PHP's resolution order:
-     * used traits, then the parent chain, then interfaces. A trait edge may carry
-     * the method names excluded from that trait by an `insteadof` clause on this
-     * class. Unresolvable types are skipped.
+     * The types to search after a class's own members, in PHP's binding order
+     * (`zend_do_link_class` in php-src): used traits, then the parent chain,
+     * then used traits again for what binds after inheritance, then
+     * interfaces. A trait edge may carry the method names excluded from that
+     * trait by an `insteadof` clause on this class. Unresolvable types are
+     * skipped.
      *
      * Every member lookup walks the type graph through this one method, so all
      * member kinds see the same hierarchy.
      *
-     * @return list<array{ClassInfo, bool, list<string>}> Supertype paired with
-     *         whether it is a used trait, whose members are flattened into the
-     *         using class, and any excluded method names.
+     * @return list<array{ClassInfo, ?TraitBinding, list<string>}> Supertype
+     *         paired with, for a used trait whose members are flattened into
+     *         the using class, when they are bound, and any excluded method
+     *         names.
      */
     private function supertypes(ClassInfo $classInfo): array
     {
-        $names = [];
+        $traits = [];
         foreach ($classInfo->traits as $trait) {
             $key = NameKind::ClassLike->normalize($trait->qualifiedName);
-            $names[] = [$trait, true, $classInfo->traitExclusions[$key] ?? []];
+            $traits[] = [$trait, $classInfo->traitExclusions[$key] ?? []];
+        }
+
+        $names = [];
+        foreach ($traits as [$trait, $exclusions]) {
+            $names[] = [$trait, TraitBinding::BeforeInheritance, $exclusions];
         }
         if ($classInfo->parent !== null) {
-            $names[] = [$classInfo->parent, false, []];
+            $names[] = [$classInfo->parent, null, []];
+        }
+        foreach ($traits as [$trait, $exclusions]) {
+            $names[] = [$trait, TraitBinding::AfterInheritance, $exclusions];
         }
         foreach ($classInfo->interfaces as $interface) {
-            $names[] = [$interface, false, []];
+            $names[] = [$interface, null, []];
         }
 
         $supertypes = [];
-        foreach ($names as [$name, $isOriginClass, $exclusions]) {
+        foreach ($names as [$name, $binding, $exclusions]) {
             $info = $this->source->lookupClassLike($name);
             if ($info !== null) {
-                $supertypes[] = [$info, $isOriginClass, $exclusions];
+                $supertypes[] = [$info, $binding, $exclusions];
             }
         }
 
