@@ -301,12 +301,11 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if (!$classNameNode instanceof Name) {
             return null;
         }
-        return $this->resolveMember(
-            $classNameNode,
-            '__construct',
-            $this->memberResolver->findMethod(...),
-            $parsed,
-        );
+        $scope = Scope::at($call, $parsed->tree);
+        $class = $scope->resolveClasslikeName($classNameNode);
+        return $class === null
+            ? null
+            : $this->memberResolver->findMethod($class, '__construct', $scope->getSelfName(), null);
     }
 
     private function resolveMethodCall(MethodCall|NullsafeMethodCall $expr, ParsedDocument $parsed): ?MethodInfo
