@@ -34,8 +34,8 @@ final class PositionLocatorTest extends TestCase
         yield 'a member not typed' => [$c . 'MethodAccess.php', 'this_empty', Slot::Member, '', false];
         yield 'a member being typed' => [$c . 'MethodAccess.php', 'this_prefix', Slot::Member, 'get', false];
         yield 'a member of a call' => [$c . 'MethodAccess.php', 'chain_on_string', Slot::Member, '', false];
-        yield 'a static member' => [$c . 'StaticAccess.php', 'self_prefix', Slot::StaticMember, 'get', false];
-        yield 'an enum case' => [$c . 'EnumUsage.php', 'unit_enum_prefix', Slot::StaticMember, 'A', false];
+        yield 'a static member' => [$c . 'StaticAccess.php', 'self_prefix', Slot::Member, 'get', false];
+        yield 'an enum case' => [$c . 'EnumUsage.php', 'unit_enum_prefix', Slot::Member, 'A', false];
         yield 'a second caught type' => [$c . 'MultiCatchCompletion.php', 'catch_multi', Slot::Catch, '', false];
         yield 'an implements list' => [
             $c . 'ImplementsCompletion.php', 'implements_empty', Slot::Implements, '', false,
@@ -129,7 +129,7 @@ final class PositionLocatorTest extends TestCase
             $c . 'NextLineParsedOnto.php', 'this_before_statement', Slot::Member, '', false,
         ];
         yield 'a static member with the next statement parsed onto it' => [
-            'TopLevel/static_before_statement.php', 'static_before_statement', Slot::StaticMember, '', false,
+            'TopLevel/static_before_statement.php', 'static_before_statement', Slot::Member, '', false,
         ];
         yield 'a nullsafe member in a for' => [
             'src/IncompleteCode/InControlStructures.php', 'nullsafe_access_for', Slot::Member, '', false,

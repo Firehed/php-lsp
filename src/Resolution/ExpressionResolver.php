@@ -13,11 +13,9 @@ use Firehed\PhpLsp\Domain\DocblockParser;
 use Firehed\PhpLsp\Domain\FunctionInfo;
 use Firehed\PhpLsp\Domain\FunctionName;
 use Firehed\PhpLsp\Domain\Location;
-use Firehed\PhpLsp\Domain\MemberInfoInterface;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
-use Firehed\PhpLsp\Domain\PropertyInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
@@ -45,7 +43,6 @@ use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Param;
 use PhpParser\Node\Stmt;
-use PhpParser\Node\VarLikeIdentifier;
 use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
 
 /**
@@ -77,28 +74,13 @@ final class ExpressionResolver implements ExpressionResolverInterface
             return $this->resolveNew($expr, $parsed);
         }
 
-        if ($expr instanceof MethodCall || $expr instanceof NullsafeMethodCall) {
-            return $this->resolveMethodCall($expr, $parsed);
-        }
-
-        if ($expr instanceof StaticCall) {
-            return $this->resolveStaticCall($expr, $parsed);
+        $access = MemberAccess::of($expr);
+        if ($access !== null) {
+            return $this->resolveMember($access, $parsed);
         }
 
         if ($expr instanceof FuncCall) {
             return $this->resolveFuncCall($expr, $parsed);
-        }
-
-        if ($expr instanceof PropertyFetch || $expr instanceof NullsafePropertyFetch) {
-            return $this->resolvePropertyFetch($expr, $parsed);
-        }
-
-        if ($expr instanceof StaticPropertyFetch) {
-            return $this->resolveStaticPropertyFetch($expr, $parsed);
-        }
-
-        if ($expr instanceof ClassConstFetch) {
-            return $this->resolveClassConstFetch($expr, $parsed);
         }
 
         if ($expr instanceof Expr\ConstFetch) {
@@ -144,22 +126,25 @@ final class ExpressionResolver implements ExpressionResolverInterface
         return new ResolvedVariable($binding->name, $type, $location);
     }
 
-    public function memberTarget(Expr|Name $receiver, ParsedDocument $parsed): ?MemberTarget
+    public function memberTarget(MemberAccess $access, ParsedDocument $parsed): ?MemberTarget
     {
-        $scope = Scope::at($receiver, $parsed->tree);
+        $kind = $access->kind();
+        if ($kind === null) {
+            return null;
+        }
+        $scope = Scope::at($access->node, $parsed->tree);
+        $receiver = $access->receiver;
         if ($receiver instanceof Name) {
             $className = $scope->resolveClasslikeName($receiver);
-            return $className === null ? null : new MemberTarget(
-                new ClasslikeType($className),
-                $scope->getSelfName(),
-                $scope->staticFor($receiver),
-            );
+            return $className === null
+                ? null
+                : new MemberTarget(new ClasslikeType($className), $scope->getSelfName(), $kind);
         }
         $type = $this->resolve($receiver, $parsed)?->getType();
         if ($type === null || $type->getResolvableClasslikeNames() === []) {
             return null;
         }
-        return new MemberTarget($type, $scope->getSelfName(), null);
+        return new MemberTarget($type, $scope->getSelfName(), $kind);
     }
 
     public function resolveParameter(Param $param, ParsedDocument $parsed): ParameterInfo
@@ -301,38 +286,43 @@ final class ExpressionResolver implements ExpressionResolverInterface
         if (!$classNameNode instanceof Name) {
             return null;
         }
-        return $this->resolveMember(
-            $classNameNode,
-            '__construct',
-            $this->memberResolver->findMethod(...),
-            $parsed,
-        );
+        $scope = Scope::at($call, $parsed->tree);
+        $class = $scope->resolveClasslikeName($classNameNode);
+        return $class === null
+            ? null
+            : $this->memberResolver->findMethod($class, '__construct', $scope->getSelfName(), null);
     }
 
-    private function resolveMethodCall(MethodCall|NullsafeMethodCall $expr, ParsedDocument $parsed): ?MethodInfo
+    /**
+     * The member an access names, looked up on what it is accessed on. Only a
+     * member visible from where the access is written is found.
+     */
+    private function resolveMember(MemberAccess $access, ParsedDocument $parsed): ?ResolvedSymbolInterface
     {
-        if (!$expr->name instanceof Identifier) {
+        if (!$access->name instanceof Identifier) {
             return null;
         }
-        return $this->resolveMember(
-            $expr->var,
-            $expr->name->toString(),
-            $this->memberResolver->findMethod(...),
-            $parsed,
-        );
-    }
-
-    private function resolveStaticCall(StaticCall $expr, ParsedDocument $parsed): ?MethodInfo
-    {
-        if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
+        $target = $this->memberTarget($access, $parsed);
+        if ($target === null) {
             return null;
         }
-        return $this->resolveMember(
-            $expr->class,
-            $expr->name->toString(),
-            $this->memberResolver->findMethod(...),
-            $parsed,
-        );
+        $name = $access->name->toString();
+        $node = $access->node;
+        foreach ($target->type->getResolvableClasslikeNames() as $class) {
+            $member = match (true) {
+                $node instanceof MethodCall, $node instanceof NullsafeMethodCall, $node instanceof StaticCall
+                    => $this->memberResolver->findMethod($class, $name, $target->from, $target->static()),
+                $node instanceof ClassConstFetch => $this->memberResolver->findEnumCase($class, $name)
+                    ?? $this->memberResolver->findConstant($class, $name, $target->from, $target->static()),
+                $node instanceof PropertyFetch, $node instanceof NullsafePropertyFetch,
+                $node instanceof StaticPropertyFetch
+                    => $this->memberResolver->findProperty($class, $name, $target->from, $target->static()),
+            };
+            if ($member !== null) {
+                return $member;
+            }
+        }
+        return null;
     }
 
     private function resolveFuncCall(FuncCall $expr, ParsedDocument $parsed): ?FunctionInfo
@@ -354,76 +344,6 @@ final class ExpressionResolver implements ExpressionResolverInterface
             }
         }
         return null;
-    }
-
-    private function resolvePropertyFetch(
-        PropertyFetch|NullsafePropertyFetch $expr,
-        ParsedDocument $parsed,
-    ): ?PropertyInfo {
-        if (!$expr->name instanceof Identifier) {
-            return null;
-        }
-        return $this->resolveMember(
-            $expr->var,
-            $expr->name->toString(),
-            $this->memberResolver->findProperty(...),
-            $parsed,
-        );
-    }
-
-    private function resolveStaticPropertyFetch(StaticPropertyFetch $expr, ParsedDocument $parsed): ?PropertyInfo
-    {
-        if (!$expr->name instanceof VarLikeIdentifier || !$expr->class instanceof Name) {
-            return null;
-        }
-        return $this->resolveMember(
-            $expr->class,
-            $expr->name->toString(),
-            $this->memberResolver->findProperty(...),
-            $parsed,
-        );
-    }
-
-    /**
-     * Access a member on the receiver, delegating the kind-specific lookup to
-     * `$find`. Only a member visible from where the access is written is found.
-     *
-     * @template T of MemberInfoInterface
-     * @param callable(ClasslikeName, string, ?ClasslikeName, ?ClasslikeName): ?T $find
-     * @return ?T
-     */
-    private function resolveMember(
-        Expr|Name $receiver,
-        string $memberName,
-        callable $find,
-        ParsedDocument $parsed,
-    ): ?MemberInfoInterface {
-        $target = $this->memberTarget($receiver, $parsed);
-        if ($target === null) {
-            return null;
-        }
-        foreach ($target->type->getResolvableClasslikeNames() as $className) {
-            $member = $find($className, $memberName, $target->from, $target->static);
-            if ($member !== null) {
-                return $member;
-            }
-        }
-        return null;
-    }
-
-    private function resolveClassConstFetch(ClassConstFetch $expr, ParsedDocument $parsed): ?ResolvedSymbolInterface
-    {
-        if (!$expr->name instanceof Identifier || !$expr->class instanceof Name) {
-            return null;
-        }
-        return $this->resolveMember(
-            $expr->class,
-            $expr->name->toString(),
-            fn (ClasslikeName $class, string $name, ?ClasslikeName $from, ?ClasslikeName $static)
-                => $this->memberResolver->findEnumCase($class, $name)
-                    ?? $this->memberResolver->findConstant($class, $name, $from, $static),
-            $parsed,
-        );
     }
 
     private function resolveConstFetch(Expr\ConstFetch $expr, ParsedDocument $parsed): ?ConstantInfo

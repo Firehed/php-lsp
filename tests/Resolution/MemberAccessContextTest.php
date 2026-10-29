@@ -9,7 +9,6 @@ use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\MemberFilter;
 use Firehed\PhpLsp\Domain\MemberKind;
 use Firehed\PhpLsp\Domain\ResolvedMemberInterface;
-use Firehed\PhpLsp\Tests\ProvidesMemberKindsTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -17,93 +16,47 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(MemberAccessContext::class)]
 class MemberAccessContextTest extends TestCase
 {
-    use ProvidesMemberKindsTrait;
-
-    private static function type(): ClasslikeType
+    /**
+     * @return iterable<string, array{MemberAccessKind, MemberFilter, bool, list<MemberKind>}>
+     */
+    public static function rules(): iterable
     {
-        return new ClasslikeType(ClasslikeName::fromFullyQualified(self::class));
-    }
-
-    public function testForInstanceSetsExpectedValues(): void
-    {
-        $ctx = MemberAccessContext::forInstance(self::type(), null, 'prefix');
-
-        self::assertSame(MemberAccessKind::Instance, $ctx->kind, 'kind');
-        self::assertSame(MemberFilter::Instance, $ctx->memberFilter, 'memberFilter');
-        self::assertFalse($ctx->offersClassConstant, 'offersClassConstant');
-        self::assertSame('prefix', $ctx->prefix, 'prefix');
-    }
-
-    public function testForStaticSetsExpectedValues(): void
-    {
-        $from = ClasslikeName::fromFullyQualified('App\\Caller');
-        $ctx = MemberAccessContext::forStatic(self::type(), $from, 'pre');
-
-        self::assertSame($from, $ctx->from, 'from');
-        self::assertSame(MemberAccessKind::Static, $ctx->kind, 'kind');
-        self::assertSame(MemberFilter::Static, $ctx->memberFilter, 'memberFilter');
-        self::assertTrue($ctx->offersClassConstant, 'offersClassConstant');
-        self::assertSame('pre', $ctx->prefix, 'prefix');
-    }
-
-    public function testOnlyAParentAccessCarriesAStatic(): void
-    {
-        $from = ClasslikeName::fromFullyQualified('App\\Caller');
-        $static = ClasslikeName::fromFullyQualified('App\\Late');
-
-        self::assertSame($static, MemberAccessContext::forParent(self::type(), $from, $static, '')->static, 'parent::');
-        self::assertNull(MemberAccessContext::forStatic(self::type(), $from, '')->static, 'a named class');
-        self::assertNull(MemberAccessContext::forInstance(self::type(), $from, '')->static, 'an instance');
-    }
-
-    public function testForParentSetsExpectedValues(): void
-    {
-        $ctx = MemberAccessContext::forParent(self::type(), null, null, '');
-
-        self::assertSame(MemberAccessKind::Parent, $ctx->kind, 'kind');
-        self::assertSame(MemberFilter::All, $ctx->memberFilter, 'memberFilter');
-        self::assertFalse($ctx->offersClassConstant, 'offersClassConstant');
-        self::assertSame('', $ctx->prefix, 'prefix');
-    }
-
-    #[DataProvider('allMemberKinds')]
-    public function testInstanceAcceptsAllKinds(MemberKind $memberKind): void
-    {
-        $ctx = MemberAccessContext::forInstance(self::type(), null, '');
-        $member = self::createStub(ResolvedMemberInterface::class);
-        $member->method('getMemberKind')->willReturn($memberKind);
-
-        self::assertTrue($ctx->accepts($member), "instance should accept $memberKind->name");
-    }
-
-    #[DataProvider('allMemberKinds')]
-    public function testStaticAcceptsAllKinds(MemberKind $memberKind): void
-    {
-        $ctx = MemberAccessContext::forStatic(self::type(), null, '');
-        $member = self::createStub(ResolvedMemberInterface::class);
-        $member->method('getMemberKind')->willReturn($memberKind);
-
-        self::assertTrue($ctx->accepts($member), "static should accept $memberKind->name");
-    }
-
-    #[DataProvider('parentAcceptsCases')]
-    public function testParentAcceptsOnlyMethods(MemberKind $memberKind, bool $expected): void
-    {
-        $ctx = MemberAccessContext::forParent(self::type(), null, null, '');
-        $member = self::createStub(ResolvedMemberInterface::class);
-        $member->method('getMemberKind')->willReturn($memberKind);
-
-        self::assertSame($expected, $ctx->accepts($member), "parent accepts $memberKind->name");
+        $every = MemberKind::cases();
+        yield 'an instance access' => [MemberAccessKind::Instance, MemberFilter::Instance, false, $every];
+        yield 'a static access' => [MemberAccessKind::Static, MemberFilter::Static, true, $every];
+        yield 'a parent:: access' => [MemberAccessKind::Parent, MemberFilter::All, false, [MemberKind::Method]];
     }
 
     /**
-     * @return iterable<string, array{MemberKind, bool}>
+     * @param list<MemberKind> $accepted
      */
-    public static function parentAcceptsCases(): iterable
-    {
-        yield 'Method' => [MemberKind::Method, true];
-        yield 'Property' => [MemberKind::Property, false];
-        yield 'Constant' => [MemberKind::Constant, false];
-        yield 'EnumCase' => [MemberKind::EnumCase, false];
+    #[DataProvider('rules')]
+    public function testCompletionRulesFollowTheAccessKind(
+        MemberAccessKind $kind,
+        MemberFilter $filter,
+        bool $offersClassConstant,
+        array $accepted,
+    ): void {
+        $target = new MemberTarget(
+            new ClasslikeType(ClasslikeName::fromFullyQualified(self::class)),
+            null,
+            $kind,
+        );
+
+        $context = new MemberAccessContext($target, 'pre');
+
+        self::assertSame($target, $context->target, 'what the access is');
+        self::assertSame('pre', $context->prefix, 'what is typed of the member name');
+        self::assertSame($filter, $context->memberFilter(), 'which members the lookup includes');
+        self::assertSame($offersClassConstant, $context->offersClassConstant(), 'whether ::class is offered');
+        foreach (MemberKind::cases() as $memberKind) {
+            $member = self::createStub(ResolvedMemberInterface::class);
+            $member->method('getMemberKind')->willReturn($memberKind);
+            self::assertSame(
+                in_array($memberKind, $accepted, true),
+                $context->accepts($member),
+                "whether a {$memberKind->name} is offered",
+            );
+        }
     }
 }

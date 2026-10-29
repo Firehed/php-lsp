@@ -9,6 +9,7 @@ use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Parser\NodeAtPosition;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Parser\SyntaxSource\SyntaxSourceInterface;
+use Firehed\PhpLsp\Resolution\MemberAccess;
 use Firehed\PhpLsp\Resolution\Scope;
 use PhpParser\Node;
 use PhpParser\Node\Arg;
@@ -53,7 +54,7 @@ final class PositionLocator implements PositionLocatorInterface
         $node = self::isWord($found) ? $found : (self::emptySlotNear($found, $parsed->tree, $code, $at) ?? $found);
         preg_match('/\$?[\w\\\\\x80-\xff]*$/', self::text($code, max(0, $at - 256), $at), $word);
         $prefix = $word[0] ?? '';
-        [$slot, $receiver] = match (true) {
+        [$slot, $access] = match (true) {
             self::inComment($found, $parsed->tree, $at) => [Slot::NotCode, null],
             $node instanceof FunctionLike => [self::headerSlot($node, $code, $at, $prefix) ?? Slot::Expression, null],
             $node instanceof Stmt\ClassLike => [self::memberHeaderSlot($node, $code, $at, $prefix), null],
@@ -76,7 +77,7 @@ final class PositionLocator implements PositionLocatorInterface
             $slot,
             $prefix,
             $written,
-            $receiver,
+            $access,
             Scope::at($node, $parsed->tree),
             $call,
         );
@@ -240,11 +241,12 @@ final class PositionLocator implements PositionLocatorInterface
     }
 
     /**
-     * @return array{Slot, Expr|Name|null}
+     * @return array{Slot, MemberAccess|null}
      */
     private static function classify(?Node $node, int $at): array
     {
         $parent = $node?->getAttribute('parent');
+        $access = MemberAccess::of($node);
         return match (true) {
             $node === null => [Slot::Expression, null],
             $node instanceof Scalar\String_ && $at <= $node->getEndFilePos() => [
@@ -264,14 +266,9 @@ final class PositionLocator implements PositionLocatorInterface
                 $parent instanceof Node\Param && $parent->var === $node ? Slot::DeclaredName : Slot::Variable,
                 null,
             ],
-            ($node instanceof Expr\MethodCall || $node instanceof Expr\NullsafeMethodCall
-                || $node instanceof Expr\PropertyFetch || $node instanceof Expr\NullsafePropertyFetch)
-                && $at > $node->var->getEndFilePos() && $at <= $node->name->getStartFilePos()
-                => [Slot::Member, $node->var],
-            ($node instanceof Expr\StaticCall || $node instanceof Expr\ClassConstFetch
-                || $node instanceof Expr\StaticPropertyFetch)
-                && $at > $node->class->getEndFilePos() && $at <= $node->name->getStartFilePos()
-                => [Slot::StaticMember, $node->class],
+            $access !== null
+                && $at > $access->receiver->getEndFilePos() && $at <= $access->name->getStartFilePos()
+                => [Slot::Member, $access],
             ($node instanceof Stmt\Property || $node instanceof Stmt\ClassConst)
                 && $at <= self::firstWrittenPart($node) => [self::memberStartSlot($node, $at), null],
             $node instanceof Identifier, $node instanceof Name, $node instanceof Expr\Error
@@ -281,24 +278,15 @@ final class PositionLocator implements PositionLocatorInterface
     }
 
     /**
-     * @return array{Slot, Expr|Name|null}
+     * @return array{Slot, MemberAccess|null}
      */
     private static function classifyName(Identifier|Name|Expr\Error $name, mixed $parent): array
     {
-        if (
-            ($parent instanceof Expr\MethodCall || $parent instanceof Expr\NullsafeMethodCall
-                || $parent instanceof Expr\PropertyFetch || $parent instanceof Expr\NullsafePropertyFetch)
-            && $parent->name === $name
-        ) {
-            return [Slot::Member, $parent->var];
+        $access = MemberAccess::of($parent instanceof Node ? $parent : null);
+        if ($access?->name === $name) {
+            return [Slot::Member, $access];
         }
-        if (
-            ($parent instanceof Expr\StaticCall || $parent instanceof Expr\ClassConstFetch
-                || $parent instanceof Expr\StaticPropertyFetch)
-        ) {
-            if ($parent->name === $name) {
-                return [Slot::StaticMember, $parent->class];
-            }
+        if ($access?->doubleColon === true && $access->receiver === $name) {
             return [Slot::StaticReceiver, null];
         }
         if ($parent instanceof Arg && $parent->name === $name) {

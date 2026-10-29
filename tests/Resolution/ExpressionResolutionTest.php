@@ -32,6 +32,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\MemberTarget;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
@@ -41,6 +42,10 @@ use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PhpParser\Node;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\Variable;
+use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -496,6 +501,79 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testAMemberNamedByAnExpressionIsUnresolved(): void
+    {
+        $members = $this->createMock(MemberResolverInterface::class);
+        $members->expects(self::never())->method('findMethod');
+        $expressions = new ExpressionResolver(
+            $members,
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+        );
+        $parsed = ProductionSyntaxSource::create()->source->parse(
+            new TextDocument(self::uri(self::DYNAMIC), 'php', 1, $this->loadFixture(self::DYNAMIC)),
+        );
+        $call = (new NodeFinder())->findFirst(
+            $parsed->tree,
+            static fn (Node $node): bool => $node instanceof MethodCall && $node->name instanceof Variable,
+        );
+        assert($call instanceof MethodCall, 'the fixture calls a method named by a variable on $this');
+
+        self::assertNull(
+            $expressions->resolve($call, $parsed),
+            'which member is called is only known at runtime',
+        );
+    }
+
+    public function testAConstructorOfAKeywordOutsideAClassIsUnresolved(): void
+    {
+        $members = $this->createMock(MemberResolverInterface::class);
+        $members->expects(self::never())->method('findMethod');
+        $this->resolver = self::resolverOver(
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+            $members,
+        );
+
+        self::assertNull(
+            $this->resolveAt(
+                'src/Mixed/ProceduralWithClass.php',
+                fn (string $content): array => $this->locateCursor($content, 'new_self_outside_class'),
+            ),
+            'self names no class outside one, so there is no constructor to look up',
+        );
+    }
+
+    /**
+     * `new parent()` makes an instance of the parent, so `static` in its
+     * constructor is the parent itself, not the class it is written in.
+     */
+    public function testAConstructorIsLookedUpWithoutForwardingStatic(): void
+    {
+        $located = (new PositionLocator(ProductionSyntaxSource::create()->source))->locate(...$this->positionIn(
+            'src/TypeInference/NewKeywords.php',
+            fn (string $content): array => $this->locateCursor($content, 'parent_constructor'),
+        ));
+        assert($located->call !== null, 'the position is in the constructor\'s argument list');
+
+        $members = $this->createMock(MemberResolverInterface::class);
+        $members->expects(self::once())
+            ->method('findMethod')
+            ->with(
+                self::className('Fixtures\Inheritance\ParentClass'),
+                '__construct',
+                self::className('Fixtures\TypeInference\NewKeywords'),
+                null,
+            );
+        $expressions = new ExpressionResolver(
+            $members,
+            self::createStub(SymbolSourceInterface::class),
+            self::createStub(TypeSourceInterface::class),
+        );
+
+        $expressions->resolveCallable($located->call->call, $located->parsed);
+    }
+
     public function testMethodCallResolvesOnTheReceiversClass(): void
     {
         $this->knowUserMembers();
@@ -567,7 +645,7 @@ final class ExpressionResolutionTest extends TestCase
         yield '$this' => [
             'MultiClass/MultiClass.php',
             'this_in_second_class',
-            new MemberTarget(new ClasslikeType($inMultiClass), $inMultiClass, null),
+            new MemberTarget(new ClasslikeType($inMultiClass), $inMultiClass, MemberAccessKind::Instance),
         ];
         yield 'parent::' => [
             'src/Completion/InheritanceCompletion.php',
@@ -575,16 +653,32 @@ final class ExpressionResolutionTest extends TestCase
             new MemberTarget(
                 new ClasslikeType(self::className('Fixtures\Inheritance\ChildClass')),
                 $inheritance,
-                $inheritance,
+                MemberAccessKind::Parent,
             ),
         ];
         yield 'a class by name, outside any class' => [
             $procedural,
             'standalone_static_access',
-            new MemberTarget(new ClasslikeType(self::className('Fixtures\Completion\StaticAccess')), null, null),
+            new MemberTarget(
+                new ClasslikeType(self::className('Fixtures\Completion\StaticAccess')),
+                null,
+                MemberAccessKind::Static,
+            ),
+        ];
+        $static = self::className('Fixtures\Completion\StaticAccess');
+        yield 'self::' => [
+            'src/Completion/StaticAccess.php',
+            'self_empty',
+            new MemberTarget(new ClasslikeType($static), $static, MemberAccessKind::Static),
+        ];
+        yield 'static::' => [
+            'src/Completion/StaticAccess.php',
+            'static_keyword',
+            new MemberTarget(new ClasslikeType($static), $static, MemberAccessKind::Static),
         ];
         yield 'self:: outside a class' => [$procedural, 'self_outside_class', null];
         yield 'an unbound variable' => [$procedural, 'unknown_var', null];
+        yield 'an expression before ::' => ['src/Completion/StaticAccess.php', 'this_static', null];
     }
 
     #[DataProvider('memberTargets')]
@@ -809,9 +903,9 @@ final class ExpressionResolutionTest extends TestCase
     {
         $located = (new PositionLocator(ProductionSyntaxSource::create()->source))
             ->locate(...$this->positionIn($fixture, $locate));
-        assert($located->receiver !== null, "a member is accessed at the position in {$fixture}");
+        assert($located->access !== null, "a member is accessed at the position in {$fixture}");
 
-        return $expressions->memberTarget($located->receiver, $located->parsed);
+        return $expressions->memberTarget($located->access, $located->parsed);
     }
 
     /**

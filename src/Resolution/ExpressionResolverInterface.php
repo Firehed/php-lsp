@@ -15,7 +15,6 @@ use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Name;
 use PhpParser\Node\Param;
 
 /**
@@ -35,11 +34,11 @@ interface ExpressionResolverInterface
     ): ?ResolvedCallableInterface;
 
     /**
-     * What a member accessed on $receiver is looked up on, or null when the
-     * receiver names no class-like. A class named as written resolves where it
-     * is written.
+     * What a member access is looked up on, or null when what it is accessed
+     * on names no class-like or is an expression before `::`. A class named
+     * as written resolves where it is written.
      */
-    public function memberTarget(Expr|Name $receiver, ParsedDocument $parsed): ?MemberTarget;
+    public function memberTarget(MemberAccess $access, ParsedDocument $parsed): ?MemberTarget;
 
     /**
      * A parameter as its declaration declares it.
