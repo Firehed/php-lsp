@@ -32,6 +32,7 @@ use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
+use Firehed\PhpLsp\Resolution\MemberAccessKind;
 use Firehed\PhpLsp\Resolution\MemberTarget;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
 use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
@@ -600,7 +601,7 @@ final class ExpressionResolutionTest extends TestCase
         yield '$this' => [
             'MultiClass/MultiClass.php',
             'this_in_second_class',
-            new MemberTarget(new ClasslikeType($inMultiClass), $inMultiClass, null),
+            new MemberTarget(new ClasslikeType($inMultiClass), $inMultiClass, MemberAccessKind::Instance),
         ];
         yield 'parent::' => [
             'src/Completion/InheritanceCompletion.php',
@@ -608,13 +609,17 @@ final class ExpressionResolutionTest extends TestCase
             new MemberTarget(
                 new ClasslikeType(self::className('Fixtures\Inheritance\ChildClass')),
                 $inheritance,
-                $inheritance,
+                MemberAccessKind::Parent,
             ),
         ];
         yield 'a class by name, outside any class' => [
             $procedural,
             'standalone_static_access',
-            new MemberTarget(new ClasslikeType(self::className('Fixtures\Completion\StaticAccess')), null, null),
+            new MemberTarget(
+                new ClasslikeType(self::className('Fixtures\Completion\StaticAccess')),
+                null,
+                MemberAccessKind::Static,
+            ),
         ];
         yield 'self:: outside a class' => [$procedural, 'self_outside_class', null];
         yield 'an unbound variable' => [$procedural, 'unknown_var', null];
