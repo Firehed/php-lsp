@@ -2320,6 +2320,29 @@ final class MemberResolverTest extends TestCase
     }
 
     /**
+     * A class naming itself in `use` uses no trait, so an alias adapting its
+     * own method finds no source rather than looking itself up again.
+     */
+    public function testAClassAliasingFromItselfResolvesItsOwnMethod(): void
+    {
+        $origin = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf($this->createClassInfo(
+            $origin,
+            methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $origin)],
+            traits: [$origin],
+            traitAliases: [
+                new TraitAlias(trait: null, method: 'run', newName: null, newVisibility: Visibility::Protected),
+            ],
+        )));
+
+        self::assertSame(
+            Visibility::Public,
+            $resolver->findMethod($origin, 'run', $origin)?->visibility,
+            'the class\'s own method, unadapted',
+        );
+    }
+
+    /**
      * PHP matches class names case-insensitively, so an alias naming its
      * trait in another case still draws from it.
      */
