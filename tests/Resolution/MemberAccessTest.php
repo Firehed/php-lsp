@@ -51,8 +51,9 @@ final class MemberAccessTest extends TestCase
         $access = MemberAccess::of($node);
 
         self::assertNotNull($access, 'the node is a member access');
-        self::assertSame($receiver, $access->receiver(), 'what the member is accessed on');
-        self::assertSame($name, $access->name(), 'the member name as written');
+        self::assertSame($node, $access->node, 'the access node itself');
+        self::assertSame($receiver, $access->receiver, 'what the member is accessed on');
+        self::assertSame($name, $access->name, 'the member name as written');
         self::assertSame($kind, $access->kind(), 'how the access is written');
     }
 
