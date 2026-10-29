@@ -11,10 +11,16 @@ use Firehed\PhpLsp\Domain\ParameterInfo;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
+use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
+use Firehed\PhpLsp\Resolution\MemberAccess;
+use Firehed\PhpLsp\Resolution\Position\Located;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
+use Firehed\PhpLsp\Resolution\Position\PositionLocatorInterface;
+use Firehed\PhpLsp\Resolution\Position\Slot;
 use Firehed\PhpLsp\Resolution\Position\SymbolAtPosition;
 use Firehed\PhpLsp\Resolution\ResolvedVariable;
+use Firehed\PhpLsp\Resolution\Scope;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
@@ -143,6 +149,47 @@ final class SymbolAtPositionTest extends TestCase
         self::assertNull(
             $this->symbolAtText($fixture, $lineText, $target, $symbols),
             'nothing at the position names a symbol',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{Slot, ?MemberAccess}>
+     */
+    public static function namesNotWritten(): iterable
+    {
+        yield 'a member name' => [
+            Slot::Member,
+            MemberAccess::of(new Expr\PropertyFetch(new Expr\Variable('user'), 'name')),
+        ];
+        yield 'a called name' => [Slot::CalledName, null];
+    }
+
+    /**
+     * A slot whose word is not written yet holds nothing to resolve.
+     */
+    #[DataProvider('namesNotWritten')]
+    public function testNothingResolvesForANameNotWritten(Slot $slot, ?MemberAccess $access): void
+    {
+        $document = new TextDocument('file:///t.php', 'php', 1, '<?php ');
+        $offset = new ByteOffset(6);
+        $locator = self::createStub(PositionLocatorInterface::class);
+        $locator->method('locate')->willReturn(new Located(
+            new ParsedDocument($document, []),
+            $offset,
+            $slot,
+            '',
+            null,
+            $access,
+            Scope::at(null, []),
+            null,
+        ));
+        $expressions = $this->createMock(ExpressionResolverInterface::class);
+        $expressions->expects(self::never())->method('resolve');
+
+        self::assertNull(
+            (new SymbolAtPosition($locator, $expressions, self::createStub(SymbolSourceInterface::class)))
+                ->symbolAt($document, $offset),
+            'no word is written to name a symbol',
         );
     }
 
