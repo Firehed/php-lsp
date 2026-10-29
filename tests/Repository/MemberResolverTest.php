@@ -2281,6 +2281,79 @@ final class MemberResolverTest extends TestCase
     }
 
     /**
+     * @return iterable<string, array{ClassKind, string, ClassKind}>
+     */
+    public static function edgesPhpRejects(): iterable
+    {
+        // php-src zend_inheritance.c rejects each of these when linking the class.
+        yield 'a class using a class as a trait' => [ClassKind::Class_, 'traits', ClassKind::Class_];
+        yield 'a class using an interface as a trait' => [ClassKind::Class_, 'traits', ClassKind::Interface_];
+        yield 'an interface using a trait' => [ClassKind::Interface_, 'traits', ClassKind::Trait_];
+        yield 'a class extending an interface' => [ClassKind::Class_, 'parent', ClassKind::Interface_];
+        yield 'a class extending a trait' => [ClassKind::Class_, 'parent', ClassKind::Trait_];
+        yield 'a class extending an enum' => [ClassKind::Class_, 'parent', ClassKind::Enum_];
+        yield 'a class implementing a class' => [ClassKind::Class_, 'interfaces', ClassKind::Class_];
+        yield 'a class implementing a trait' => [ClassKind::Class_, 'interfaces', ClassKind::Trait_];
+        yield 'an interface extending a class' => [ClassKind::Interface_, 'interfaces', ClassKind::Class_];
+    }
+
+    /**
+     * Code being edited often names the wrong kind of class-like; such an edge
+     * brings in no members and makes no subclass.
+     */
+    #[DataProvider('edgesPhpRejects')]
+    public function testAnEdgePhpRejectsIsNoEdge(ClassKind $kind, string $edge, ClassKind $targetKind): void
+    {
+        $target = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $origin = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $target,
+                kind: $targetKind,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $target)],
+            ),
+            $this->createClassInfo(
+                $origin,
+                kind: $kind,
+                parent: $edge === 'parent' ? $target : null,
+                traits: $edge === 'traits' ? [$target] : [],
+                interfaces: $edge === 'interfaces' ? [$target] : [],
+            ),
+        ));
+
+        self::assertNull($resolver->findMethod($origin, 'run', $origin), 'the named class-like brings in nothing');
+        self::assertSame(
+            [],
+            $resolver->getMembersOfKind($origin, MemberKind::Method, $origin),
+            'nothing is listed through it',
+        );
+        self::assertFalse($resolver->isSubclassOf($origin, $target), 'it is not a supertype');
+    }
+
+    /**
+     * PHP rejects an alias naming a trait the class does not use ("Required
+     * Trait %s wasn't added to %s", zend_inheritance.c).
+     */
+    public function testAnAliasOfATraitTheClassDoesNotUseIsInvisible(): void
+    {
+        $trait = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $origin = ClasslikeName::fromFullyQualified(self::fakeClass());
+        $resolver = new MemberResolver($this->sourceOf(
+            $this->createClassInfo(
+                $trait,
+                kind: ClassKind::Trait_,
+                methods: ['run' => $this->createMethodInfo('run', Visibility::Public, $trait)],
+            ),
+            $this->createClassInfo(
+                $origin,
+                traitAliases: [new TraitAlias(trait: $trait, method: 'run', newName: 'go', newVisibility: null)],
+            ),
+        ));
+
+        self::assertNull($resolver->findMethod($origin, 'go', $origin), 'an alias needs the trait to be used');
+    }
+
+    /**
      * @return class-string
      */
     private static function fakeClass(): string
