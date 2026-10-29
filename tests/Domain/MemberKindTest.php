@@ -123,6 +123,26 @@ class MemberKindTest extends TestCase
     /**
      * @return iterable<string, array{MemberKind, bool}>
      */
+    public static function traitAdaptationCases(): iterable
+    {
+        yield 'constant' => [MemberKind::Constant, false];
+        yield 'enum case' => [MemberKind::EnumCase, false];
+        yield 'method' => [MemberKind::Method, true];
+        yield 'property' => [MemberKind::Property, false];
+    }
+
+    /**
+     * `as` and `insteadof` adapt only methods.
+     */
+    #[DataProvider('traitAdaptationCases')]
+    public function testOnlyMethodsTakeTraitAdaptations(MemberKind $kind, bool $expected): void
+    {
+        self::assertSame($expected, $kind->takesTraitAdaptations(), $kind->name);
+    }
+
+    /**
+     * @return iterable<string, array{MemberKind, bool}>
+     */
     public static function privateInheritanceCases(): iterable
     {
         yield 'constant' => [MemberKind::Constant, false];
