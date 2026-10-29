@@ -29,6 +29,8 @@ use Firehed\PhpLsp\Resolution\CallContext;
 use Firehed\PhpLsp\Resolution\Expected;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
+use Firehed\PhpLsp\Resolution\MemberAccessKind;
+use Firehed\PhpLsp\Resolution\MemberTarget;
 use Firehed\PhpLsp\Resolution\Position\CallAtPositionInterface;
 use Firehed\PhpLsp\Resolution\Position\ExpectedAtPosition;
 use Firehed\PhpLsp\Resolution\Position\PositionLocator;
@@ -584,7 +586,7 @@ final class ExpectedAtPositionTest extends TestCase
         yield 'instance property' => [
             'before_instance_property',
             '$this->la',
-            MemberAccessContext::forInstance($subject, self::className($class), 'la'),
+            self::instance($subject, $class, 'la'),
         ];
         yield 'static property, whose name omits its `$`' => [
             'before_static_property',
@@ -753,9 +755,9 @@ final class ExpectedAtPositionTest extends TestCase
     /**
      * @param ?string $from The class-like the access is written in
      */
-    private static function instance(TypeInterface $type, ?string $from): MemberAccessContext
+    private static function instance(TypeInterface $type, ?string $from, string $prefix = ''): MemberAccessContext
     {
-        return MemberAccessContext::forInstance($type, $from === null ? null : self::className($from), '');
+        return self::access($type, $from, MemberAccessKind::Instance, $prefix);
     }
 
     /**
@@ -763,15 +765,24 @@ final class ExpectedAtPositionTest extends TestCase
      */
     private static function static(TypeInterface $type, ?string $from, string $prefix = ''): MemberAccessContext
     {
-        return MemberAccessContext::forStatic($type, $from === null ? null : self::className($from), $prefix);
+        return self::access($type, $from, MemberAccessKind::Static, $prefix);
     }
 
-    /**
-     * A `parent::` access written in $from, which `static` names.
-     */
     private static function parent(TypeInterface $type, string $from, string $prefix = ''): MemberAccessContext
     {
-        return MemberAccessContext::forParent($type, self::className($from), self::className($from), $prefix);
+        return self::access($type, $from, MemberAccessKind::Parent, $prefix);
+    }
+
+    private static function access(
+        TypeInterface $type,
+        ?string $from,
+        MemberAccessKind $kind,
+        string $prefix,
+    ): MemberAccessContext {
+        return new MemberAccessContext(
+            new MemberTarget($type, $from === null ? null : self::className($from), $kind),
+            $prefix,
+        );
     }
 
     private static function className(string $fqn): ClasslikeName
