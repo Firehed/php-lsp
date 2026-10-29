@@ -586,6 +586,15 @@ final class ParsedDeclarationSourceTest extends TestCase
             false,
             true,
         ];
+        // PHP marks every interface method abstract (zend_compile.c, in_interface).
+        yield 'an interface method' => [
+            'src/Repository/UserRepository.php',
+            'Fixtures\Repository\UserRepository',
+            'find',
+            Visibility::Public,
+            false,
+            true,
+        ];
     }
 
     #[DataProvider('methodModifiers')]
