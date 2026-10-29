@@ -41,6 +41,78 @@ enum MemberKind
     }
 
     /**
+     * Whether PHP binds $member, brought in by a trait, before the using class
+     * inherits from its parent. A trait's abstract methods are bound after, so
+     * they only fill a name nothing else provides (`zend_do_link_class` and
+     * `zend_add_trait_method` in php-src).
+     */
+    public function bindsBeforeInheritance(MemberInfoInterface $member): bool
+    {
+        if ($this !== self::Method) {
+            return true;
+        }
+        assert($member instanceof MethodInfo, 'a method is described by a MethodInfo');
+        return !$member->isAbstract;
+    }
+
+    /**
+     * Whether a subclass's table keeps a parent's private member of this kind:
+     * it does for methods and properties, but not for constants
+     * (`do_inherit_class_constant` in php-src), which enum cases are.
+     */
+    public function inheritsPrivate(): bool
+    {
+        return $this->checksAccessByFirstDeclaration();
+    }
+
+    /**
+     * Whether a member overriding $inherited takes $root, the inherited
+     * member's prototype or else itself, as its own prototype
+     * (`do_inheritance_check_on_method` in php-src). A private method that is
+     * neither abstract nor a constructor gives none, nor does a constructor
+     * whose root is not abstract; constants and enum cases have none.
+     */
+    public function inheritsPrototype(MemberInfoInterface $inherited, MemberInfoInterface $root): bool
+    {
+        if ($this === self::Property) {
+            return $inherited->getVisibility() !== Visibility::Private;
+        }
+        if ($this !== self::Method) {
+            return false;
+        }
+        assert($inherited instanceof MethodInfo && $root instanceof MethodInfo, 'methods are described by MethodInfo');
+        if ($this->normalize($inherited->name->name) === $this->normalize('__construct')) {
+            return $root->isAbstract;
+        }
+        return $inherited->visibility !== Visibility::Private || $inherited->isAbstract;
+    }
+
+    /**
+     * Whether $member, brought in by a trait, replaces a member of its name the
+     * class already has. A static property does, as the trait declares it
+     * again (`zend_do_traits_property_binding` in php-src); anything else
+     * yields.
+     */
+    public function traitReplacesExisting(MemberInfoInterface $member): bool
+    {
+        return $this === self::Property && $member->isStatic();
+    }
+
+    /**
+     * Whether code reaching $found by name, on an instance of a subclass of
+     * its own class, uses that class's private $own instead
+     * (`zend_std_get_method`, `zend_get_property_offset` in php-src). A
+     * private static property is not used beside an instance one.
+     */
+    public function prefersOwnPrivate(MemberInfoInterface $own, MemberInfoInterface $found): bool
+    {
+        if (!$this->checksAccessByFirstDeclaration()) {
+            return false;
+        }
+        return $this === self::Method || !$own->isStatic() || $found->isStatic();
+    }
+
+    /**
      * Where a class-like holds the members of this kind, keyed by declared name.
      *
      * @return array<string, MemberInfoInterface>
