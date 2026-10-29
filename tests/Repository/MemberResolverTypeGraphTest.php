@@ -112,7 +112,8 @@ final class MemberResolverTypeGraphTest extends TestCase
             $expected[strtolower($method->getName())] = $method->isAbstract();
         }
         $resolved = [];
-        foreach ($this->resolver->getMembersOfKind(ClasslikeName::fromFullyQualified($fqcn), MemberKind::Method, null) as $method) {
+        $class = ClasslikeName::fromFullyQualified($fqcn);
+        foreach ($this->resolver->getMembersOfKind($class, MemberKind::Method, null) as $method) {
             assert($method instanceof MethodInfo, 'a method kind lists methods');
             $resolved[strtolower($method->getName()->name)] = $method->isAbstract;
         }
