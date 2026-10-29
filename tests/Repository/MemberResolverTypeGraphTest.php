@@ -15,6 +15,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
+use ReflectionMethod;
 use ReflectionProperty;
 
 /**
@@ -62,6 +63,12 @@ final class MemberResolverTypeGraphTest extends TestCase
             'trait alias whose new name collides with an inherited method'
                 => ['Fixtures\Hierarchy\TraitAliasCollidingUser'],
             'trait alias without an explicit source trait' => ['Fixtures\Hierarchy\TraitNamelessAliasUser'],
+            'abstract trait method beside a parent method' => ['Fixtures\Hierarchy\AbstractTraitOverParentUser'],
+            'abstract trait method beside a concrete trait method'
+                => ['Fixtures\Hierarchy\AbstractBeforeConcreteTraitUser'],
+            'trait whose own abstract method overrides a used trait'
+                => ['Fixtures\Hierarchy\AbstractOverConcreteTraitUser'],
+            'abstract trait method alone' => ['Fixtures\Hierarchy\AbstractTraitOnlyUser'],
             'enum implementing interface' => ['Fixtures\Hierarchy\EnumWithInterface'],
             'constructor promotion by every modifier' => ['Fixtures\Utility\PromotedModifiers'],
         ];
@@ -88,6 +95,31 @@ final class MemberResolverTypeGraphTest extends TestCase
             self::normalize($this->publicMemberNames($fqcn, MemberKind::Method)),
             'resolved public methods should match the methods available at runtime',
         );
+    }
+
+    /**
+     * Which declaration a method name means shows in whether it is abstract:
+     * PHP binds a trait's abstract methods only after inheritance (php-src
+     * `zend_do_link_class`, `zend_add_trait_method`).
+     *
+     * @param class-string $fqcn
+     */
+    #[DataProvider('hierarchyTypes')]
+    public function testPublicMethodsAreAbstractAsAtRuntime(string $fqcn): void
+    {
+        $expected = [];
+        foreach ((new ReflectionClass($fqcn))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            $expected[strtolower($method->getName())] = $method->isAbstract();
+        }
+        $resolved = [];
+        foreach ($this->resolver->getMembersOfKind(ClasslikeName::fromFullyQualified($fqcn), MemberKind::Method, null) as $method) {
+            assert($method instanceof MethodInfo, 'a method kind lists methods');
+            $resolved[strtolower($method->getName()->name)] = $method->isAbstract;
+        }
+        ksort($expected);
+        ksort($resolved);
+
+        self::assertSame($expected, $resolved, 'each method should be abstract exactly when it is at runtime');
     }
 
     /**
