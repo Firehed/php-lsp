@@ -14,7 +14,6 @@ use Firehed\PhpLsp\Resolution\Expected;
 use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\NameQuery;
-use PhpParser\Node\Name;
 
 final class ExpectedAtPosition implements ExpectedAtPositionInterface
 {
@@ -97,13 +96,9 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
     {
         // A static property's name is written with its `$`; a member's name is not.
         $prefix = ltrim($located->prefix, '$');
-        $receiver = $located->receiver;
-        assert($receiver !== null, 'a member is accessed on something');
-        if ($located->slot === Slot::StaticMember && !$receiver instanceof Name) {
-            return null;
-        }
+        assert($located->access !== null, 'a member is accessed on something');
 
-        $target = $this->expressions->memberTarget($receiver, $located->parsed);
+        $target = $this->expressions->memberTarget($located->access, $located->parsed);
         return match (true) {
             $target === null => null,
             $located->slot === Slot::Member => MemberAccessContext::forInstance($target->type, $target->from, $prefix),

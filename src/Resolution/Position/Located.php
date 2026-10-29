@@ -8,8 +8,13 @@ use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Resolution\Scope;
 use PhpParser\Node;
-use PhpParser\Node\Expr;
-use PhpParser\Node\Name;
+use PhpParser\Node\Expr\ClassConstFetch;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\NullsafePropertyFetch;
+use PhpParser\Node\Expr\PropertyFetch;
+use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\StaticPropertyFetch;
 
 /**
  * What a document's structure has at a position, read once, for the position
@@ -20,8 +25,8 @@ final readonly class Located
     /**
      * @param string $prefix The part of a word written before the position
      * @param ?Node $written The node for the word
-     * @param Expr|Name|null $receiver What a member is accessed on: set exactly
-     *        when the slot is {@see Slot::Member} or {@see Slot::StaticMember}
+     * @param $access The member access whose name is at the position: set
+     *        exactly when the slot is {@see Slot::Member} or {@see Slot::StaticMember}
      */
     public function __construct(
         public ParsedDocument $parsed,
@@ -29,7 +34,8 @@ final readonly class Located
         public Slot $slot,
         public string $prefix,
         public ?Node $written,
-        public Expr|Name|null $receiver,
+        public MethodCall|NullsafeMethodCall|PropertyFetch|NullsafePropertyFetch
+        |StaticCall|StaticPropertyFetch|ClassConstFetch|null $access,
         public Scope $scope,
         public ?CallSite $call,
     ) {

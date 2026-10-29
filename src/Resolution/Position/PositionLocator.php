@@ -28,6 +28,9 @@ use PhpParser\NodeFinder;
  * separate the position from a slot nothing is written in yet, the
  * punctuation of a declaration's header, and whether a call's closing
  * parenthesis is written.
+ *
+ * @phpstan-type MemberAccess Expr\MethodCall|Expr\NullsafeMethodCall|Expr\PropertyFetch
+ *     |Expr\NullsafePropertyFetch|Expr\StaticCall|Expr\StaticPropertyFetch|Expr\ClassConstFetch
  */
 final class PositionLocator implements PositionLocatorInterface
 {
@@ -53,7 +56,7 @@ final class PositionLocator implements PositionLocatorInterface
         $node = self::isWord($found) ? $found : (self::emptySlotNear($found, $parsed->tree, $code, $at) ?? $found);
         preg_match('/\$?[\w\\\\\x80-\xff]*$/', self::text($code, max(0, $at - 256), $at), $word);
         $prefix = $word[0] ?? '';
-        [$slot, $receiver] = match (true) {
+        [$slot, $access] = match (true) {
             self::inComment($found, $parsed->tree, $at) => [Slot::NotCode, null],
             $node instanceof FunctionLike => [self::headerSlot($node, $code, $at, $prefix) ?? Slot::Expression, null],
             $node instanceof Stmt\ClassLike => [self::memberHeaderSlot($node, $code, $at, $prefix), null],
@@ -76,7 +79,7 @@ final class PositionLocator implements PositionLocatorInterface
             $slot,
             $prefix,
             $written,
-            $receiver,
+            $access,
             Scope::at($node, $parsed->tree),
             $call,
         );
@@ -240,7 +243,7 @@ final class PositionLocator implements PositionLocatorInterface
     }
 
     /**
-     * @return array{Slot, Expr|Name|null}
+     * @return array{Slot, MemberAccess|null}
      */
     private static function classify(?Node $node, int $at): array
     {
@@ -267,11 +270,11 @@ final class PositionLocator implements PositionLocatorInterface
             ($node instanceof Expr\MethodCall || $node instanceof Expr\NullsafeMethodCall
                 || $node instanceof Expr\PropertyFetch || $node instanceof Expr\NullsafePropertyFetch)
                 && $at > $node->var->getEndFilePos() && $at <= $node->name->getStartFilePos()
-                => [Slot::Member, $node->var],
+                => [Slot::Member, $node],
             ($node instanceof Expr\StaticCall || $node instanceof Expr\ClassConstFetch
                 || $node instanceof Expr\StaticPropertyFetch)
                 && $at > $node->class->getEndFilePos() && $at <= $node->name->getStartFilePos()
-                => [Slot::StaticMember, $node->class],
+                => [Slot::StaticMember, $node],
             ($node instanceof Stmt\Property || $node instanceof Stmt\ClassConst)
                 && $at <= self::firstWrittenPart($node) => [self::memberStartSlot($node, $at), null],
             $node instanceof Identifier, $node instanceof Name, $node instanceof Expr\Error
@@ -281,7 +284,7 @@ final class PositionLocator implements PositionLocatorInterface
     }
 
     /**
-     * @return array{Slot, Expr|Name|null}
+     * @return array{Slot, MemberAccess|null}
      */
     private static function classifyName(Identifier|Name|Expr\Error $name, mixed $parent): array
     {
@@ -290,14 +293,14 @@ final class PositionLocator implements PositionLocatorInterface
                 || $parent instanceof Expr\PropertyFetch || $parent instanceof Expr\NullsafePropertyFetch)
             && $parent->name === $name
         ) {
-            return [Slot::Member, $parent->var];
+            return [Slot::Member, $parent];
         }
         if (
             ($parent instanceof Expr\StaticCall || $parent instanceof Expr\ClassConstFetch
                 || $parent instanceof Expr\StaticPropertyFetch)
         ) {
             if ($parent->name === $name) {
-                return [Slot::StaticMember, $parent->class];
+                return [Slot::StaticMember, $parent];
             }
             return [Slot::StaticReceiver, null];
         }
