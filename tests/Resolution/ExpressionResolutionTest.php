@@ -29,7 +29,6 @@ use Firehed\PhpLsp\Domain\Visibility;
 use Firehed\PhpLsp\Knowledge\ComposerAutoloadMapReader;
 use Firehed\PhpLsp\Knowledge\ComposerMapBackend;
 use Firehed\PhpLsp\Knowledge\SymbolSourceInterface;
-use Firehed\PhpLsp\Parser\ParsedDocument;
 use Firehed\PhpLsp\Repository\MemberResolver;
 use Firehed\PhpLsp\Repository\MemberResolverInterface;
 use Firehed\PhpLsp\Resolution\ExpressionResolver;
@@ -43,8 +42,10 @@ use Firehed\PhpLsp\Resolution\TypeSource\TypeSourceInterface;
 use Firehed\PhpLsp\Tests\BuildsSymbolInfoTrait;
 use Firehed\PhpLsp\Tests\LoadsFixturesTrait;
 use Firehed\PhpLsp\Tests\Parser\ProductionSyntaxSource;
+use PhpParser\Node;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\Variable;
+use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -509,10 +510,17 @@ final class ExpressionResolutionTest extends TestCase
             self::createStub(SymbolSourceInterface::class),
             self::createStub(TypeSourceInterface::class),
         );
-        $parsed = new ParsedDocument(new TextDocument(self::uri('dynamic.php'), 'php', 1, '<?php '), []);
+        $parsed = ProductionSyntaxSource::create()->source->parse(
+            new TextDocument(self::uri(self::DYNAMIC), 'php', 1, $this->loadFixture(self::DYNAMIC)),
+        );
+        $call = (new NodeFinder())->findFirst(
+            $parsed->tree,
+            static fn (Node $node): bool => $node instanceof MethodCall && $node->name instanceof Variable,
+        );
+        assert($call instanceof MethodCall, 'the fixture calls a method named by a variable on $this');
 
         self::assertNull(
-            $expressions->resolve(new MethodCall(new Variable('this'), new Variable('method')), $parsed),
+            $expressions->resolve($call, $parsed),
             'which member is called is only known at runtime',
         );
     }
