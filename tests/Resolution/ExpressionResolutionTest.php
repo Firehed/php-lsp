@@ -621,8 +621,20 @@ final class ExpressionResolutionTest extends TestCase
                 MemberAccessKind::Static,
             ),
         ];
+        $static = self::className('Fixtures\Completion\StaticAccess');
+        yield 'self::' => [
+            'src/Completion/StaticAccess.php',
+            'self_empty',
+            new MemberTarget(new ClasslikeType($static), $static, MemberAccessKind::Static),
+        ];
+        yield 'static::' => [
+            'src/Completion/StaticAccess.php',
+            'static_keyword',
+            new MemberTarget(new ClasslikeType($static), $static, MemberAccessKind::Static),
+        ];
         yield 'self:: outside a class' => [$procedural, 'self_outside_class', null];
         yield 'an unbound variable' => [$procedural, 'unknown_var', null];
+        yield 'an expression before ::' => ['src/Completion/StaticAccess.php', 'this_static', null];
     }
 
     #[DataProvider('memberTargets')]
@@ -847,9 +859,9 @@ final class ExpressionResolutionTest extends TestCase
     {
         $located = (new PositionLocator(ProductionSyntaxSource::create()->source))
             ->locate(...$this->positionIn($fixture, $locate));
-        assert($located->receiver !== null, "a member is accessed at the position in {$fixture}");
+        assert($located->access !== null, "a member is accessed at the position in {$fixture}");
 
-        return $expressions->memberTarget($located->receiver, $located->parsed);
+        return $expressions->memberTarget($located->access, $located->parsed);
     }
 
     /**

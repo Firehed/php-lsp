@@ -12,6 +12,7 @@ use Firehed\PhpLsp\Resolution\Position\Located;
 use Firehed\PhpLsp\Resolution\Position\Slot;
 use Firehed\PhpLsp\Resolution\Scope;
 use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Name;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -25,21 +26,21 @@ final class LocatedTest extends TestCase
         $parsed = new ParsedDocument(new TextDocument('file:///t.php', 'php', 1, '<?php '), []);
         $offset = new ByteOffset(6);
         $written = new Variable('user');
-        $receiver = new Variable('this');
+        $access = new PropertyFetch(new Variable('this'), 'user');
         $scope = Scope::at(null, []);
         $call = new CallSite(new FuncCall(new Name('run')), 0, [], 0);
 
-        $located = new Located($parsed, $offset, Slot::Member, 'us', $written, $receiver, $scope, $call);
+        $located = new Located($parsed, $offset, Slot::Member, 'us', $written, $access, $scope, $call);
 
         self::assertSame(
-            [$parsed, $offset, Slot::Member, 'us', $written, $receiver, $scope, $call],
+            [$parsed, $offset, Slot::Member, 'us', $written, $access, $scope, $call],
             [
                 $located->parsed,
                 $located->offset,
                 $located->slot,
                 $located->prefix,
                 $located->written,
-                $located->receiver,
+                $located->access,
                 $located->scope,
                 $located->call,
             ],

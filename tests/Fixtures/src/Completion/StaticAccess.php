@@ -68,4 +68,9 @@ class StaticAccess
     {
         self::getInstance()->get/*|self_chain_prefix*/
     }
+
+    public function triggerThisStatic(): void
+    {
+        $this::/*|this_static*/
+    }
 }
