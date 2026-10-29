@@ -35,7 +35,7 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
         return match ($located->slot) {
             Slot::NotCode, Slot::InterpolatedString, Slot::ClassMember => null,
             Slot::Variable => $this->variable($written, $located->parsed),
-            Slot::Member, Slot::StaticMember, Slot::CalledName => $this->usedBy($written, $located->parsed),
+            Slot::Member, Slot::CalledName => $this->usedBy($written, $located->parsed),
             Slot::ArgumentName => $this->parameterNamed($located),
             Slot::DeclaredName => $parent instanceof Node\Param
                 ? $this->expressions->resolveParameter($parent, $located->parsed)

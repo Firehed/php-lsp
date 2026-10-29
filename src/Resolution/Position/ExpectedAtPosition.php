@@ -32,7 +32,7 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
         return match ($located->slot) {
             Slot::NotCode, Slot::DeclaredName => new Expected($prefix),
             Slot::InterpolatedString, Slot::Variable => new Expected($prefix, variables: true),
-            Slot::Member, Slot::StaticMember => new Expected($prefix, members: $this->memberAccess($located)),
+            Slot::Member => new Expected($prefix, members: $this->memberAccess($located)),
             Slot::ArgumentName => new Expected($prefix, argumentNames: $this->calls->callAt($document, $offset)),
             Slot::ClassMember => $prefix === '' ? new Expected($prefix) : new Expected(
                 $prefix,

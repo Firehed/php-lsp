@@ -18,10 +18,8 @@ enum Slot
     case Expression;
     /** The name of a function being called. */
     case CalledName;
-    /** A member name after `->` or `?->`. */
+    /** A member name after `->`, `?->`, or `::`. */
     case Member;
-    /** A member name after `::`. */
-    case StaticMember;
     /** The class name before `::`. */
     case StaticReceiver;
     /** An argument's name, written with its colon. */

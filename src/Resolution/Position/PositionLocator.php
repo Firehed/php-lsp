@@ -274,7 +274,7 @@ final class PositionLocator implements PositionLocatorInterface
             ($node instanceof Expr\StaticCall || $node instanceof Expr\ClassConstFetch
                 || $node instanceof Expr\StaticPropertyFetch)
                 && $at > $node->class->getEndFilePos() && $at <= $node->name->getStartFilePos()
-                => [Slot::StaticMember, $node],
+                => [Slot::Member, $node],
             ($node instanceof Stmt\Property || $node instanceof Stmt\ClassConst)
                 && $at <= self::firstWrittenPart($node) => [self::memberStartSlot($node, $at), null],
             $node instanceof Identifier, $node instanceof Name, $node instanceof Expr\Error
@@ -300,7 +300,7 @@ final class PositionLocator implements PositionLocatorInterface
                 || $parent instanceof Expr\StaticPropertyFetch)
         ) {
             if ($parent->name === $name) {
-                return [Slot::StaticMember, $parent];
+                return [Slot::Member, $parent];
             }
             return [Slot::StaticReceiver, null];
         }

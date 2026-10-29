@@ -26,7 +26,7 @@ final readonly class Located
      * @param string $prefix The part of a word written before the position
      * @param ?Node $written The node for the word
      * @param $access The member access whose name is at the position: set
-     *        exactly when the slot is {@see Slot::Member} or {@see Slot::StaticMember}
+     *        exactly when the slot is {@see Slot::Member}
      */
     public function __construct(
         public ParsedDocument $parsed,
