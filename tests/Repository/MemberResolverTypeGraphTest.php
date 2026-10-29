@@ -63,17 +63,10 @@ final class MemberResolverTypeGraphTest extends TestCase
             'trait alias whose new name collides with an inherited method'
                 => ['Fixtures\Hierarchy\TraitAliasCollidingUser'],
             'trait alias without an explicit source trait' => ['Fixtures\Hierarchy\TraitNamelessAliasUser'],
-            'abstract trait method beside a parent method' => ['Fixtures\Composition\AbstractTraitBesideParent'],
-            'alias declared by a parent' => ['Fixtures\Composition\AliasInherited'],
-            'own method beside an alias of its name' => ['Fixtures\Composition\OwnMethodBeatsAlias'],
-            'alias of an abstract method beside a parent method'
-                => ['Fixtures\Composition\AbstractAliasBesideParent'],
-            'alias declared by a used trait' => ['Fixtures\Composition\TraitAliasReachesUser'],
-            'insteadof over what a trait got from another' => ['Fixtures\Composition\InsteadofReachesNested'],
-            'abstract trait method used before a concrete one'
-                => ['Fixtures\Composition\AbstractBeforeConcreteTrait'],
-            'trait whose own abstract method overrides a used one'
-                => ['Fixtures\Composition\TraitOwnAbstractBesideParent'],
+            'abstract trait methods beside inherited and trait methods'
+                => ['Fixtures\Hierarchy\AbstractRequirementsUser'],
+            'aliases and insteadof across nested traits' => ['Fixtures\Hierarchy\TraitCompositionUser'],
+            'inherited aliases beside an abstract trait method' => ['Fixtures\Hierarchy\AliasInheritedUser'],
             'enum implementing interface' => ['Fixtures\Hierarchy\EnumWithInterface'],
             'constructor promotion by every modifier' => ['Fixtures\Utility\PromotedModifiers'],
         ];
