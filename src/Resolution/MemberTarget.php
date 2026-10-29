@@ -9,15 +9,24 @@ use Firehed\PhpLsp\Domain\TypeInterface;
 
 /**
  * What a member access is looked up on: the type it is on, the class-like the
- * access is written in ($from; null outside any class), and, for a `parent::`
- * access, the class `static` names ($static).
+ * access is written in ($from; null outside any class), and how it is written.
  */
 final readonly class MemberTarget
 {
     public function __construct(
         public TypeInterface $type,
         public ?ClasslikeName $from,
-        public ?ClasslikeName $static,
+        public MemberAccessKind $kind,
     ) {
+    }
+
+    /**
+     * The class `static` names when it is not the class accessed: a
+     * `parent::` access passes on the class it is written in (PHP manual,
+     * Late Static Bindings).
+     */
+    public function static(): ?ClasslikeName
+    {
+        return $this->kind === MemberAccessKind::Parent ? $this->from : null;
     }
 }

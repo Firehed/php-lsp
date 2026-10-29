@@ -107,8 +107,8 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
         return match (true) {
             $target === null => null,
             $located->slot === Slot::Member => MemberAccessContext::forInstance($target->type, $target->from, $prefix),
-            $target->static === null => MemberAccessContext::forStatic($target->type, $target->from, $prefix),
-            default => MemberAccessContext::forParent($target->type, $target->from, $target->static, $prefix),
+            $target->static() === null => MemberAccessContext::forStatic($target->type, $target->from, $prefix),
+            default => MemberAccessContext::forParent($target->type, $target->from, $target->static(), $prefix),
         };
     }
 

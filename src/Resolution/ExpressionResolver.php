@@ -152,14 +152,14 @@ final class ExpressionResolver implements ExpressionResolverInterface
             return $className === null ? null : new MemberTarget(
                 new ClasslikeType($className),
                 $scope->getSelfName(),
-                $scope->staticFor($receiver),
+                $scope->staticFor($receiver) === null ? MemberAccessKind::Static : MemberAccessKind::Parent,
             );
         }
         $type = $this->resolve($receiver, $parsed)?->getType();
         if ($type === null || $type->getResolvableClasslikeNames() === []) {
             return null;
         }
-        return new MemberTarget($type, $scope->getSelfName(), null);
+        return new MemberTarget($type, $scope->getSelfName(), MemberAccessKind::Instance);
     }
 
     public function resolveParameter(Param $param, ParsedDocument $parsed): ParameterInfo
@@ -402,7 +402,7 @@ final class ExpressionResolver implements ExpressionResolverInterface
             return null;
         }
         foreach ($target->type->getResolvableClasslikeNames() as $className) {
-            $member = $find($className, $memberName, $target->from, $target->static);
+            $member = $find($className, $memberName, $target->from, $target->static());
             if ($member !== null) {
                 return $member;
             }
