@@ -420,7 +420,7 @@ final class MemberResolver implements MemberResolverInterface
             visibility: $alias->newVisibility ?? $source->visibility,
             isStatic: $source->isStatic,
             isAbstract: $source->isAbstract,
-            isFinal: $source->isFinal,
+            isFinal: $source->isFinal || $alias->addsFinal,
             parameters: $source->parameters,
             returnType: $source->returnType,
             docblock: $source->docblock,
