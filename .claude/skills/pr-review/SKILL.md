@@ -15,7 +15,7 @@ Review one pull request (by number, or the current branch against `main`) and re
 
 ## Passes
 
-Run all three and report each separately.
+Run all of them and report each separately.
 
 1. **Simplify.** Run the `simplify` skill on the diff, reporting its suggestions instead of applying them.
 2. **Correctness.** Run the `code-review` skill on the pull request at high effort, reporting only.
@@ -25,6 +25,7 @@ Run all three and report each separately.
    - **Deferrals:** a comment or pull request text that knowingly leaves a structural problem in place for later.
    - **Tool workarounds:** code shaped to get past PHPStan, deptrac, or a failing test rather than to solve the problem.
    - **Scope:** changes that do not serve the issues the pull request closes, and "Done when" criteria it does not meet.
+4. **Remaining routes.** For each fact the pull request gives one owner, search all of `src/`, not only the changed files, for code that still decides any part of it, directly or by re-deriving it from something it was handed. Report each candidate with a concrete input, and say whether it decides this fact or a different one.
 
 ## Rules
 
