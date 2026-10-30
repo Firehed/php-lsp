@@ -110,6 +110,7 @@ final class MemberResolverTypeGraphTest extends TestCase
             $line = $method->getStartLine();
             $expected[strtolower($method->getName())] = [
                 $method->isAbstract(),
+                $method->isFinal(),
                 basename((string) $method->getFileName()),
                 $line === false ? null : $line,
             ];
@@ -120,6 +121,7 @@ final class MemberResolverTypeGraphTest extends TestCase
             assert($method instanceof MethodInfo, 'a method kind lists methods');
             $resolved[strtolower($method->getName()->name)] = [
                 $method->isAbstract,
+                $method->isFinal,
                 basename((string) $method->file),
                 $method->line,
             ];

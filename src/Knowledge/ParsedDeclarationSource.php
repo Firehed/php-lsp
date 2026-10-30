@@ -381,15 +381,17 @@ final readonly class ParsedDeclarationSource implements DeclarationSourceInterfa
                     continue;
                 }
                 if ($adaptation instanceof Stmt\TraitUseAdaptation\Alias) {
+                    $modifiers = $adaptation->newModifier ?? 0;
                     $aliases[] = new TraitAlias(
                         trait: $adaptation->trait !== null
                             ? $this->resolveNameToClasslikeName($adaptation->trait)
                             : null,
                         method: $adaptation->method->toString(),
                         newName: $adaptation->newName?->toString(),
-                        newVisibility: $adaptation->newModifier !== null
-                            ? $this->visibilityFromFlags($adaptation->newModifier)
+                        newVisibility: ($modifiers & Modifiers::VISIBILITY_MASK) !== 0
+                            ? $this->visibilityFromFlags($modifiers)
                             : null,
+                        addsFinal: ($modifiers & Modifiers::FINAL) !== 0,
                     );
                 }
             }

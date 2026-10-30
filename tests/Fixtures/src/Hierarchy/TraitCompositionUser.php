@@ -14,6 +14,8 @@ class TraitCompositionUser
     use NestingConflictingTraitA, ConflictingTraitB {
         ConflictingTraitB::CONFLICTMETHOD insteadof NestingConflictingTraitA;
         ConflictingTraitB::onlyInB as ownMethod;
+        ConflictingTraitB::onlyInB as final finalOnlyInB;
+        NestingConflictingTraitA::aliasedOnlyInA as final;
     }
 
     public function ownMethod(): string
