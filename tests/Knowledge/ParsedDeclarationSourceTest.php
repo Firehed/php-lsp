@@ -378,6 +378,28 @@ final class ParsedDeclarationSourceTest extends TestCase
         );
     }
 
+    /**
+     * An adaptation can add `final` with or without a new visibility; with
+     * none written, the method keeps its own.
+     */
+    public function testAliasRecordsAnAddedFinal(): void
+    {
+        $info = $this->buildClassInfoFromFixture(
+            'src/Hierarchy/TraitCompositionUser.php',
+            'Fixtures\Hierarchy\TraitCompositionUser',
+        );
+        $aliases = [];
+        foreach ($info->traitAliases as $alias) {
+            $aliases[$alias->newName ?? $alias->method] = $alias;
+        }
+
+        self::assertTrue($aliases['finalOnlyInB']->addsFinal, 'a renaming alias can add final');
+        self::assertNull($aliases['finalOnlyInB']->newVisibility, 'it changes no visibility');
+        self::assertTrue($aliases['aliasedOnlyInA']->addsFinal, 'an alias without a new name can add final');
+        self::assertNull($aliases['aliasedOnlyInA']->newVisibility, 'it changes no visibility either');
+        self::assertFalse($aliases['ownMethod']->addsFinal, 'an alias adds final only when it says so');
+    }
+
     public function testAliasWithoutSourceTraitLeavesTraitNull(): void
     {
         $info = $this->buildClassInfoFromFixture(
