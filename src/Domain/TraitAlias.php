@@ -23,8 +23,10 @@ final readonly class TraitAlias
         public string $method,
         /** Null when the alias only changes visibility. */
         public ?string $newName,
-        /** Null when the alias only renames. */
+        /** Null when the alias changes no visibility. */
         public ?Visibility $newVisibility,
+        /** An adaptation can add `final`, never remove it. */
+        public bool $addsFinal = false,
     ) {
     }
 }

@@ -387,9 +387,10 @@ final readonly class ParsedDeclarationSource implements DeclarationSourceInterfa
                             : null,
                         method: $adaptation->method->toString(),
                         newName: $adaptation->newName?->toString(),
-                        newVisibility: $adaptation->newModifier !== null
-                            ? $this->visibilityFromFlags($adaptation->newModifier)
+                        newVisibility: (($adaptation->newModifier ?? 0) & Modifiers::VISIBILITY_MASK) !== 0
+                            ? $this->visibilityFromFlags($adaptation->newModifier ?? 0)
                             : null,
+                        addsFinal: (($adaptation->newModifier ?? 0) & Modifiers::FINAL) !== 0,
                     );
                 }
             }
