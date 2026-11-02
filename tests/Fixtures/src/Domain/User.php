@@ -335,4 +335,10 @@ class User implements Entity, Person
     {
         echo TOTALLY_UNDEFINED_CONSTANT; //hover:undefined_constant
     }
+
+    public static function triggerDefNullFirstTernary(): void
+    {
+        $user = rand() ? null : new User('1', 'name', 'email');
+        $user?->setName('new'); //hover:null_first_ternary
+    }
 }
