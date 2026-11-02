@@ -16,6 +16,7 @@ use Firehed\PhpLsp\Domain\Location;
 use Firehed\PhpLsp\Domain\MethodInfo;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\ParameterInfo;
+use Firehed\PhpLsp\Domain\PrimitiveType;
 use Firehed\PhpLsp\Domain\ResolvedCallableInterface;
 use Firehed\PhpLsp\Domain\ResolvedSymbolInterface;
 use Firehed\PhpLsp\Domain\TypeInterface;
@@ -42,6 +43,7 @@ use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Param;
+use PhpParser\Node\Scalar;
 use PhpParser\Node\Stmt;
 use PhpParser\PrettyPrinter\Standard as PrettyPrinter;
 
@@ -81,6 +83,11 @@ final class ExpressionResolver implements ExpressionResolverInterface
 
         if ($expr instanceof FuncCall) {
             return $this->resolveFuncCall($expr, $parsed);
+        }
+
+        $literal = self::literalType($expr);
+        if ($literal !== null) {
+            return new ResolvedTypeOnly($literal);
         }
 
         if ($expr instanceof Expr\ConstFetch) {
@@ -361,6 +368,29 @@ final class ExpressionResolver implements ExpressionResolverInterface
             }
         }
         return null;
+    }
+
+    /**
+     * PHP reads `true`, `false`, and `null` as literals in any letter case, but
+     * only once aliases and namespaces are applied to the name: `B\true` and a
+     * `use const` alias named `true` are constants.
+     */
+    private static function literalType(Expr $expr): ?PrimitiveType
+    {
+        return match (true) {
+            $expr instanceof Scalar\Int_, $expr instanceof Scalar\MagicConst\Line => PrimitiveType::Int,
+            $expr instanceof Scalar\Float_ => PrimitiveType::Float,
+            $expr instanceof Scalar\String_,
+            $expr instanceof Scalar\InterpolatedString,
+            $expr instanceof Scalar\MagicConst => PrimitiveType::String,
+            $expr instanceof Expr\ConstFetch => match ($expr->name->toLowerString()) {
+                'true' => PrimitiveType::True,
+                'false' => PrimitiveType::False,
+                'null' => PrimitiveType::Null,
+                default => null,
+            },
+            default => null,
+        };
     }
 
     private static function locationFor(Node $node, TextDocument $document): Location

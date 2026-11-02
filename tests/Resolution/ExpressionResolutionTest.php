@@ -94,7 +94,7 @@ final class ExpressionResolutionTest extends TestCase
     public function testArrowFunctionResolvesThroughToItsEnclosingFunction(): void
     {
         self::assertEquals(
-            new ResolvedVariable('outer', null, self::bindingAt(self::BINDINGS, 72, 8)),
+            new ResolvedVariable('outer', PrimitiveType::Int, self::bindingAt(self::BINDINGS, 72, 8)),
             $this->resolveVariableAt(self::BINDINGS, 'arrow_fallthrough'),
             'an arrow function captures an unbound name from the enclosing function',
         );
