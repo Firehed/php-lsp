@@ -83,6 +83,7 @@ Every request is answered correctly without background work, and background work
 
 Code being edited usually does not parse, and every feature must keep working on it.
 At any position, every feature sees the same structure, and it is the structure the code will have once completed.
+Whether a feature must handle some shape of broken code is answered from the parser's guarantees (`ParsedDocument`, `Located`), never from how recovery happens to work.
 
 ### Source text
 
@@ -132,6 +133,9 @@ When a tool such as PHPStan or deptrac blocks a change, the intent of its rule m
 - A fact read from syntax gets its first route in the one walker that reads the syntax tree, never in a feature.
 - Debug through the test suite. Do not write ad hoc PHP scripts.
 - When creating a new issue, add the `ai-authored` label.
+- Work that changes what the server says about code follows the `fix-a-fact` skill: its design is reviewed adversarially against PHP's behavior and the one-route rule before any code is written.
+- Fix at the root. When routes to a fact disagree because a lower-level fact is wrong, fix that fact first, in its own pull request, instead of patching the symptom where it shows.
+- A pull request description is for a reader with no context: the problem with a short example, the cause, then the change. State PHP's behavior plainly rather than citing php-src.
 
 ## LSP Protocol
 
