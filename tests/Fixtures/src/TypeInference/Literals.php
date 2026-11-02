@@ -41,4 +41,9 @@ class Literals
         $qualifiedTrue = \true;
         $qualifiedTrue; //jtd:qualified_true qualifiedTrue
     }
+
+    public function hoverOnTrue(): void
+    {
+        echo TRUE; //hover:upper_true
+    }
 }

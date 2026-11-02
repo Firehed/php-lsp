@@ -259,6 +259,25 @@ final class ExpressionResolutionTest extends TestCase
         );
     }
 
+    public function testTrueIsALiteralEvenWhereAConstantNamesIt(): void
+    {
+        $symbols = self::createStub(SymbolSourceInterface::class);
+        $symbols->method('lookupConstant')->willReturnCallback(
+            static fn (ConstantName $name): ConstantInfo => self::constantInfo($name->qualifiedName),
+        );
+        $this->resolver = self::resolverOver(
+            $symbols,
+            self::createStub(TypeSourceInterface::class),
+            self::createStub(MemberResolverInterface::class),
+        );
+
+        self::assertSame(
+            PrimitiveType::True,
+            $this->resolveSymbolAt(self::LITERALS, 'upper_true')?->getType(),
+            'PHP reads TRUE as a literal before looking up any constant',
+        );
+    }
+
     /**
      * @return iterable<string, array{string, ?PrimitiveType}>
      */
