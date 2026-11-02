@@ -383,14 +383,15 @@ final class ExpressionResolver implements ExpressionResolverInterface
             $expr instanceof Scalar\String_,
             $expr instanceof Scalar\InterpolatedString,
             $expr instanceof Scalar\MagicConst => PrimitiveType::String,
-            $expr instanceof Expr\ConstFetch => match ($expr->name->toLowerString()) {
-                'true' => PrimitiveType::True,
-                'false' => PrimitiveType::False,
-                'null' => PrimitiveType::Null,
-                default => null,
-            },
+            $expr instanceof Expr\ConstFetch => self::literalConstant($expr->name),
             default => null,
         };
+    }
+
+    private static function literalConstant(Name $name): ?PrimitiveType
+    {
+        $type = PrimitiveType::tryFromName($name->toString());
+        return in_array($type, [PrimitiveType::True, PrimitiveType::False, PrimitiveType::Null], true) ? $type : null;
     }
 
     private static function locationFor(Node $node, TextDocument $document): Location
