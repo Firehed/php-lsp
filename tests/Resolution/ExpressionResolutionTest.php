@@ -68,6 +68,10 @@ final class ExpressionResolutionTest extends TestCase
 
     private const string FOREACH = 'src/Hover/ForeachElement.php';
 
+    private const string LITERALS = 'src/TypeInference/Literals.php';
+
+    private const string LITERAL_NAMES = 'Namespacing/LiteralNames.php';
+
     private const string TOP_LEVEL = 'TopLevel/top_level_closures.php';
 
     private const string SYMBOLS = 'src/Position/Symbols.php';
@@ -221,6 +225,57 @@ final class ExpressionResolutionTest extends TestCase
             new ResolvedVariable('result', self::dateTimeType(), self::bindingAt(self::BUILTIN_TYPES, 73, 8)),
             $this->resolveReceiverAt(self::BUILTIN_TYPES, 'coalesce_receiver', '$result'),
             'a coalesce resolves through its left side when that resolves',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, PrimitiveType}>
+     */
+    public static function literals(): iterable
+    {
+        yield 'decimal int' => ['decimal', PrimitiveType::Int];
+        yield 'hexadecimal int' => ['hex', PrimitiveType::Int];
+        yield 'int too large for int' => ['overflow', PrimitiveType::Float];
+        yield 'float' => ['float', PrimitiveType::Float];
+        yield 'single-quoted string' => ['single', PrimitiveType::String];
+        yield 'interpolated string' => ['interpolated', PrimitiveType::String];
+        yield 'heredoc' => ['heredoc', PrimitiveType::String];
+        yield 'nowdoc' => ['nowdoc', PrimitiveType::String];
+        yield '__LINE__' => ['line', PrimitiveType::Int];
+        yield '__CLASS__' => ['class', PrimitiveType::String];
+        yield 'true' => ['true', PrimitiveType::True];
+        yield 'false in mixed case' => ['false', PrimitiveType::False];
+        yield 'null in upper case' => ['null', PrimitiveType::Null];
+        yield 'fully qualified true' => ['qualified_true', PrimitiveType::True];
+    }
+
+    #[DataProvider('literals')]
+    public function testAVariableAssignedALiteralTakesTheLiteralsType(string $marker, PrimitiveType $expected): void
+    {
+        self::assertSame(
+            $expected,
+            $this->resolveVariableAt(self::LITERALS, $marker)?->getType(),
+            'a literal has the narrowest type naming its value',
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, ?PrimitiveType}>
+     */
+    public static function literalNames(): iterable
+    {
+        yield 'true imported as a constant alias' => ['aliased', null];
+        yield 'TRUE, which the case-sensitive alias does not match' => ['other_case', PrimitiveType::True];
+        yield 'qualified name ending in false' => ['qualified', null];
+    }
+
+    #[DataProvider('literalNames')]
+    public function testOnlyANameResolvingToTrueFalseOrNullIsALiteral(string $marker, ?PrimitiveType $expected): void
+    {
+        self::assertSame(
+            $expected,
+            $this->resolveVariableAt(self::LITERAL_NAMES, $marker)?->getType(),
+            'true, false, and null are literals only where no alias or namespace makes them name a constant',
         );
     }
 
