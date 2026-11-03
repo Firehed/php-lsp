@@ -64,6 +64,7 @@ trait BuildsSymbolInfoTrait
 
     /**
      * @param list<string> $interfaces
+     * @param array<string, MethodInfo> $methods
      */
     private static function classInfo(
         string $fqn,
@@ -74,6 +75,7 @@ trait BuildsSymbolInfoTrait
         bool $isAbstract = false,
         bool $isFinal = false,
         bool $isAttribute = false,
+        array $methods = [],
     ): ClassInfo {
         return new ClassInfo(
             self::className($fqn),
@@ -85,7 +87,7 @@ trait BuildsSymbolInfoTrait
             parent: $parent === null ? null : self::className($parent),
             interfaces: array_map(self::className(...), $interfaces),
             traits: [],
-            methods: [],
+            methods: $methods,
             properties: [],
             constants: [],
             enumCases: [],

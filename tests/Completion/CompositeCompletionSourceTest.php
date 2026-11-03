@@ -8,6 +8,7 @@ use Firehed\PhpLsp\Completion\BuiltinTypeCandidates;
 use Firehed\PhpLsp\Completion\CompletionItemFormatter;
 use Firehed\PhpLsp\Completion\CompositeCompletionSource;
 use Firehed\PhpLsp\Completion\KeywordCandidates;
+use Firehed\PhpLsp\Completion\MagicMethodCandidates;
 use Firehed\PhpLsp\Completion\MemberCandidates;
 use Firehed\PhpLsp\Completion\NamedArgumentCandidates;
 use Firehed\PhpLsp\Completion\SymbolCandidates;
@@ -16,6 +17,7 @@ use Firehed\PhpLsp\Domain\ClassCandidateFilter;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\KeywordGroup;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\NamespaceContents;
 use Firehed\PhpLsp\Domain\PrimitiveType;
@@ -75,6 +77,14 @@ final class CompositeCompletionSourceTest extends TestCase
         );
     }
 
+    public function testADeclaredMethodIsOfferedTheMagicMethodsItMayBe(): void
+    {
+        $items = self::source(new Expected('__to', declaredMethod: new MethodName(self::owner(), '__to')))
+            ->find(self::requestAfter('__to'));
+
+        self::assertSame(['__toString'], array_column($items, 'label'), 'the magic method the prefix matches');
+    }
+
     public function testAPositionThatAdmitsNothingOffersNothing(): void
     {
         self::assertSame([], self::source(new Expected(''))->find(self::requestAfter('')), 'no source is asked');
@@ -103,6 +113,9 @@ final class CompositeCompletionSourceTest extends TestCase
         $symbols = self::createStub(SymbolSourceInterface::class);
         $symbols->method('childrenOf')->willReturn(new NamespaceContents());
         $symbols->method('search')->willReturn([QualifiedName::fromFullyQualified('Node')]);
+        $symbols->method('lookupClassLike')->willReturn(
+            self::classInfo('Widget', methods: ['__to' => self::methodInfo(self::owner(), '__to')]),
+        );
         $session = self::capabilitiesProvider();
         $formatter = new CompletionItemFormatter(new ResolvedSymbolPresenter());
 
@@ -114,6 +127,7 @@ final class CompositeCompletionSourceTest extends TestCase
             new KeywordCandidates($formatter),
             new BuiltinTypeCandidates($formatter),
             new SymbolCandidates($symbols, $capabilities, $session, $formatter),
+            new MagicMethodCandidates($symbols, $formatter),
         );
     }
 
