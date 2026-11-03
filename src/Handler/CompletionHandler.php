@@ -77,7 +77,7 @@ final class CompletionHandler implements DocumentFeatureHandlerInterface
      */
     private function capped(array $items): array
     {
-        if (self::RESULT_LIMIT >= count($items)) {
+        if (count($items) <= self::RESULT_LIMIT) {
             return ['isIncomplete' => false, 'items' => $items];
         }
 
