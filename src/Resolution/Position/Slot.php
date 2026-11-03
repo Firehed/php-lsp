@@ -24,8 +24,10 @@ enum Slot
     case StaticReceiver;
     /** An argument's name, written with its colon. */
     case ArgumentName;
-    /** The name a declaration gives, a parameter's included. */
+    /** The name a declaration other than a method's gives, a parameter's included. */
     case DeclaredName;
+    /** The name a method declaration gives. */
+    case MethodName;
     /** Where a class member may start, its modifiers included. */
     case ClassMember;
     /** After a class member's modifiers, where more modifiers, a type, or what is declared may follow. */

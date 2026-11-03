@@ -16,7 +16,6 @@ use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\NameQuery;
 use PhpParser\Node\Identifier;
-use PhpParser\Node\Stmt\ClassMethod;
 
 final class ExpectedAtPosition implements ExpectedAtPositionInterface
 {
@@ -33,8 +32,8 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
         $prefix = $located->prefix;
 
         return match ($located->slot) {
-            Slot::NotCode => new Expected($prefix),
-            Slot::DeclaredName => new Expected($prefix, declaredMethod: self::declaredMethod($located)),
+            Slot::NotCode, Slot::DeclaredName => new Expected($prefix),
+            Slot::MethodName => new Expected($prefix, declaredMethod: self::declaredMethod($located)),
             Slot::InterpolatedString, Slot::Variable => new Expected($prefix, variables: true),
             Slot::Member => new Expected($prefix, members: $this->memberAccess($located)),
             Slot::ArgumentName => new Expected($prefix, argumentNames: $this->calls->callAt($document, $offset)),
@@ -107,17 +106,14 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
     }
 
     /**
-     * The method a declared name names; null for any other declaration, and
-     * in an anonymous class, which has no name to own it.
+     * The method whose name is written at the position; null in an anonymous
+     * class, which has no name to own it.
      */
     private static function declaredMethod(Located $located): ?MethodName
     {
-        $name = $located->written;
         $self = $located->scope->getSelfName();
-        if (!$name instanceof Identifier || !$name->getAttribute('parent') instanceof ClassMethod || $self === null) {
-            return null;
-        }
-        return new MethodName($self, $name->toString());
+        assert($located->written instanceof Identifier, 'a method\'s name is written');
+        return $self === null ? null : new MethodName($self, $located->written->toString());
     }
 
     private static function type(Located $located, TypeHintContext $context): Expected
