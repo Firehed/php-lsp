@@ -19,6 +19,10 @@ class ThisBinding
             $inStaticClosure = 1;
         };
         $staticArrow = static fn () => $inStaticArrow = 1;
+        // A class body sees neither the method's variables nor its `$this`.
+        $anonymous = new class {
+            public int $inAnonymousClassBody = 1;
+        };
     }
 
     public static function staticMethod(\DateTime $param): void
@@ -69,4 +73,12 @@ function freeFunction(): void
     $closure = function () {
         $inClosureInFunction = 1;
     };
+}
+
+$beforeTopLevelClass = 1;
+
+// A class body sees none of the file's variables.
+class AfterTopLevelCode
+{
+    public int $inTopLevelClassBody = 1;
 }
