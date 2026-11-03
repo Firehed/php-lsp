@@ -67,6 +67,22 @@ Each incomplete statement needs its own method; two in one method confuse parser
 `//hover:marker` puts the cursor on the last member access or function call on that line.
 Use it for complete code such as `$this->method()`.
 
+### Mutation testing
+
+`composer mutation` runs [Infection](https://infection.github.io/) on the lines you changed in `src/`.
+It fails if a mutant escapes, which means neither the unit tests nor PHPStan caught it.
+CI runs the same check on pull requests.
+
+It compares your working tree against `origin/main`, so commit and fetch before running it.
+If you work from a fork, `origin` needs to be this repository.
+
+When a mutant escapes, add a test that catches it.
+If the mutation doesn't change behavior, so no test could catch it, rewrite the code so the mutation isn't possible.
+If you can't, ask in the pull request about ignoring that `Class::method` in `infection.json5`.
+Don't ignore by line number.
+
+Name tests after the behavior they check, not the mutant they catch.
+
 ## Code Reviews
 
 Reviewing code should focus on things not covered by CI or automated tooling:

@@ -1,0 +1,15 @@
+{
+    "$schema": "vendor/infection/infection/resources/schema.json",
+    "source": {
+        "directories": ["src"],
+    },
+    "tmpDir": ".infection",
+    "logs": {
+        "text": ".infection/infection.log",
+    },
+    "minMsi": 100,
+    "minCoveredMsi": 100,
+    "ignoreMsiWithNoMutations": true,
+    "staticAnalysisTool": "phpstan",
+    "testFrameworkExtraArgs": "--testsuite=unit",
+}

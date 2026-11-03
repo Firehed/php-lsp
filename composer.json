@@ -24,6 +24,7 @@
         "brianium/paratest": "^7",
         "composer/composer": "^2.10",
         "deptrac/deptrac": "^4.7",
+        "infection/infection": "0.35.9",
         "phpstan/phpstan": "^2.3",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
@@ -50,6 +51,10 @@
         "phpstan": "phpstan analyze",
         "deptrac": "deptrac analyse --no-progress",
         "layer-coverage": "deptrac debug:unassigned",
+        "mutation": [
+            "Composer\\Config::disableProcessTimeout",
+            "infection --git-diff-lines --git-diff-base=origin/main"
+        ],
         "test": [
             "@phpstan",
             "@deptrac",
@@ -65,7 +70,8 @@
     "config": {
         "sort-packages": true,
         "allow-plugins": {
-            "dealerdirect/phpcodesniffer-composer-installer": false
+            "dealerdirect/phpcodesniffer-composer-installer": false,
+            "infection/extension-installer": false
         }
     }
 }

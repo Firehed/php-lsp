@@ -56,3 +56,28 @@ jobs:
           report_type: test_results
           files: junit-unit.xml,junit-e2e.xml
           disable_search: true
+
+  mutation:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    name: Mutation Testing
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: pcov
+          ini-values: zend.assertions=1
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Install fixture dependencies
+        run: composer install --prefer-dist --no-progress --working-dir=tests/Fixtures
+
+      - name: Mutate changed lines
+        run: composer mutation
