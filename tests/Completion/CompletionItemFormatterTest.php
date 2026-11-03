@@ -7,6 +7,7 @@ namespace Firehed\PhpLsp\Tests\Completion;
 use Firehed\PhpLsp\Completion\CompletionItemFormatter;
 use Firehed\PhpLsp\Completion\CompletionItemKind;
 use Firehed\PhpLsp\Completion\InsertTextFormat;
+use Firehed\PhpLsp\Completion\MagicMethod;
 use Firehed\PhpLsp\Domain\ClasslikeName;
 use Firehed\PhpLsp\Domain\ClasslikeType;
 use Firehed\PhpLsp\Domain\EnumCaseInfo;
@@ -66,6 +67,19 @@ final class CompletionItemFormatterTest extends TestCase
             ['label' => 'foreach', 'kind' => CompletionItemKind::Keyword->value],
             self::formatter()->forKeyword('foreach'),
             'a keyword carries no detail',
+        );
+    }
+
+    public function testMagicMethodInsertsItsSignature(): void
+    {
+        self::assertSame(
+            [
+                'label' => '__get',
+                'kind' => CompletionItemKind::Method->value,
+                'insertText' => '__get(string $name): mixed',
+            ],
+            self::formatter()->forMagicMethod(MagicMethod::Get),
+            'a declaration takes its signature as plain text; a snippet would read `$name` as a variable',
         );
     }
 
