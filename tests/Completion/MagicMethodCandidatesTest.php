@@ -83,7 +83,8 @@ final class MagicMethodCandidatesTest extends TestCase
     private function labels(MethodName $declared, string $prefix): array
     {
         $symbols = new OpenDocumentBackend(ProductionSyntaxSource::create()->declarations);
-        $symbols->openDocument(new TextDocument('file:///' . self::FIXTURE, 'php', 1, $this->loadFixture(self::FIXTURE)));
+        $document = new TextDocument('file:///' . self::FIXTURE, 'php', 1, $this->loadFixture(self::FIXTURE));
+        $symbols->openDocument($document);
         $candidates = new MagicMethodCandidates($symbols, new CompletionItemFormatter(new ResolvedSymbolPresenter()));
 
         return array_column($candidates->find($declared, $prefix), 'label');
