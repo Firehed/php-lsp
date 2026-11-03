@@ -69,15 +69,19 @@ Use it for complete code such as `$this->method()`.
 
 ### Mutation testing
 
-`composer mutation` makes small changes to each line of `src/` the branch changed, and fails if any change goes unnoticed by both the unit suite and PHPStan.
-It compares the working tree with `origin/main`, so commit first and keep `origin/main` current; a fork's `origin` must be this repository.
-CI runs it on every pull request.
+`composer mutation` runs [Infection](https://infection.github.io/) on the lines you changed in `src/`.
+It fails if a mutant escapes, which means neither the unit tests nor PHPStan caught it.
+CI runs the same check on pull requests.
 
-A surviving change is a missing test, unless no input could tell the changed code from the original.
-In that case, rewrite the code so the change cannot be made.
-If that is not possible, add an ignore entry for the `Class::method` (never a line number) to `infection.json5`, with the maintainer's approval in the pull request.
+It compares your working tree against `origin/main`, so commit and fetch before running it.
+If you work from a fork, `origin` needs to be this repository.
 
-A test names the behavior it checks, never the mutation it catches.
+When a mutant escapes, add a test that catches it.
+If the mutation doesn't change behavior, so no test could catch it, rewrite the code so the mutation isn't possible.
+If you can't, ask in the pull request about ignoring that `Class::method` in `infection.json5`.
+Don't ignore by line number.
+
+Name tests after the behavior they check, not the mutant they catch.
 
 ## Code Reviews
 
