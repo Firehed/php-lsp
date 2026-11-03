@@ -29,8 +29,11 @@ final class MagicMethodCandidates
     public function find(MethodName $declared, string $prefix): array
     {
         $class = $this->symbols->lookupClassLike($declared->owner);
-        $declaring = $class?->methods[$declared->name] ?? null;
-        if ($class === null || $declaring === null) {
+        if ($class === null) {
+            return [];
+        }
+        $declaring = $class->methods[$declared->name] ?? null;
+        if ($declaring === null) {
             return [];
         }
 
