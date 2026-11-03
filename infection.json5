@@ -7,6 +7,9 @@
     "logs": {
         "text": ".infection/infection.log",
     },
+    "minMsi": 100,
+    "minCoveredMsi": 100,
+    "ignoreMsiWithNoMutations": true,
     "staticAnalysisTool": "phpstan",
     "testFrameworkExtraArgs": "--testsuite=unit",
 }

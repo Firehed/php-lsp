@@ -69,9 +69,9 @@ Use it for complete code such as `$this->method()`.
 
 ### Mutation testing
 
-`composer mutation` makes small changes to each line of `src/` the branch changed and reports any change that neither the unit suite nor PHPStan notices.
+`composer mutation` makes small changes to each line of `src/` the branch changed, and fails if any change goes unnoticed by both the unit suite and PHPStan.
 It compares the working tree with `origin/main`, so commit first and keep `origin/main` current; a fork's `origin` must be this repository.
-CI runs it on every pull request and fails the check while any change survives.
+CI runs it on every pull request.
 
 A surviving change is a missing test, unless no input could tell the changed code from the original.
 In that case, rewrite the code so the change cannot be made.
