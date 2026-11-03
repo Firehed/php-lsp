@@ -51,6 +51,10 @@
         "phpstan": "phpstan analyze",
         "deptrac": "deptrac analyse --no-progress",
         "layer-coverage": "deptrac debug:unassigned",
+        "mutation": [
+            "Composer\\Config::disableProcessTimeout",
+            "infection --git-diff-lines --git-diff-base=origin/main --ignore-msi-with-no-mutations"
+        ],
         "test": [
             "@phpstan",
             "@deptrac",
