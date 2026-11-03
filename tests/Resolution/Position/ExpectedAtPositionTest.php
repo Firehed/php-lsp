@@ -52,6 +52,7 @@ use PHPUnit\Framework\TestCase;
  *   keywords: ?KeywordGroup,
  *   builtinTypes: ?TypeHintContext,
  *   names: ?array{list<NameKind>, ClassCandidateFilter, bool},
+ *   declaredMethod: ?string,
  * }
  */
 #[CoversClass(ExpectedAtPosition::class)]
@@ -61,6 +62,8 @@ final class ExpectedAtPositionTest extends TestCase
     use LoadsFixturesTrait;
 
     private const string CHAINS = 'src/Completion/ChainCompletion.php';
+
+    private const string MAGIC_METHODS = 'MultiClass/MagicMethods.php';
 
     private const string MULTI_CLASS = 'MultiClass/MultiClass.php';
 
@@ -87,7 +90,19 @@ final class ExpectedAtPositionTest extends TestCase
             'src/Position/Positions.php', 'in_interpolated', self::admits('ite', variables: true),
         ];
         yield 'a variable' => [$c . 'Variables.php', 'local_prefix', self::admits('$l', variables: true)];
-        yield 'a declared name' => ['src/Position/Symbols.php', 'declared_method', self::admits('method')];
+        yield 'a method\'s name' => [
+            'src/Position/Symbols.php', 'declared_method', self::admits(
+                'method',
+                declaredMethod: 'Fixtures\Position\Symbols::method',
+            ),
+        ];
+        yield 'a method\'s name, partly written' => [
+            self::MAGIC_METHODS, 'instance', self::admits('__', declaredMethod: 'Fixtures\MultiClass\MagicMethodClass::__'),
+        ];
+        yield 'a method\'s name in an anonymous class' => [self::MAGIC_METHODS, 'anonymous', self::admits('__')];
+        yield 'a function\'s name' => [self::MAGIC_METHODS, 'function_name', self::admits('notAMethod')];
+        yield 'a constant\'s name' => [self::MAGIC_METHODS, 'constant_name', self::admits('NOT_A_METHOD')];
+        yield 'a property\'s name' => [self::MAGIC_METHODS, 'property_name', self::admits('$notAMethod')];
         yield 'a class body with nothing written' => [$c . 'Keywords.php', 'class_body', self::admits('')];
         yield 'a word in a class body' => [
             'Position/ClassBodyWord.php', 'class_body_word', self::admits('p', keywords: KeywordGroup::ClassBody),
@@ -628,6 +643,7 @@ final class ExpectedAtPositionTest extends TestCase
         ?KeywordGroup $keywords = null,
         ?TypeHintContext $builtinTypes = null,
         ?array $names = null,
+        ?string $declaredMethod = null,
     ): array {
         return [
             'prefix' => $prefix,
@@ -637,6 +653,7 @@ final class ExpectedAtPositionTest extends TestCase
             'keywords' => $keywords,
             'builtinTypes' => $builtinTypes,
             'names' => $names,
+            'declaredMethod' => $declaredMethod,
         ];
     }
 
@@ -646,6 +663,7 @@ final class ExpectedAtPositionTest extends TestCase
     private static function describe(Expected $expected): array
     {
         $names = $expected->names;
+        $method = $expected->declaredMethod;
         return self::admits(
             $expected->prefix,
             $expected->members !== null,
@@ -654,6 +672,7 @@ final class ExpectedAtPositionTest extends TestCase
             $expected->keywords,
             $expected->builtinTypes,
             $names === null ? null : [$names->kinds, $names->filter, $names->absolute],
+            $method === null ? null : $method->owner->qualifiedName->fullyQualifiedName() . '::' . $method->name,
         );
     }
 
