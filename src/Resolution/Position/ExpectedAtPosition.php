@@ -8,12 +8,15 @@ use Firehed\PhpLsp\Document\TextDocument;
 use Firehed\PhpLsp\Domain\ByteOffset;
 use Firehed\PhpLsp\Domain\ClassCandidateFilter;
 use Firehed\PhpLsp\Domain\KeywordGroup;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\NameKind;
 use Firehed\PhpLsp\Domain\TypeHintContext;
 use Firehed\PhpLsp\Resolution\Expected;
 use Firehed\PhpLsp\Resolution\ExpressionResolverInterface;
 use Firehed\PhpLsp\Resolution\MemberAccessContext;
 use Firehed\PhpLsp\Resolution\NameQuery;
+use PhpParser\Node\Identifier;
+use PhpParser\Node\Stmt\ClassMethod;
 
 final class ExpectedAtPosition implements ExpectedAtPositionInterface
 {
@@ -30,7 +33,8 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
         $prefix = $located->prefix;
 
         return match ($located->slot) {
-            Slot::NotCode, Slot::DeclaredName => new Expected($prefix),
+            Slot::NotCode => new Expected($prefix),
+            Slot::DeclaredName => new Expected($prefix, declaredMethod: self::declaredMethod($located)),
             Slot::InterpolatedString, Slot::Variable => new Expected($prefix, variables: true),
             Slot::Member => new Expected($prefix, members: $this->memberAccess($located)),
             Slot::ArgumentName => new Expected($prefix, argumentNames: $this->calls->callAt($document, $offset)),
@@ -100,6 +104,20 @@ final class ExpectedAtPosition implements ExpectedAtPositionInterface
 
         $target = $this->expressions->memberTarget($located->access, $located->parsed);
         return $target === null ? null : new MemberAccessContext($target, $prefix);
+    }
+
+    /**
+     * The method a declared name names; null for any other declaration, and
+     * in an anonymous class, which has no name to own it.
+     */
+    private static function declaredMethod(Located $located): ?MethodName
+    {
+        $name = $located->written;
+        $self = $located->scope->getSelfName();
+        if (!$name instanceof Identifier || !$name->getAttribute('parent') instanceof ClassMethod || $self === null) {
+            return null;
+        }
+        return new MethodName($self, $name->toString());
     }
 
     private static function type(Located $located, TypeHintContext $context): Expected

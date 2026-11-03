@@ -97,7 +97,9 @@ final class ExpectedAtPositionTest extends TestCase
             ),
         ];
         yield 'a method\'s name, partly written' => [
-            self::MAGIC_METHODS, 'instance', self::admits('__', declaredMethod: 'Fixtures\MultiClass\MagicMethodClass::__'),
+            self::MAGIC_METHODS,
+            'instance',
+            self::admits('__', declaredMethod: 'Fixtures\MultiClass\MagicMethodClass::__'),
         ];
         yield 'a method\'s name in an anonymous class' => [self::MAGIC_METHODS, 'anonymous', self::admits('__')];
         yield 'a function\'s name' => [self::MAGIC_METHODS, 'function_name', self::admits('notAMethod')];

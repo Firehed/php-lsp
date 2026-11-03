@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Firehed\PhpLsp\Resolution;
 
 use Firehed\PhpLsp\Domain\KeywordGroup;
+use Firehed\PhpLsp\Domain\MethodName;
 use Firehed\PhpLsp\Domain\TypeHintContext;
 
 /**
@@ -15,6 +16,8 @@ final readonly class Expected
 {
     /**
      * @param string $prefix What is written at the position, up to it
+     * @param ?MethodName $declaredMethod The method whose name is written at
+     *        the position, as the class-like declaring it names it
      */
     public function __construct(
         public string $prefix,
@@ -24,6 +27,7 @@ final readonly class Expected
         public ?KeywordGroup $keywords = null,
         public ?TypeHintContext $builtinTypes = null,
         public ?NameQuery $names = null,
+        public ?MethodName $declaredMethod = null,
     ) {
     }
 }
