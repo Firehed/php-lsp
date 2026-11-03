@@ -20,6 +20,7 @@ return [
     Completion\CompositeCompletionSource::class,
     Completion\CompletionSourceInterface::class => Completion\CompositeCompletionSource::class,
     Completion\KeywordCandidates::class,
+    Completion\MagicMethodCandidates::class,
     Completion\MemberCandidates::class,
     Completion\NamedArgumentCandidates::class,
     Completion\SymbolCandidates::class,
