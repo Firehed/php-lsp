@@ -14,6 +14,7 @@ use PhpParser\Node;
 use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(VariableBindings::class)]
@@ -176,6 +177,34 @@ class VariableBindingsTest extends TestCase
             $visible['this']->type,
             'PHP binds it to the class the method is in',
         );
+    }
+
+    #[DataProvider('classBodyProperties')]
+    public function testAClassBodyBindsNoVariables(string $propertyName): void
+    {
+        $ast = self::parseWithParents($this->loadFixture('TopLevel/this_binding.php'));
+        $property = self::findFirst(
+            $ast,
+            fn (Node $n) => $n instanceof Node\PropertyItem && $n->name->toString() === $propertyName,
+        );
+        self::assertInstanceOf(Node\PropertyItem::class, $property);
+
+        self::assertSame(
+            [],
+            array_keys(VariableBindings::visible(Scope::at($property, $ast), $property->getEndFilePos())),
+            'a property default sees no variables and no $this from what holds the class',
+        );
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function classBodyProperties(): array
+    {
+        return [
+            'an anonymous class in an instance method' => ['inAnonymousClassBody'],
+            'a class after top-level code' => ['inTopLevelClassBody'],
+        ];
     }
 
     public function testCodeNeverBindsThis(): void
