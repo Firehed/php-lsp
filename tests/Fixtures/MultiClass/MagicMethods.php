@@ -65,6 +65,7 @@ trait MagicMethodTrait
 
 enum MagicMethodEnum
 {
+    /*|enum_body*/
     public function __(): void
     {
     }
