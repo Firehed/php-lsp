@@ -54,7 +54,7 @@ final class MagicMethodCandidatesTest extends TestCase
     {
         self::assertSame(
             $expected,
-            $this->labels(new MethodName(self::name($class), '__'), $prefix),
+            $this->labels(new MethodName(self::classLike($class), '__'), $prefix),
             'a magic method the declaration\'s class-like and modifiers allow, not yet declared, matching the prefix',
         );
     }
@@ -63,7 +63,7 @@ final class MagicMethodCandidatesTest extends TestCase
     {
         self::assertSame(
             [],
-            $this->labels(new MethodName(self::name('Unknown'), '__'), '__'),
+            $this->labels(new MethodName(self::classLike('Unknown'), '__'), '__'),
             'with no class-like, nothing says what the declaration may be',
         );
     }
@@ -72,7 +72,7 @@ final class MagicMethodCandidatesTest extends TestCase
     {
         self::assertSame(
             [],
-            $this->labels(new MethodName(self::name('MagicMethodClass'), 'missing'), '__'),
+            $this->labels(new MethodName(self::classLike('MagicMethodClass'), 'missing'), '__'),
             'with no declaration, nothing says which modifiers it has',
         );
     }
@@ -89,7 +89,7 @@ final class MagicMethodCandidatesTest extends TestCase
         return array_column($candidates->find($declared, $prefix), 'label');
     }
 
-    private static function name(string $class): ClasslikeName
+    private static function classLike(string $class): ClasslikeName
     {
         return ClasslikeName::fromFullyQualified('Fixtures\MultiClass\\' . $class);
     }
