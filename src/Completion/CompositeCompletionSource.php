@@ -23,6 +23,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
         private readonly KeywordCandidates $keywords,
         private readonly BuiltinTypeCandidates $builtinTypes,
         private readonly SymbolCandidates $names,
+        private readonly MagicMethodCandidates $magicMethods,
     ) {
     }
 
@@ -38,6 +39,7 @@ final class CompositeCompletionSource implements CompletionSourceInterface
             $expected->keywords === null ? [] : $this->keywordItems($expected->keywords, $prefix),
             $expected->builtinTypes === null ? [] : $this->builtinTypes->find($expected->builtinTypes, $prefix),
             $expected->names === null ? [] : $this->names->find($request, $expected->names, $prefix),
+            $expected->declaredMethod === null ? [] : $this->magicMethods->find($expected->declaredMethod, $prefix),
         ));
     }
 

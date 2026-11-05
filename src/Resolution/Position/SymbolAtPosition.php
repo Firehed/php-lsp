@@ -33,7 +33,7 @@ final class SymbolAtPosition implements SymbolAtPositionInterface
         $parent = $written?->getAttribute('parent');
 
         return match ($located->slot) {
-            Slot::NotCode, Slot::InterpolatedString, Slot::ClassMember => null,
+            Slot::NotCode, Slot::InterpolatedString, Slot::ClassMember, Slot::MethodName => null,
             Slot::Variable => $this->variable($written, $located->parsed),
             Slot::Member => $this->member($located),
             Slot::CalledName => $this->calledBy($written, $located->parsed),

@@ -306,8 +306,11 @@ final class PositionLocator implements PositionLocatorInterface
         ) {
             return [Slot::ClassMember, null];
         }
+        if ($parent instanceof Stmt\ClassMethod && $parent->name === $name) {
+            return [Slot::MethodName, null];
+        }
         if (
-            ($parent instanceof Stmt\ClassMethod || $parent instanceof Stmt\Function_
+            ($parent instanceof Stmt\Function_
                 || $parent instanceof Stmt\ClassLike || $parent instanceof Node\Const_
                 || $parent instanceof Stmt\EnumCase || $parent instanceof Node\PropertyItem)
             && $parent->name === $name

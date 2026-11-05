@@ -160,7 +160,10 @@ final class PositionLocatorTest extends TestCase
         $p = 'src/Position/Positions.php';
         yield 'a class before ::' => [$p, 'User::create', Slot::StaticReceiver, 'User', false];
         yield 'an argument name' => [$p, '(first: 1', Slot::ArgumentName, 'first', true];
-        yield 'a declared name' => [$p, 'function method', Slot::DeclaredName, 'method', false];
+        yield 'a method\'s name' => [$p, 'function method', Slot::MethodName, 'method', false];
+        yield 'a function\'s name' => [
+            'MultiClass/MagicMethods.php', 'function notAMethod', Slot::DeclaredName, 'notAMethod', false,
+        ];
         yield 'a called function' => [$p, 'printf(', Slot::CalledName, 'printf', false];
         yield 'the start of a function\'s header' => [$p, 'public function method', Slot::Expression, '', false];
         yield 'its first keyword being typed' => [$p, 'public function method', Slot::Expression, 'pub', false];
