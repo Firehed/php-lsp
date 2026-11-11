@@ -55,6 +55,7 @@ final class PositionLocator implements PositionLocatorInterface
         preg_match('/\$?[\w\\\\\x80-\xff]*$/', self::text($code, max(0, $at - 256), $at), $word);
         $prefix = $word[0] ?? '';
         [$slot, $access] = match (true) {
+            self::afterHaltCompiler($parsed->tree, $at) => [Slot::NotCode, null],
             self::inComment($found, $parsed->tree, $at) => [Slot::NotCode, null],
             $node instanceof FunctionLike => [self::headerSlot($node, $code, $at, $prefix) ?? Slot::Expression, null],
             $node instanceof Stmt\ClassLike => [self::memberHeaderSlot($node, $code, $at, $prefix), null],
@@ -103,6 +104,21 @@ final class PositionLocator implements PositionLocatorInterface
             return $before;
         }
         return $here;
+    }
+
+    /**
+     * Whether the position is past `__halt_compiler()`: only its `;` or `?>`
+     * may follow, and everything after that is data.
+     *
+     * @param array<Stmt> $tree
+     */
+    private static function afterHaltCompiler(array $tree, int $at): bool
+    {
+        return array_any(
+            $tree,
+            static fn (Stmt $statement): bool => $statement instanceof Stmt\HaltCompiler
+                && $at >= $statement->getEndFilePos(),
+        );
     }
 
     /**
