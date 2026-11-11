@@ -17,6 +17,7 @@ $complete = fn (
 );
 $filtering = 'src/Completion/ContextFiltering.php';
 $functions = 'src/Completion/FunctionCompletion.php';
+$halt = 'Position/HaltCompiler.php';
 $finished = new Marker\CursorMarker('user_function');
 $keywords = 'src/Completion/Keywords.php';
 $commentLineEnd = fn (string $comment): Session\Script => new Session\Script(
@@ -39,6 +40,7 @@ return [
         'before_trailing_comment',
         new Expectation\Offers('array_map'),
     ),
+    'a word in __halt_compiler() data' => $complete($halt, 'data_word', new Expectation\NoAnswer()),
     'a heredoc offers variables' => $complete($filtering, 'in_heredoc', new Expectation\Offers('$localVar')),
     'after a finished statement' => new Session\Script(
         project: 'tests/Fixtures',
