@@ -174,6 +174,7 @@ final class PositionLocatorTest extends TestCase
         yield 'the start of a function\'s header' => [$p, 'public function method', Slot::Expression, '', false];
         yield 'its first keyword being typed' => [$p, 'public function method', Slot::Expression, 'pub', false];
         yield 'a caught type where the file ends' => ['Position/CatchAtEnd.php', 'catch (Fo', Slot::Catch, 'Fo', false];
+        yield 'after __halt_compiler()' => ['Position/HaltCompiler.php', ';/*|halt_offset', Slot::NotCode, '', false];
     }
 
     /**
