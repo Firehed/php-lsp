@@ -148,6 +148,12 @@ final class PositionLocatorTest extends TestCase
         yield 'past a slot with code between' => [
             'Recovery/SlotElsewhere.php', 'after_kept', Slot::Expression, '', false,
         ];
+        $h = 'Position/HaltCompiler.php';
+        yield 'before __halt_compiler()' => [$h, 'before_halt', Slot::Expression, '', false];
+        yield 'where __halt_compiler() data starts' => [$h, 'halt_offset', Slot::NotCode, '', false];
+        yield 'a member in __halt_compiler() data' => [$h, 'data_member', Slot::NotCode, '', false];
+        yield 'a call in __halt_compiler() data' => [$h, 'data_call', Slot::NotCode, '', false];
+        yield 'a word in __halt_compiler() data' => [$h, 'data_word', Slot::NotCode, 'HaltCo', false];
     }
 
     /**
