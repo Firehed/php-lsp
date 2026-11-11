@@ -15,6 +15,8 @@ Known-defect cases have a runner that inverts the pass/fail logic: while it live
 A defect script is named for its issue when one exists.
 The author may use their own discretion as to whether it should be renamed or keep the issue number upon being fixed and moving into the standard suite.
 
+Changes may leverage this mechanism to make forward progress: use a tracked defect to capture a known edge case when calling something complete.
+
 ## Context
 
 It's common to discover bugs unrelated to the task at hand.
@@ -26,6 +28,9 @@ With the inverted pass/fail logic on the defect suite, an unintended fix is acti
 
 Functionally, this serves as something akin to PHPStan's baseline, but for end-to-end tests.
 It also serves as a sort of inverted-TDD: a fix for a known defect will turn that suite red, and moving it into the normal suite brings it green again.
+
+Authors (especially AI agents) sometimes get caught up on covering every possible situation and work spirals out of control, rather than shipping the 99%-good-enough case and documeting the gap.
+This process intends to close that as well: if something is good enough to deliver value but some weird edge case in review is impractical to fix without a bunch of other work, just track it in a test case and move forward.
 
 ### Alternatives considered
 
