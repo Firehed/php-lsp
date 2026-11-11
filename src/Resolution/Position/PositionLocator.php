@@ -107,8 +107,8 @@ final class PositionLocator implements PositionLocatorInterface
     }
 
     /**
-     * Whether the position is in the data after `__halt_compiler();`, which
-     * starts right after the statement's `;` or `?>`.
+     * Whether the position is past `__halt_compiler()`: only its `;` or `?>`
+     * may follow, and everything after that is data.
      *
      * @param array<Stmt> $tree
      */
@@ -117,7 +117,7 @@ final class PositionLocator implements PositionLocatorInterface
         return array_any(
             $tree,
             static fn (Stmt $statement): bool => $statement instanceof Stmt\HaltCompiler
-                && $at > $statement->getEndFilePos(),
+                && $at >= $statement->getEndFilePos(),
         );
     }
 
