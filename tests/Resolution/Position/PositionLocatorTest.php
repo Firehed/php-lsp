@@ -154,6 +154,9 @@ final class PositionLocatorTest extends TestCase
         yield 'a member in __halt_compiler() data' => [$h, 'data_member', Slot::NotCode, '', false];
         yield 'a call in __halt_compiler() data' => [$h, 'data_call', Slot::NotCode, '', false];
         yield 'a word in __halt_compiler() data' => [$h, 'data_word', Slot::NotCode, 'HaltCo', false];
+        yield 'where __halt_compiler() ?> data starts' => [
+            'Position/HaltCompilerCloseTag.php', 'close_tag_data', Slot::NotCode, '', false,
+        ];
     }
 
     /**
