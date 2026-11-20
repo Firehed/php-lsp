@@ -152,6 +152,21 @@ final class CompletionItemFormatter
     }
 
     /**
+     * Plain text, never a snippet: snippet syntax would read the signature's
+     * `$name` as a variable ([LSP] Snippet Syntax).
+     *
+     * @return CompletionItem
+     */
+    public function forMagicMethod(MagicMethod $method): array
+    {
+        return [
+            'label' => $method->value,
+            'kind' => CompletionItemKind::Method->value,
+            'insertText' => $method->signature(),
+        ];
+    }
+
+    /**
      * @return CompletionItem
      */
     public function forBuiltinType(string $type): array

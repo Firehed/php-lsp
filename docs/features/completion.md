@@ -21,6 +21,7 @@ This document tracks the current state of code completion in php-lsp.
 | Attribute arguments | `#[Route(` | Constructor named arguments, like a normal call (an attribute is a constructor call on its class); signature help shows the constructor | ✅ Working |
 | `instanceof` right-hand side | `$x instanceof Ba` | Class-likes valid as a type (classes, interfaces, enums) from imports + workspace index; traits excluded (a trait `instanceof` check is always false), as are scalar type keywords and functions | ✅ Working |
 | Namespace navigation | `new \Ps`, `catch (\E`, `function f(\Ps` | Vendor/built-in class-likes and child namespaces from the catalog, walked one segment at a time. Works on absolute (`\`-rooted) names and on relative prefixes resolved through a `use` import or the current namespace (`use App\Model\Env;` or being inside `App\Model` → `new Env\R`) | ✅ Working |
+| Magic method declaration | `public function __to` | Magic methods the class-like may still declare, inserted with the signature the PHP manual gives them (plain text). Filtered by the written modifiers (`static` offers only `__callStatic`/`__set_state`; non-public only `__construct`/`__destruct`/`__clone`), by kind (an enum allows only `__call`, `__callStatic`, `__invoke`), and by what the class-like already declares. Offered once a name is typed; not in anonymous classes (#867) | ✅ Working |
 | `use` import statement | `use Psr\Lo` | Namespaces and class-likes (any kind) from the catalog, walked one segment at a time. The name is **absolute** — resolved from the global namespace regardless of the file's own namespace or imports — so it navigates the same tree as `new \Ps`. Applies to top-level imports only; a `use` in a class body is a trait application (see below). `use function` / `use const` are not yet offered (#239, #317) | ✅ Working |
 
 All of the above work identically in class methods, free functions, and
@@ -127,7 +128,8 @@ CompositeCompletionSource
 ├── VariableCandidates          → Expected::$variables
 ├── KeywordCandidates           → Expected::$keywords (a KeywordGroup)
 ├── BuiltinTypeCandidates       → Expected::$builtinTypes (a TypeHintContext)
-└── SymbolCandidates            → Expected::$names (kinds, ClassCandidateFilter, name context)
+├── SymbolCandidates            → Expected::$names (kinds, ClassCandidateFilter, name context)
+└── MagicMethodCandidates       → Expected::$declaredMethod (the method whose name is being written)
 ```
 
 `ExpectedAtPosition` decides what a position admits from the structure `PositionLocator` reads there, the same structure hover, definition, and signature help read.
