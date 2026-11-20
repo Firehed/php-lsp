@@ -19,8 +19,8 @@ use PhpParser\Node\UseItem;
 
 /**
  * The lexical scope at a point in a document: the one answer to what encloses
- * it — namespace, class-like, and innermost function-like — and what follows
- * from that.
+ * it — namespace, class-like, and the innermost function-like inside that
+ * class-like — and what follows from that.
  *
  * A scope provides everything variable resolution needs: the parameters and
  * statements that can introduce variables, the class context for self/parent,
@@ -62,9 +62,12 @@ final class Scope
             ) {
                 $classLike ??= $n;
             }
+            // A function-like around the class-like is not this scope's: a class
+            // body sees nothing of the code that declares the class.
             if (
-                $n instanceof Stmt\Function_ || $n instanceof Stmt\ClassMethod
-                || $n instanceof Closure || $n instanceof ArrowFunction || $n instanceof PropertyHook
+                $classLike === null
+                && ($n instanceof Stmt\Function_ || $n instanceof Stmt\ClassMethod
+                || $n instanceof Closure || $n instanceof ArrowFunction || $n instanceof PropertyHook)
             ) {
                 $function ??= $n;
             }
@@ -73,7 +76,8 @@ final class Scope
     }
 
     /**
-     * The scope holding this one's function-like, or null for a global scope.
+     * The scope holding this one's function-like, or null for a global scope or
+     * a class body.
      */
     public function outer(): ?self
     {
@@ -100,6 +104,8 @@ final class Scope
     public function getStatements(): array
     {
         return match (true) {
+            // A class body holds declarations, whose values cannot read a variable.
+            $this->sourceNode === null && $this->classLike !== null => [],
             $this->sourceNode === null => $this->namespace->stmts ?? $this->tree,
             // Arrow functions have an expression body, not a statement list; their
             // captured variables come from the enclosing scope, not local assignments.
